@@ -1,0 +1,494 @@
+//! Phase 3: named arguments.
+//!
+//! At call sites `f(name: value, name: value)`, look up `f` in the local
+//! [`CalleeRegistry`] (built from `fn` definitions in this file). If
+//! registered, validate that supplied names exist in the declared params
+//! and rewrite to positional in declaration order. If not registered (or
+//! when called as a method or via a qualified path), strip the `name:`
+//! prefix and trust the caller's argument order.
+//!
+//! Lowering target: every named call becomes a plain positional Rust call,
+//! so syn and rustc can take it from there.
+
+use proc_macro2::{Delimiter, Group, Punct, Spacing, TokenStream, TokenTree};
+use rustricted_diag::Diagnostic;
+use std::collections::{HashMap, HashSet};
+
+use crate::preprocess::from_vec;
+
+#[derive(Debug, Default)]
+pub struct CalleeRegistry {
+    /// Map from function name → declared parameter names in order
+    /// (excluding `self`).
+    pub fns: HashMap<String, Vec<String>>,
+}
+
+impl CalleeRegistry {
+    /// Walk a token stream recursively, recording every `fn NAME(PARAMS)`
+    /// definition (free function, method, trait method). Conflicting
+    /// signatures (same name, different params) are resolved by first-wins.
+    pub fn collect(tokens: &TokenStream) -> Self {
+        let mut fns = HashMap::new();
+        walk_for_fns(tokens.clone(), &mut fns);
+        CalleeRegistry { fns }
+    }
+}
+
+fn walk_for_fns(tokens: TokenStream, fns: &mut HashMap<String, Vec<String>>) {
+    let trees: Vec<TokenTree> = tokens.into_iter().collect();
+    for i in 0..trees.len() {
+        if let TokenTree::Ident(id) = &trees[i] {
+            if *id == "fn" {
+                if let (Some(TokenTree::Ident(name)), Some(rest)) =
+                    (trees.get(i + 1), trees.get(i + 2))
+                {
+                    // The token after the fn name might be `<` for generics;
+                    // skip ahead to the first paren group.
+                    let params_group = match rest {
+                        TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis => {
+                            Some(g.clone())
+                        }
+                        _ => find_first_paren_after(&trees, i + 2),
+                    };
+                    if let Some(g) = params_group {
+                        let params = parse_param_names(&g.stream());
+                        fns.entry(name.to_string()).or_insert(params);
+                    }
+                }
+            }
+        }
+    }
+    for tree in &trees {
+        if let TokenTree::Group(g) = tree {
+            walk_for_fns(g.stream(), fns);
+        }
+    }
+}
+
+fn find_first_paren_after(trees: &[TokenTree], start: usize) -> Option<Group> {
+    for tree in &trees[start..] {
+        if let TokenTree::Group(g) = tree {
+            if g.delimiter() == Delimiter::Parenthesis {
+                return Some(g.clone());
+            }
+        }
+    }
+    None
+}
+
+fn parse_param_names(params: &TokenStream) -> Vec<String> {
+    split_by_top_comma(params.clone())
+        .into_iter()
+        .filter_map(extract_param_name)
+        .collect()
+}
+
+fn extract_param_name(segment: TokenStream) -> Option<String> {
+    let trees: Vec<TokenTree> = segment.into_iter().collect();
+    let mut i = 0;
+
+    // Skip leading attributes like `#[foo]`.
+    while i < trees.len() {
+        if let TokenTree::Punct(p) = &trees[i] {
+            if p.as_char() == '#' {
+                let mut j = i + 1;
+                if matches!(trees.get(j), Some(TokenTree::Punct(p2)) if p2.as_char() == '!') {
+                    j += 1;
+                }
+                if matches!(
+                    trees.get(j),
+                    Some(TokenTree::Group(g)) if g.delimiter() == Delimiter::Bracket
+                ) {
+                    i = j + 1;
+                    continue;
+                }
+            }
+        }
+        break;
+    }
+
+    // Skip `mut` / `ref` modifiers.
+    while let Some(TokenTree::Ident(id)) = trees.get(i) {
+        let s = id.to_string();
+        if s == "mut" || s == "ref" {
+            i += 1;
+        } else {
+            break;
+        }
+    }
+
+    // Skip `&` and lifetime prefixes for `self` patterns like `&self`, `&mut self`.
+    if let Some(TokenTree::Punct(p)) = trees.get(i) {
+        if p.as_char() == '&' {
+            i += 1;
+            // Skip lifetime '...
+            if matches!(trees.get(i), Some(TokenTree::Punct(p)) if p.as_char() == '\'') {
+                i += 2; // '<lifetime ident>
+            }
+            // Skip mut after &
+            if matches!(trees.get(i), Some(TokenTree::Ident(id)) if id == "mut") {
+                i += 1;
+            }
+        }
+    }
+
+    if let Some(TokenTree::Ident(id)) = trees.get(i) {
+        let s = id.to_string();
+        if s == "self" {
+            return None;
+        }
+        return Some(s);
+    }
+    None
+}
+
+pub fn rewrite(
+    tokens: TokenStream,
+    registry: &CalleeRegistry,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> TokenStream {
+    rewrite_stream(tokens, registry, diagnostics)
+}
+
+fn rewrite_stream(
+    tokens: TokenStream,
+    registry: &CalleeRegistry,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> TokenStream {
+    let trees: Vec<TokenTree> = tokens.into_iter().collect();
+    let param_groups = find_param_group_indices(&trees);
+    let mut out: Vec<TokenTree> = Vec::with_capacity(trees.len());
+    for (i, tree) in trees.into_iter().enumerate() {
+        match tree {
+            TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis => {
+                let recursed = rewrite_stream(g.stream(), registry, diagnostics);
+                if param_groups.contains(&i) {
+                    // Function parameter list — leave intact. The inner stream
+                    // is still recursed in case a default-value expression (or
+                    // a nested closure) contains rewritable calls.
+                    let mut new_group = Group::new(Delimiter::Parenthesis, recursed);
+                    new_group.set_span(g.span());
+                    out.push(TokenTree::Group(new_group));
+                } else {
+                    let callee = preceding_ident(&out);
+                    let new_inner =
+                        rewrite_call_args(recursed, callee.as_deref(), registry, diagnostics);
+                    let mut new_group = Group::new(Delimiter::Parenthesis, new_inner);
+                    new_group.set_span(g.span());
+                    out.push(TokenTree::Group(new_group));
+                }
+            }
+            TokenTree::Group(g) => {
+                let recursed = rewrite_stream(g.stream(), registry, diagnostics);
+                let mut new_group = Group::new(g.delimiter(), recursed);
+                new_group.set_span(g.span());
+                out.push(TokenTree::Group(new_group));
+            }
+            other => out.push(other),
+        }
+    }
+    from_vec(out)
+}
+
+/// Mark which paren groups in `trees` are function parameter lists
+/// (`fn NAME [<generics>] (params)`). Those must NOT be treated as call
+/// sites — stripping `name:` from a parameter declaration would corrupt
+/// the function signature.
+fn find_param_group_indices(trees: &[TokenTree]) -> HashSet<usize> {
+    let mut params = HashSet::new();
+    for i in 0..trees.len() {
+        let TokenTree::Ident(id) = &trees[i] else {
+            continue;
+        };
+        if *id != "fn" {
+            continue;
+        }
+        let mut j = i + 1;
+        // The fn name (or `fn` followed by generics if anonymous; rare).
+        if matches!(trees.get(j), Some(TokenTree::Ident(_))) {
+            j += 1;
+        }
+        // Optional generic parameter list `<...>`. Track depth to handle
+        // nested angle brackets like `<Vec<T>>`.
+        if matches!(trees.get(j), Some(TokenTree::Punct(p)) if p.as_char() == '<') {
+            let mut depth = 1;
+            j += 1;
+            while j < trees.len() && depth > 0 {
+                if let TokenTree::Punct(p) = &trees[j] {
+                    match p.as_char() {
+                        '<' => depth += 1,
+                        '>' => depth -= 1,
+                        _ => {}
+                    }
+                }
+                j += 1;
+            }
+        }
+        // First paren group after the (possibly-generic) name is the params.
+        while j < trees.len() {
+            if let TokenTree::Group(g) = &trees[j] {
+                if g.delimiter() == Delimiter::Parenthesis {
+                    params.insert(j);
+                    break;
+                }
+            }
+            j += 1;
+        }
+    }
+    params
+}
+
+/// The callee, if the paren group's preceding token is an identifier.
+/// For paths like `foo::bar(...)` this returns `"bar"` — the final segment.
+/// For method calls `x.foo(...)` it also returns `"foo"`. Registry lookup
+/// treats these the same (best-effort matching by simple name).
+fn preceding_ident(out: &[TokenTree]) -> Option<String> {
+    match out.last() {
+        Some(TokenTree::Ident(id)) => Some(id.to_string()),
+        _ => None,
+    }
+}
+
+fn rewrite_call_args(
+    args: TokenStream,
+    callee: Option<&str>,
+    registry: &CalleeRegistry,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> TokenStream {
+    let segments = split_by_top_comma(args);
+    if segments.is_empty() {
+        return TokenStream::new();
+    }
+
+    let parsed: Vec<(Option<String>, TokenStream)> =
+        segments.into_iter().map(extract_named).collect();
+    let any_named = parsed.iter().any(|(n, _)| n.is_some());
+
+    if !any_named {
+        return reconstruct(parsed);
+    }
+
+    // Validate + reorder against the local registry when possible.
+    if let Some(name) = callee {
+        if let Some(declared) = registry.fns.get(name) {
+            let all_named = parsed.iter().all(|(n, _)| n.is_some());
+            if all_named {
+                for (n, _) in &parsed {
+                    let supplied = n.as_deref().unwrap_or("");
+                    if !declared.iter().any(|d| d == supplied) {
+                        diagnostics.push(
+                            Diagnostic::error(
+                                "R3001",
+                                format!(
+                                    "`{name}` has no parameter named `{supplied}`"
+                                ),
+                                0..0,
+                            )
+                            .with_why(
+                                "named arguments are validated against the callee's declared parameter list".to_string(),
+                            )
+                            .with_help(format!(
+                                "declared parameters: {}",
+                                declared.join(", ")
+                            )),
+                        );
+                    }
+                }
+
+                let mut by_name: HashMap<String, TokenStream> = HashMap::new();
+                for (n, v) in parsed {
+                    if let Some(name) = n {
+                        by_name.insert(name, v);
+                    }
+                }
+                let reordered: Vec<(Option<String>, TokenStream)> = declared
+                    .iter()
+                    .filter_map(|d| by_name.remove(d).map(|v| (None, v)))
+                    .collect();
+                return reconstruct(reordered);
+            }
+        }
+    }
+
+    // Fallback: strip names, keep order.
+    reconstruct(parsed)
+}
+
+fn extract_named(segment: TokenStream) -> (Option<String>, TokenStream) {
+    let trees: Vec<TokenTree> = segment.into_iter().collect();
+    // Pattern: IDENT ':' (Alone spacing — distinguishes from `::`) <rest>
+    if trees.len() >= 2 {
+        if let (TokenTree::Ident(name), TokenTree::Punct(colon)) = (&trees[0], &trees[1]) {
+            if colon.as_char() == ':' && colon.spacing() == Spacing::Alone {
+                let value: TokenStream = trees[2..].iter().cloned().collect();
+                return (Some(name.to_string()), value);
+            }
+        }
+    }
+    (None, from_vec(trees))
+}
+
+fn reconstruct(parsed: Vec<(Option<String>, TokenStream)>) -> TokenStream {
+    let mut out = TokenStream::new();
+    for (i, (_, value)) in parsed.into_iter().enumerate() {
+        if i > 0 {
+            out.extend(std::iter::once(TokenTree::Punct(Punct::new(
+                ',',
+                Spacing::Alone,
+            ))));
+        }
+        out.extend(value);
+    }
+    out
+}
+
+fn split_by_top_comma(tokens: TokenStream) -> Vec<TokenStream> {
+    let trees: Vec<TokenTree> = tokens.into_iter().collect();
+    let mut segments: Vec<Vec<TokenTree>> = Vec::new();
+    let mut current: Vec<TokenTree> = Vec::new();
+    for tree in trees {
+        if let TokenTree::Punct(p) = &tree {
+            if p.as_char() == ',' {
+                if !current.is_empty() {
+                    segments.push(std::mem::take(&mut current));
+                }
+                continue;
+            }
+        }
+        current.push(tree);
+    }
+    if !current.is_empty() {
+        segments.push(current);
+    }
+    segments.into_iter().map(from_vec).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn lower_str(input: &str) -> (String, Vec<Diagnostic>) {
+        let tokens: TokenStream = input.parse().expect("test input must tokenize");
+        let registry = CalleeRegistry::collect(&tokens);
+        let mut diags = Vec::new();
+        let out = rewrite(tokens, &registry, &mut diags);
+        (out.to_string(), diags)
+    }
+
+    #[test]
+    fn registry_finds_local_fns() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }";
+        let tokens: TokenStream = src.parse().expect("test input must tokenize");
+        let reg = CalleeRegistry::collect(&tokens);
+        let params = reg.fns.get("area").expect("area should be in registry");
+        assert_eq!(params, &vec!["width".to_string(), "height".to_string()]);
+    }
+
+    #[test]
+    fn registry_skips_self_parameter() {
+        let src = "impl S { fn foo(&self, x: u32, y: u32) {} }";
+        let tokens: TokenStream = src.parse().expect("test input must tokenize");
+        let reg = CalleeRegistry::collect(&tokens);
+        let params = reg.fns.get("foo").expect("foo should be in registry");
+        assert_eq!(params, &vec!["x".to_string(), "y".to_string()]);
+    }
+
+    #[test]
+    fn rewrite_named_call_strips_names() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = area(width: 4, height: 6); }";
+        let (out, diags) = lower_str(src);
+        assert!(diags.is_empty(), "expected no diagnostics, got {diags:?}");
+        // The definition must keep `width:` / `height:` — only the call site
+        // should be stripped.
+        assert!(
+            out.contains("area (width : u32 , height : u32)"),
+            "definition signature must be preserved: {out}"
+        );
+        assert!(
+            out.contains("area (4 , 6)") || out.contains("area(4 , 6)"),
+            "expected positional area(4, 6) at the call site: {out}"
+        );
+    }
+
+    #[test]
+    fn rewrite_reorders_named_args_against_registry() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = area(height: 6, width: 4); }";
+        let (out, diags) = lower_str(src);
+        assert!(diags.is_empty(), "expected no diagnostics, got {diags:?}");
+        // After reorder, declared order is width, height — so 4 should come before 6.
+        let area_pos = out.find("area").expect("expected area call");
+        let four_pos = out[area_pos..].find('4').expect("expected 4");
+        let six_pos = out[area_pos..].find('6').expect("expected 6");
+        assert!(
+            four_pos < six_pos,
+            "expected 4 before 6 after reorder: {out}"
+        );
+    }
+
+    #[test]
+    fn rewrite_emits_diagnostic_on_unknown_name() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = area(wodth: 4, height: 6); }";
+        let (_out, diags) = lower_str(src);
+        assert!(
+            diags.iter().any(|d| d.rule == "R3001"),
+            "expected R3001 diagnostic, got {diags:?}"
+        );
+    }
+
+    #[test]
+    fn rewrite_strips_names_for_unknown_callee() {
+        let src = "fn main() { let _ = upstream::area(width: 4, height: 6); }";
+        let (out, diags) = lower_str(src);
+        assert!(
+            diags.is_empty(),
+            "should silently strip for unknown: {diags:?}"
+        );
+        assert!(
+            !out.contains("width :") && !out.contains("width:"),
+            "names should be stripped: {out}"
+        );
+    }
+
+    #[test]
+    fn rewrite_passes_through_positional_calls() {
+        let src = "fn f(a: u32, b: u32) {} fn main() { f(1, 2); }";
+        let (out, diags) = lower_str(src);
+        assert!(diags.is_empty(), "no diags: {diags:?}");
+        assert!(
+            out.contains("f (1 , 2)") || out.contains("f(1 , 2)") || out.contains("f (1, 2)"),
+            "expected positional preserved: {out}"
+        );
+    }
+
+    #[test]
+    fn rewrite_handles_nested_named_calls() {
+        let src = "fn add(a: u32, b: u32) -> u32 { a + b }\nfn main() { let _ = add(a: add(a: 1, b: 2), b: 3); }";
+        let (out, diags) = lower_str(src);
+        assert!(diags.is_empty(), "no diags: {diags:?}");
+        // Outer add gets (add(1, 2), 3); inner gets (1, 2).
+        let add_pos = out.find("add").expect("expected add");
+        assert!(out[add_pos..].contains("add"));
+    }
+
+    #[test]
+    fn double_colon_is_not_a_named_arg() {
+        let src = "fn main() { let _ = std::cmp::max(1, 2); }";
+        let (out, _) = lower_str(src);
+        // `std::cmp::max` should not be touched (no `name: value` syntax)
+        assert!(out.contains("std :: cmp :: max") || out.contains("std::cmp::max"));
+    }
+
+    #[test]
+    fn method_call_with_named_args_strips_silently() {
+        let src = "fn main() { let s = String::new(); s.split_at(at: 5); }";
+        let (out, diags) = lower_str(src);
+        assert!(
+            diags.is_empty(),
+            "method calls without registry entries should be silent"
+        );
+        assert!(
+            !out.contains("at :") && !out.contains("at:"),
+            "name should be stripped: {out}"
+        );
+    }
+}

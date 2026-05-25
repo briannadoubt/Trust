@@ -75,6 +75,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
+name = "cargo-rustricted"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -125,6 +132,23 @@ name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
+
+[[package]]
+name = "console"
+version = "0.16.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d64e8af5551369d19cf50138de61f1c42074ab970f74e99be916646777f8fc87"
+dependencies = [
+ "encode_unicode",
+ "libc",
+ "windows-sys",
+]
+
+[[package]]
+name = "encode_unicode"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
 name = "equivalent"
@@ -204,6 +228,18 @@ dependencies = [
  "hashbrown 0.17.1",
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "insta"
+version = "1.47.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b4a6248eb93a4401ed2f37dfe8ea592d3cf05b7cf4f8efa867b6895af7e094e"
+dependencies = [
+ "console",
+ "once_cell",
+ "similar",
+ "tempfile",
 ]
 
 [[package]]
@@ -313,8 +349,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "proc-macro2",
  "rustricted-diag",
+ "rustricted-effects",
+ "rustricted-lints",
+ "rustricted-lower",
  "rustricted-syntax",
+ "syn",
  "tempfile",
 ]
 
@@ -324,6 +365,52 @@ version = "0.1.0"
 dependencies = [
  "ariadne",
 ]
+
+[[package]]
+name = "rustricted-effects"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "proc-macro2",
+ "rustricted-diag",
+ "syn",
+ "thiserror",
+]
+
+[[package]]
+name = "rustricted-lints"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "proc-macro2",
+ "rustricted-diag",
+ "syn",
+]
+
+[[package]]
+name = "rustricted-lower"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "rustricted-diag",
+ "rustricted-effects",
+ "syn",
+ "thiserror",
+]
+
+[[package]]
+name = "rustricted-lsp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
+name = "rustricted-std"
+version = "0.1.0"
 
 [[package]]
 name = "rustricted-syntax"
@@ -383,6 +470,12 @@ dependencies = [
  "serde_core",
  "zmij",
 ]
+
+[[package]]
+name = "similar"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "strsim"

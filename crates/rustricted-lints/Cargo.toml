@@ -1,0 +1,17 @@
+[package]
+name = "rustricted-lints"
+description = "Strict-mode lint preset for the Rustricted dialect"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+proc-macro2 = { workspace = true, features = ["span-locations"] }
+syn.workspace = true
+rustricted-diag = { path = "../rustricted-diag" }
+
+[dev-dependencies]
+insta.workspace = true

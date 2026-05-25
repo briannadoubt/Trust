@@ -18,14 +18,46 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+
       - name: fmt
         run: cargo fmt --all -- --check
       - name: clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: test
         run: cargo test --workspace
-      - name: round-trip hello example
+
+      - name: example — Phase 0 hello
         run: |
-          cargo run -p rustricted -- build examples/00-hello.rs --out /tmp/rustricted-hello
-          out=$(/tmp/rustricted-hello)
-          test "$out" = "hello from rustricted"
+          cargo run -p rustricted -- build examples/00-hello.rs --out /tmp/p0
+          test "$(/tmp/p0)" = "hello from rustricted"
+
+      - name: example — Phase 1 strict-clean
+        run: |
+          cargo run -p rustricted -- build examples/01-lints/strict-clean.rs --out /tmp/p1c
+          test "$(/tmp/p1c)" = "1"
+
+      - name: example — Phase 1 unwrap-fail (must fail with R0001)
+        run: |
+          ! cargo run -p rustricted -- check examples/01-lints/unwrap-fail.rs 2>&1 | tee /tmp/p1u.log
+          grep -q R0001 /tmp/p1u.log
+
+      - name: example — Phase 2 pipe
+        run: |
+          cargo run -p rustricted -- build examples/02-pipe/chain.rs --out /tmp/p2
+          test "$(/tmp/p2)" = "11"
+
+      - name: example — Phase 3 named args
+        run: |
+          cargo run -p rustricted -- build examples/03-named-args/area.rs --out /tmp/p3
+          test "$(/tmp/p3)" = "24 24"
+
+      - name: example — Phase 4 effects declared
+        run: |
+          cargo run -p rustricted -- build examples/04-effects/declared.rs --out /tmp/p4d
+          /tmp/p4d
+          test "$(/tmp/p4d | tail -1)" = "42"
+
+      - name: example — Phase 4 effects undeclared (must fail with R4001)
+        run: |
+          ! cargo run -p rustricted -- check examples/04-effects/undeclared.rs 2>&1 | tee /tmp/p4u.log
+          grep -q R4001 /tmp/p4u.log
