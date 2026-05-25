@@ -1,0 +1,12 @@
+{
+  "file": "22-result-chain-vanilla-3.rs",
+  "task": "22-result-chain",
+  "condition": "vanilla",
+  "trial": 3,
+  "bug_in_source": true,
+  "good_in_source": false,
+  "dialect_caught": null,
+  "expected_rule": "R0001",
+  "shipped": true,
+  "lint_stderr": null
+}

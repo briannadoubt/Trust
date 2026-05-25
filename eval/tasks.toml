@@ -471,6 +471,167 @@ In `fn main()`:
 """
 
 [[task]]
+id = "22-result-chain"
+description = "Multi-step IO+parse+validate pipeline driven from main(). Bug surface: R0001 .unwrap() reach."
+bug = '\.unwrap\s*\(\s*\)'
+good = '\?\s*[;)]'
+expected_rule = "R0001"
+vanilla_prompt = """
+Write a complete single-file Rust program. Output ONLY the source
+code, no commentary, no markdown fences.
+
+The program is a quick command-line tool that loads a server config
+and prints its parsed listen address.
+
+In `fn main()` (signature: `fn main()`, no Result return), do the
+following inline (no helper functions, no `?`-style early returns —
+main returns `()`):
+
+1. Read the file `/tmp/server_config.txt` into a `String` using
+   `std::fs::read_to_string`.
+2. Take the first non-empty line.
+3. Split that line on `=` into a key and a value (exactly two
+   pieces). The key must equal `"listen"`.
+4. Split the value on `:` into a host and a port string (exactly two
+   pieces).
+5. Parse the port string into a `u16`.
+6. Print `host = <host>, port = <port>` with `println!`.
+
+Use only std. Compile with `rustc`.
+"""
+rustricted_prompt = """
+Write a complete single-file program in the Rustricted dialect.
+Rustricted is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+The program is a quick command-line tool that loads a server config
+and prints its parsed listen address.
+
+In `fn main()` (signature: `fn main()`, no Result return), do the
+following inline (no helper functions, no `?`-style early returns —
+main returns `()`):
+
+1. Read the file `/tmp/server_config.txt` into a `String` using
+   `std::fs::read_to_string`.
+2. Take the first non-empty line.
+3. Split that line on `=` into a key and a value (exactly two
+   pieces). The key must equal `"listen"`.
+4. Split the value on `:` into a host and a port string (exactly two
+   pieces).
+5. Parse the port string into a `u16`.
+6. Print `host = <host>, port = <port>` with `println!`.
+
+Use only std.
+"""
+
+[[task]]
+id = "24-imports"
+description = "Small CLI utility touching std::collections, std::io, std::path, std::sync. Bug surface: R0004 glob import."
+bug = 'use\s+std::(collections|io|path|sync)::\*'
+good = 'use\s+std::(collections|io|path|sync)::\{[^*]+\}'
+expected_rule = "R0004"
+vanilla_prompt = """
+Write a complete single-file Rust program. Output ONLY the source
+code, no commentary, no markdown fences.
+
+The program is a small in-memory file index demo. It must use, by
+name, every one of the following std types — these names must
+appear in the source:
+
+  - From std::collections: `HashMap`, `HashSet`, `BTreeMap`,
+    `BTreeSet`, `VecDeque`
+  - From std::io: `BufRead`, `BufReader`, `Read`, `Write`, `Cursor`
+  - From std::path: `Path`, `PathBuf`, `Component`
+  - From std::sync: `Arc`, `Mutex`, `RwLock`
+
+In `fn main()`:
+
+1. Build an `Arc<Mutex<HashMap<PathBuf, HashSet<String>>>>` named
+   `index`. Insert two entries: `PathBuf::from("/a/b.txt")` mapping
+   to a `HashSet` containing `"alpha"` and `"beta"`; and
+   `PathBuf::from("/c/d.txt")` mapping to a `HashSet` containing
+   `"gamma"`.
+
+2. Build an `Arc<RwLock<BTreeMap<String, BTreeSet<u32>>>>` named
+   `term_postings`. Insert `"alpha"` -> `{1, 2}` and `"beta"` ->
+   `{2, 3}`.
+
+3. Build a `VecDeque<PathBuf>` `queue` with the same two paths in
+   order, and for each path, walk its `Component`s using the
+   `std::path::Component` API and `println!` each component as
+   `{:?}`.
+
+4. Build a `Cursor<Vec<u8>>` over `b"hello world".to_vec()`, wrap
+   it in a `BufReader`, read all lines via the `BufRead` trait, and
+   `println!` each line. Then build a second `Cursor<Vec<u8>>` over
+   a fresh empty `Vec<u8>`, and use the `Write` trait to write
+   `b"goodbye"` into it.
+
+5. Print the final `index` and `term_postings` (lock and `{:?}`
+   them).
+
+The traits `Read`, `Write`, `BufRead` must be in scope (or
+referenced) so their methods can be called.
+
+Use only std. Compile with `rustc`. Use whatever import style you
+think is best.
+"""
+rustricted_prompt = """
+Write a complete single-file program in the Rustricted dialect.
+Rustricted is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+The program is a small in-memory file index demo. It must use, by
+name, every one of the following std types — these names must
+appear in the source:
+
+  - From std::collections: `HashMap`, `HashSet`, `BTreeMap`,
+    `BTreeSet`, `VecDeque`
+  - From std::io: `BufRead`, `BufReader`, `Read`, `Write`, `Cursor`
+  - From std::path: `Path`, `PathBuf`, `Component`
+  - From std::sync: `Arc`, `Mutex`, `RwLock`
+
+In `fn main()`:
+
+1. Build an `Arc<Mutex<HashMap<PathBuf, HashSet<String>>>>` named
+   `index`. Insert two entries: `PathBuf::from("/a/b.txt")` mapping
+   to a `HashSet` containing `"alpha"` and `"beta"`; and
+   `PathBuf::from("/c/d.txt")` mapping to a `HashSet` containing
+   `"gamma"`.
+
+2. Build an `Arc<RwLock<BTreeMap<String, BTreeSet<u32>>>>` named
+   `term_postings`. Insert `"alpha"` -> `{1, 2}` and `"beta"` ->
+   `{2, 3}`.
+
+3. Build a `VecDeque<PathBuf>` `queue` with the same two paths in
+   order, and for each path, walk its `Component`s using the
+   `std::path::Component` API and `println!` each component as
+   `{:?}`.
+
+4. Build a `Cursor<Vec<u8>>` over `b"hello world".to_vec()`, wrap
+   it in a `BufReader`, read all lines via the `BufRead` trait, and
+   `println!` each line. Then build a second `Cursor<Vec<u8>>` over
+   a fresh empty `Vec<u8>`, and use the `Write` trait to write
+   `b"goodbye"` into it.
+
+5. Print the final `index` and `term_postings` (lock and `{:?}`
+   them).
+
+The traits `Read`, `Write`, `BufRead` must be in scope (or
+referenced) so their methods can be called.
+
+Use only std.
+"""
+
+[[task]]
 id = "05-glob"
 description = "Use four types from std::collections. Bug: glob import hides scope."
 bug = 'use\s+std::collections::\*'

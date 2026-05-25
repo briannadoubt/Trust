@@ -1,0 +1,12 @@
+{
+  "file": "22-result-chain-rustricted-2.rs",
+  "task": "22-result-chain",
+  "condition": "rustricted",
+  "trial": 2,
+  "bug_in_source": false,
+  "good_in_source": false,
+  "dialect_caught": false,
+  "expected_rule": "R0001",
+  "shipped": false,
+  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/003/22-result-chain-rustricted-2.rs\n"
+}
