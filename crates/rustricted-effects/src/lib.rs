@@ -9,10 +9,12 @@
 mod check;
 mod parser;
 mod registry;
+pub mod rule;
 
 pub use check::{check, std_seed, EffectCheck};
 pub use parser::strip_effect_annotations;
 pub use registry::{Effect, EffectSet, EffectTable};
+pub use rule::Rule;
 
 /// The built-in effect names. Anything outside this list is treated as a
 /// user-defined effect (still tracked, but unknown to the std seed table).

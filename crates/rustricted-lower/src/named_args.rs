@@ -315,7 +315,7 @@ fn rewrite_call_args(
                     if !declared.iter().any(|d| d == supplied) {
                         diagnostics.push(
                             Diagnostic::error(
-                                "R3001",
+                                crate::Rule::NamedArgUnknownParam.code(),
                                 format!(
                                     "`{name}` has no parameter named `{supplied}`"
                                 ),

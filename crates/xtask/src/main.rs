@@ -11,6 +11,8 @@ use std::path::PathBuf;
 
 const LINTS_BEGIN: &str = "<!-- BEGIN auto-generated: lints-table -->";
 const LINTS_END: &str = "<!-- END auto-generated: lints-table -->";
+const LOWER_BEGIN: &str = "<!-- BEGIN auto-generated: lowering-diagnostics-table -->";
+const LOWER_END: &str = "<!-- END auto-generated: lowering-diagnostics-table -->";
 
 fn main() -> Result<()> {
     let mut args = env::args().skip(1);
@@ -41,8 +43,10 @@ fn gen_docs(check_only: bool) -> Result<()> {
     let original = fs::read_to_string(&spec_path)
         .with_context(|| format!("reading {}", spec_path.display()))?;
 
-    let table = build_lints_table();
-    let updated = replace_section(&original, LINTS_BEGIN, LINTS_END, &table)?;
+    let lints_table = build_lints_table();
+    let lowering_table = build_lowering_diags_table();
+    let updated = replace_section(&original, LINTS_BEGIN, LINTS_END, &lints_table)?;
+    let updated = replace_section(&updated, LOWER_BEGIN, LOWER_END, &lowering_table)?;
 
     if check_only {
         if updated != original {
@@ -61,6 +65,31 @@ fn gen_docs(check_only: bool) -> Result<()> {
     fs::write(&spec_path, &updated).with_context(|| format!("writing {}", spec_path.display()))?;
     println!("regenerated {}", spec_path.display());
     Ok(())
+}
+
+/// Build the non-strict lowering / analysis diagnostics table from the
+/// `Rule` enums in `rustricted-lower` and `rustricted-effects`. Output is
+/// sorted by code so the table order matches the numeric prefix scheme.
+fn build_lowering_diags_table() -> String {
+    let mut rows: Vec<(&'static str, &'static str, &'static str, &'static str)> = Vec::new();
+    for r in rustricted_lower::rule::ALL {
+        rows.push((r.code(), r.pass(), "rustricted-lower", r.message_shape()));
+    }
+    for r in rustricted_effects::rule::ALL {
+        rows.push((r.code(), r.pass(), "rustricted-effects", r.message_shape()));
+    }
+    rows.sort_by_key(|row| row.0);
+
+    let mut out = String::new();
+    out.push_str("| Code  | Pass                | Crate                  | Message shape                                       |\n");
+    out.push_str("| ----- | ------------------- | ---------------------- | --------------------------------------------------- |\n");
+    for (code, pass, crate_name, msg) in rows {
+        let crate_quoted = format!("`{crate_name}`");
+        out.push_str(&format!(
+            "| {code:<5} | {pass:<19} | {crate_quoted:<22} | {msg:<51} |\n",
+        ));
+    }
+    out
 }
 
 /// Build the lints catalogue markdown table from `rustricted_lints::all_rules()`.

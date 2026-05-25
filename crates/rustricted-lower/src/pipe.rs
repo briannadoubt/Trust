@@ -66,8 +66,8 @@ fn try_rewrite_at(
         let span = trees[pipe_idx].span();
         diagnostics.push(
             Diagnostic::error(
-                "R2001",
-                "pipe `|>` requires a path-call on the right",
+                crate::Rule::PipeRhsNotPathCall.code(),
+                crate::Rule::PipeRhsNotPathCall.message_shape(),
                 span_to_range(span),
             )
             .with_help("write `expr |> path(args)`"),

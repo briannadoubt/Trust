@@ -17,6 +17,9 @@ use thiserror::Error;
 pub mod named_args;
 pub mod pipe;
 pub mod preprocess;
+pub mod rule;
+
+pub use rule::Rule;
 
 #[derive(Debug, Error)]
 pub enum Error {

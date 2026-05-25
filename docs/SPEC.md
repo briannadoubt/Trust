@@ -279,11 +279,19 @@ Codes outside the `R00xx` strict-mode range are emitted by lowering and
 analysis passes rather than the lint runner. They fire regardless of
 `#![strict]` when their pass produces an error.
 
-| Code  | Pass                | Crate                   | Message shape                                       |
-| ----- | ------------------- | ----------------------- | --------------------------------------------------- |
-| R2001 | pipe lowering       | `rustricted-lower`      | `pipe \`|>\` requires a path-call on the right`     |
-| R3001 | named-args lowering | `rustricted-lower`      | `\`{fn}\` has no parameter named \`{arg}\``         |
-| R4001 | effects check       | `rustricted-effects`    | `\`{fn}\` is missing declared effect(s): {effects}` |
+The table below is auto-generated from the `Rule` enums in
+`rustricted-lower` and `rustricted-effects` by `cargo xtask gen-docs`.
+Add new codes by extending the appropriate enum and regenerating.
+
+<!-- BEGIN auto-generated: lowering-diagnostics-table -->
+
+| Code  | Pass                | Crate                  | Message shape                                       |
+| ----- | ------------------- | ---------------------- | --------------------------------------------------- |
+| R2001 | pipe lowering       | `rustricted-lower`     | pipe `|>` requires a path-call on the right         |
+| R3001 | named-args lowering | `rustricted-lower`     | `{fn}` has no parameter named `{arg}`               |
+| R4001 | effects check       | `rustricted-effects`   | `{fn}` is missing declared effect(s): {effects}     |
+
+<!-- END auto-generated: lowering-diagnostics-table -->
 
 The numeric prefix is a soft grouping (`R2xxx` for Phase 2 / pipe,
 `R3xxx` for Phase 3 / named args, `R4xxx` for Phase 4 / effects) and is

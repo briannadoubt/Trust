@@ -89,7 +89,7 @@ impl<'a> EffectVisitor<'a> {
         if !missing.is_empty() {
             let missing_str: Vec<&str> = missing.iter().map(|e| e.0.as_str()).collect();
             let diag = Diagnostic::error(
-                "R4001",
+                crate::Rule::MissingDeclaredEffect.code(),
                 format!(
                     "`{fn_name}` is missing declared effect(s): {}",
                     missing_str.join(" + ")
