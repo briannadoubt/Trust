@@ -1,13 +1,14 @@
-//! Developer tooling. Currently:
+//! Developer tooling. Subcommands:
 //!
-//! - `cargo xtask gen-docs` — regenerates auto-marked sections in `docs/SPEC.md`
-//!   from the `rustricted-lints` `Rule` catalogue.
-//! - `cargo xtask gen-docs --check` — exit non-zero if docs would change (CI).
+//! - `cargo xtask gen-docs [--check]` — regenerate auto-marked sections of
+//!   `docs/SPEC.md` (or, with `--check`, fail if they would change).
+//! - `cargo xtask check-emissions` — verify every implemented `Rule` variant
+//!   has at least one emission site in the workspace.
 
 use anyhow::{bail, Context, Result};
 use std::env;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 const LINTS_BEGIN: &str = "<!-- BEGIN auto-generated: lints-table -->";
 const LINTS_END: &str = "<!-- END auto-generated: lints-table -->";
@@ -22,8 +23,124 @@ fn main() -> Result<()> {
 
     match cmd.as_str() {
         "gen-docs" => gen_docs(check_only),
+        "check-emissions" => check_emissions(),
         other => bail!("unknown subcommand: {other}"),
     }
+}
+
+/// Verify that every implemented `Rule` variant across all catalogues has at
+/// least one emission site somewhere in `crates/`. Catches "I added a Rule
+/// variant and forgot to wire it up."
+///
+/// An emission is recognised by either form:
+/// - typed: `Rule::VariantName.code()` (preferred, type-safe)
+/// - literal: `"RXXXX"` (the raw code as a string literal)
+///
+/// The variant's own catalogue file is excluded from the search so the
+/// catalogue entry doesn't count as its own emission.
+fn check_emissions() -> Result<()> {
+    let root = repo_root()?;
+    let crates_dir = root.join("crates");
+    let files = collect_rust_files(&crates_dir)?;
+    let texts: Vec<(PathBuf, String)> = files
+        .into_iter()
+        .map(|p| {
+            let t = fs::read_to_string(&p).with_context(|| format!("reading {}", p.display()))?;
+            Ok::<_, anyhow::Error>((p, t))
+        })
+        .collect::<Result<_>>()?;
+
+    let mut failures: Vec<String> = Vec::new();
+    let mut checked: usize = 0;
+
+    for r in rustricted_lints::all_rules() {
+        if !r.is_implemented() {
+            continue;
+        }
+        check_one(
+            r.code(),
+            &format!("{r:?}"),
+            "rustricted-lints/src/rules.rs",
+            &texts,
+            &mut failures,
+        );
+        checked += 1;
+    }
+    for r in rustricted_lower::rule::ALL {
+        check_one(
+            r.code(),
+            &format!("{r:?}"),
+            "rustricted-lower/src/rule.rs",
+            &texts,
+            &mut failures,
+        );
+        checked += 1;
+    }
+    for r in rustricted_effects::rule::ALL {
+        check_one(
+            r.code(),
+            &format!("{r:?}"),
+            "rustricted-effects/src/rule.rs",
+            &texts,
+            &mut failures,
+        );
+        checked += 1;
+    }
+
+    if !failures.is_empty() {
+        for f in &failures {
+            eprintln!("error: {f}");
+        }
+        bail!("{} rule(s) have no emission site", failures.len());
+    }
+
+    println!("emissions: all {checked} implemented rules have at least one emission site");
+    Ok(())
+}
+
+fn check_one(
+    code: &str,
+    variant: &str,
+    catalogue_suffix: &str,
+    texts: &[(PathBuf, String)],
+    failures: &mut Vec<String>,
+) {
+    let typed = format!("Rule::{variant}.code()");
+    let literal = format!("\"{code}\"");
+    for (path, text) in texts {
+        if path
+            .to_string_lossy()
+            .replace('\\', "/")
+            .ends_with(catalogue_suffix)
+        {
+            continue;
+        }
+        if text.contains(&typed) || text.contains(&literal) {
+            return;
+        }
+    }
+    failures.push(format!(
+        "{code} ({variant}): no emission site found — add `Diagnostic::error(Rule::{variant}.code(), …)` somewhere, or remove the variant"
+    ));
+}
+
+fn collect_rust_files(dir: &Path) -> Result<Vec<PathBuf>> {
+    let mut out = Vec::new();
+    walk_rs(dir, &mut out)?;
+    Ok(out)
+}
+
+fn walk_rs(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
+    for entry in fs::read_dir(dir).with_context(|| format!("reading {}", dir.display()))? {
+        let entry = entry?;
+        let p = entry.path();
+        if p.is_dir() {
+            walk_rs(&p, out)?;
+        } else if p.extension().and_then(|e| e.to_str()) == Some("rs") {
+            out.push(p);
+        }
+    }
+    Ok(())
 }
 
 fn repo_root() -> Result<PathBuf> {

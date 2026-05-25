@@ -28,6 +28,8 @@ jobs:
 
       - name: docs autogen up-to-date
         run: cargo xtask gen-docs --check
+      - name: every rule has an emission site
+        run: cargo xtask check-emissions
 
       - name: example — Phase 0 hello
         run: |

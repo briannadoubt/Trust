@@ -55,6 +55,13 @@ impl Rule {
         }
     }
 
+    /// `false` for catalogue entries reserved for future implementation —
+    /// `cargo xtask check-emissions` skips these. Set back to `true` once
+    /// a real emission site lands.
+    pub fn is_implemented(self) -> bool {
+        !matches!(self, Rule::NoImplTraitReturn)
+    }
+
     pub fn rationale(self) -> &'static str {
         match self {
             Rule::NoUnwrap => "panics on None/Err are silent control flow; agents reach for `.unwrap()` reflexively",
