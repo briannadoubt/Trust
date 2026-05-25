@@ -4,6 +4,8 @@
 //! extend the grammar with named arguments, the pipe operator, and the
 //! `effect` keyword, and lower those forms back to plain Rust here.
 
+rustricted_attrs::strict! {}
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -20,7 +22,7 @@ pub fn roundtrip(source: &str) -> Result<String, Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{roundtrip, Error};
 
     #[test]
     fn empty_file_roundtrips() {
