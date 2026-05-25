@@ -1,0 +1,2072 @@
+{
+  "label": "anyhow-1.0.86",
+  "files": [
+    {
+      "path": "/tmp/anyhow-1.0.86/src/backtrace.rs",
+      "exit_code": 1,
+      "diagnostic_count": 19,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `output_filename` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `output_filename` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `new` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0003",
+          "message": "`as` casts are banned in strict mode",
+          "line": 203,
+          "col": 46,
+          "snippet": "ENABLED.store(enabled as usize + 1, Ordering::Relaxed);"
+        },
+        {
+          "rule": "R0003",
+          "message": "`as` casts are banned in strict mode",
+          "line": 210,
+          "col": 12,
+          "snippet": "Backtrace::create(Backtrace::capture as usize)"
+        },
+        {
+          "rule": "R0003",
+          "message": "`as` casts are banned in strict mode",
+          "line": 224,
+          "col": 38,
+          "snippet": "frame: frame.clone(),"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 308,
+          "col": 2,
+          "snippet": "struct LazilyResolvedCapture {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 310,
+          "col": 26,
+          "snippet": "capture: UnsafeCell<Capture>,"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 9,
+          "col": 17,
+          "snippet": "pub(crate) enum Backtrace {}"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 14,
+          "col": 30,
+          "snippet": "std::backtrace::Backtrace"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 21,
+          "col": 46,
+          "snippet": "impl core::fmt::Debug + core::fmt::Display"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 28,
+          "col": 48,
+          "snippet": "Some(crate::backtrace::Backtrace::capture())"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 35,
+          "col": 7,
+          "snippet": "None"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 44,
+          "col": 17,
+          "snippet": "None => backtrace!(),"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 56,
+          "col": 15,
+          "snippet": "backtrace!()"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 126,
+          "col": 15,
+          "snippet": "let frames = &capture.frames[capture.actual_start..];"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 261,
+          "col": 62,
+          "snippet": "Inner::Unsupported => return fmt.write_str(\"unsupported backtrace\"),"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 262,
+          "col": 52,
+          "snippet": "Inner::Disabled => return fmt.write_str(\"disabled backtrace\"),"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/chain.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/context.rs",
+      "exit_code": 1,
+      "diagnostic_count": 7,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `provide` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `provide` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 10,
+          "col": 2,
+          "snippet": "mod ext {"
+        },
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 176,
+          "col": 17,
+          "snippet": "formatter.write_char('\"')?;"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 148,
+          "col": 30,
+          "snippet": "fn provide<'a>(&'a self, request: &mut Request<'a>) {"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/ensure.rs",
+      "exit_code": 1,
+      "diagnostic_count": 6,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `render` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 49,
+          "col": 22,
+          "snippet": "fn as_str(&self) -> &str {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 67,
+          "col": 19,
+          "snippet": "return Err(fmt::Error);"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": null,
+          "col": null,
+          "snippet": ""
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": null,
+          "col": null,
+          "snippet": ""
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": null,
+          "col": null,
+          "snippet": ""
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/error.rs",
+      "exit_code": 1,
+      "diagnostic_count": 90,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `from_std` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `from_adhoc` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `construct` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `construct` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `construct` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `construct` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `construct` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `construct` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `provide` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `provide` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `from_std` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `provide` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 384,
+          "col": 2,
+          "snippet": "/// This iterator will visit every error in the cause chain of this error"
+        },
+        {
+          "rule": "R0003",
+          "message": "`as` casts are banned in strict mode",
+          "line": 583,
+          "col": 17,
+          "snippet": "impl DerefMut for Error {"
+        },
+        {
+          "rule": "R0003",
+          "message": "`as` casts are banned in strict mode",
+          "line": 616,
+          "col": 10,
+          "snippet": "object_downcast: unsafe fn(Ref<ErrorImpl>, TypeId) -> Option<Ref<()>>,"
+        },
+        {
+          "rule": "R0003",
+          "message": "`as` casts are banned in strict mode",
+          "line": 759,
+          "col": 45,
+          "snippet": "unsafe fn context_downcast_mut<C, E>(e: Mut<ErrorImpl>, target: TypeId) -> Option<Mut<()>>"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 110,
+          "col": 36,
+          "snippet": "// Safety: passing vtable that operates on the right type E."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 138,
+          "col": 7,
+          "snippet": "// Safety: MessageError is repr(transparent) so it is okay for the"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 162,
+          "col": 41,
+          "snippet": "any(std_backtrace, feature = \"backtrace\")"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 192,
+          "col": 25,
+          "snippet": "not(error_generic_member_access),"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 220,
+          "col": 21,
+          "snippet": "#[cfg(all("
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 317,
+          "col": 45,
+          "snippet": "pub fn context<C>(self, context: C) -> Self"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 354,
+          "col": 3,
+          "snippet": "/// and `RUST_LIB_BACKTRACE` must not be `0`. Backtraces are somewhat"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 371,
+          "col": 9,
+          "snippet": "/// function on old compilers is `&(impl Debug + Display)`."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 411,
+          "col": 2,
+          "snippet": "/// cause's cause etc."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 458,
+          "col": 63,
+          "snippet": "// of the data structure separately so that E is not dropped."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 473,
+          "col": 9,
+          "snippet": "/// # Example"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 493,
+          "col": 23,
+          "snippet": "/// # const REDACTED_CONTENT: () = ();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 514,
+          "col": 33,
+          "snippet": "// somewhere inside the data structure."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 520,
+          "col": 40,
+          "snippet": "/// Downcast this error object by mutable reference."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 525,
+          "col": 20,
+          "snippet": "let target = TypeId::of::<E>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 528,
+          "col": 51,
+          "snippet": "// somewhere inside the data structure."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 532,
+          "col": 51,
+          "snippet": "(vtable(self.inner.ptr).object_downcast)(self.inner.by_ref(), target)?.by_mut();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 554,
+          "col": 1,
+          "snippet": "Self::provide(self, request);"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 559,
+          "col": 34,
+          "snippet": "#[cfg_attr(doc_cfg, doc(cfg(feature = \"std\")))]"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 560,
+          "col": 22,
+          "snippet": "impl<E> From<E> for Error"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 567,
+          "col": 9,
+          "snippet": "Error::from_std(error, backtrace)"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 568,
+          "col": 3,
+          "snippet": "}"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 577,
+          "col": 53,
+          "snippet": "unsafe { ErrorImpl::error(self.inner.by_ref()) }"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 585,
+          "col": 23,
+          "snippet": "unsafe { ErrorImpl::error_mut(self.inner.by_mut()) }"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 590,
+          "col": 25,
+          "snippet": "fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 596,
+          "col": 48,
+          "snippet": "fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 597,
+          "col": 32,
+          "snippet": "unsafe { ErrorImpl::debug(self.inner.by_ref(), formatter) }"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 605,
+          "col": 33,
+          "snippet": "(vtable(self.inner.ptr).object_drop)(self.inner);"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 606,
+          "col": 5,
+          "snippet": "}"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 614,
+          "col": 64,
+          "snippet": "object_mut: unsafe fn(Mut<ErrorImpl>) -> &mut (dyn StdError + Send + Sync + 'static),"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 618,
+          "col": 62,
+          "snippet": "object_downcast_mut: unsafe fn(Mut<ErrorImpl>, TypeId) -> Option<Mut<()>>,"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 621,
+          "col": 32,
+          "snippet": "not(error_generic_member_access),"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 628,
+          "col": 26,
+          "snippet": "unsafe fn object_drop<E>(e: Own<ErrorImpl>) {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 636,
+          "col": 35,
+          "snippet": "unsafe fn object_drop_front<E>(e: Own<ErrorImpl>, target: TypeId) {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 641,
+          "col": 6,
+          "snippet": "let unerased_own = e.cast::<ErrorImpl<ManuallyDrop<E>>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 646,
+          "col": 74,
+          "snippet": "unsafe fn object_ref<E>(e: Ref<ErrorImpl>) -> Ref<dyn StdError + Send + Sync + 'static>"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 652,
+          "col": 43,
+          "snippet": "let unerased_ref = e.cast::<ErrorImpl<E>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 660,
+          "col": 59,
+          "snippet": "return Ref::new(unsafe { &unerased_ref.deref()._object });"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 666,
+          "col": 83,
+          "snippet": "unsafe fn object_mut<E>(e: Mut<ErrorImpl>) -> &mut (dyn StdError + Send + Sync + 'static)"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 671,
+          "col": 31,
+          "snippet": "let unerased_mut = e.cast::<ErrorImpl<E>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 678,
+          "col": 17,
+          "snippet": "E: StdError + Send + Sync + 'static,"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 681,
+          "col": 37,
+          "snippet": "let unerased_own = e.cast::<ErrorImpl<E>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 682,
+          "col": 30,
+          "snippet": "unsafe { unerased_own.boxed() }"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 690,
+          "col": 31,
+          "snippet": "if TypeId::of::<E>() == target {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 696,
+          "col": 28,
+          "snippet": "#[cfg(not(anyhow_no_ptr_addr_of))]"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 699,
+          "col": 72,
+          "snippet": "NonNull::new_unchecked(ptr::addr_of!((*unerased_ref.as_ptr())._object) as *mut E)"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 707,
+          "col": 1,
+          "snippet": "None"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 715,
+          "col": 12,
+          "snippet": "E: 'static,"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 718,
+          "col": 74,
+          "snippet": "// Caller is looking for an E pointer and e is ErrorImpl<E>, take a"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 724,
+          "col": 12,
+          "snippet": "None"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 732,
+          "col": 49,
+          "snippet": "fn no_backtrace(e: Ref<ErrorImpl>) -> Option<&Backtrace> {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 738,
+          "col": 18,
+          "snippet": "#[cfg(feature = \"std\")]"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 739,
+          "col": 32,
+          "snippet": "unsafe fn context_downcast<C, E>(e: Ref<ErrorImpl>, target: TypeId) -> Option<Ref<()>>"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 745,
+          "col": 54,
+          "snippet": "let unerased_ref = e.cast::<ErrorImpl<ContextError<C, E>>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 749,
+          "col": 6,
+          "snippet": "let unerased_ref = e.cast::<ErrorImpl<ContextError<C, E>>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 749,
+          "col": 59,
+          "snippet": "let unerased_ref = e.cast::<ErrorImpl<ContextError<C, E>>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe fn` missing `// safety:` justification",
+          "line": 758,
+          "col": 5,
+          "snippet": "#[cfg(all(feature = \"std\", anyhow_no_ptr_addr_of))]"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 759,
+          "col": 23,
+          "snippet": "unsafe fn context_downcast_mut<C, E>(e: Mut<ErrorImpl>, target: TypeId) -> Option<Mut<()>>"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 769,
+          "col": 9,
+          "snippet": "let unerased_mut = e.cast::<ErrorImpl<ContextError<C, E>>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 777,
+          "col": 42,
+          "snippet": "// Safety: requires layout of *e to match ErrorImpl<ContextError<C, E>>."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 782,
+          "col": 5,
+          "snippet": "E: 'static,"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 787,
+          "col": 6,
+          "snippet": "let unerased_own = e.cast::<ErrorImpl<ContextError<ManuallyDrop<C>, E>>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 790,
+          "col": 64,
+          "snippet": "let unerased_own = e.cast::<ErrorImpl<ContextError<C, ManuallyDrop<E>>>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 795,
+          "col": 35,
+          "snippet": "// Safety: requires layout of *e to match ErrorImpl<ContextError<C, Error>>."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 801,
+          "col": 46,
+          "snippet": "let unerased = unsafe { unerased_ref.deref() };"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 803,
+          "col": 56,
+          "snippet": "Some(Ref::new(&unerased._object.context).cast::<()>())"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 807,
+          "col": 5,
+          "snippet": "unsafe { (vtable(source.inner.ptr).object_downcast)(source.inner.by_ref(), target) }"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 811,
+          "col": 68,
+          "snippet": "// Safety: requires layout of *e to match ErrorImpl<ContextError<C, Error>>."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 817,
+          "col": 6,
+          "snippet": "let unerased_mut = e.cast::<ErrorImpl<ContextError<C, Error>>>();"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 820,
+          "col": 32,
+          "snippet": "Some(Mut::new(&mut unerased._object.context).cast::<()>())"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 824,
+          "col": 23,
+          "snippet": "unsafe { (vtable(source.inner.ptr).object_downcast_mut)(source.inner.by_mut(), target) }"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 831,
+          "col": 4,
+          "snippet": "C: 'static,"
+        },
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 745,
+          "col": 18,
+          "snippet": "let unerased_ref = e.cast::<ErrorImpl<ContextError<C, E>>>();"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/fmt.rs",
+      "exit_code": 1,
+      "diagnostic_count": 4,
+      "diagnostics": [
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 92,
+          "col": 18,
+          "snippet": "} else {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 12,
+          "col": 35,
+          "snippet": "let chain = unsafe { Self::chain(this) };"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 22,
+          "col": 29,
+          "snippet": "let error = unsafe { Self::error(this) };"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 49,
+          "col": 32,
+          "snippet": "let backtrace = unsafe { Self::backtrace(this) };"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/kind.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/lib.rs",
+      "exit_code": 1,
+      "diagnostic_count": 2,
+      "diagnostics": [
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 219,
+          "col": 53,
+          "snippet": "#![cfg_attr(anyhow_no_unsafe_op_in_unsafe_fn_lint, allow(unused_unsafe))]"
+        },
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 645,
+          "col": 95,
+          "snippet": "///    |         consider giving this pattern the explicit type `std::result::Result<i32, E>`, where the type parameter `E` is specified"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/macros.rs",
+      "exit_code": 1,
+      "diagnostic_count": 4,
+      "diagnostics": [
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 65,
+          "col": 70,
+          "snippet": "return $crate::__private::Err($crate::__anyhow!($fmt, $($arg)*))"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 163,
+          "col": 19,
+          "snippet": "/* fuel */ (~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~ ~~~~~~~~~~)"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 208,
+          "col": 1,
+          "snippet": "($err:expr $(,)?) => {"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/ptr.rs",
+      "exit_code": 1,
+      "diagnostic_count": 6,
+      "diagnostics": [
+        {
+          "rule": "R0003",
+          "message": "`as` casts are banned in strict mode",
+          "line": 119,
+          "col": 2,
+          "snippet": "pub fn as_ptr(self) -> *const T {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 35,
+          "col": 16,
+          "snippet": "ptr: unsafe { NonNull::new_unchecked(Box::into_raw(ptr)) },"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 45,
+          "col": 26,
+          "snippet": "pub unsafe fn boxed(self) -> Box<T> {"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 120,
+          "col": 31,
+          "snippet": "self.ptr.as_ptr() as *const T"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 179,
+          "col": 8,
+          "snippet": "}"
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 187,
+          "col": 2,
+          "snippet": "impl<'a, T> Mut<'a, T> {"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/src/wrapper.rs",
+      "exit_code": 1,
+      "diagnostic_count": 6,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/common/mod.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/compiletest.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/drop/mod.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_autotrait.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_backtrace.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_boxed.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_chain.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 56,
+          "col": 28,
+          "snippet": "assert!(c.next().is_none());"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_context.rs",
+      "exit_code": 1,
+      "diagnostic_count": 8,
+      "diagnostics": [
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 90,
+          "col": 43,
+          "snippet": "drop: DetectDrop::new(&dropped.high),"
+        },
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 101,
+          "col": 15,
+          "snippet": "assert!(!err.is::<String>());"
+        },
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 105,
+          "col": 42,
+          "snippet": "let high = err.downcast_ref::<HighLevel>().unwrap();"
+        },
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 113,
+          "col": 1,
+          "snippet": "let low = err.downcast_ref::<LowLevel>().unwrap();"
+        },
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 123,
+          "col": 30,
+          "snippet": "let (err, dropped) = make_chain();"
+        },
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 135,
+          "col": 27,
+          "snippet": "let (err, dropped) = make_chain();"
+        },
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 15,
+          "col": 1,
+          "snippet": "#[test]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_convert.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_downcast.rs",
+      "exit_code": 1,
+      "diagnostic_count": 4,
+      "diagnostics": [
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 64,
+          "col": 8,
+          "snippet": "assert_eq!("
+        },
+        {
+          "rule": "R0001",
+          "message": "`.unwrap()` is banned in strict mode",
+          "line": 76,
+          "col": 51,
+          "snippet": "assert_eq!(bailed.downcast_mut::<String>().unwrap(), \"clobber\");"
+        },
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 4,
+          "col": 11,
+          "snippet": "mod common;"
+        },
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_ensure.rs",
+      "exit_code": 1,
+      "diagnostic_count": 102,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `assert_err` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 99,
+          "col": 6,
+          "snippet": "false | false | false | false | false | false | false | false | false |"
+        },
+        {
+          "rule": "R0008",
+          "message": "user-defined `macro_rules!` requires `#[strict::macros_ok]` opt-in",
+          "line": 587,
+          "col": 1,
+          "snippet": "test,"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_ffi.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_fmt.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_macros.rs",
+      "exit_code": 1,
+      "diagnostic_count": 2,
+      "diagnostics": [
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 9,
+          "col": 7,
+          "snippet": "clippy::shadow_unrelated,"
+        },
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_repr.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0006",
+          "message": "`#[allow(...)]` missing `// reason:` justification",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/tmp/anyhow-1.0.86/tests/test_source.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `fmt` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    }
+  ]
+}

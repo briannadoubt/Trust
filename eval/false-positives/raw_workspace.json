@@ -1,0 +1,643 @@
+{
+  "label": "workspace",
+  "files": [
+    {
+      "path": "/Users/bri/dev/One/crates/cargo-rustricted/src/main.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted/src/main.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-diag/src/lib.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/check.rs",
+      "exit_code": 1,
+      "diagnostic_count": 12,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `check_fn` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `visit_item_fn` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `check_fn` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `visit_impl_item_fn` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `visit_expr_call` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `visit_expr_method_call` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `visit_macro` must use named arguments (arity 1)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `check` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `check` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `check` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `check` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 149,
+          "col": 23,
+          "snippet": "visit::visit_macro(self, node);"
+        }
+      ]
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/lib.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/parser.rs",
+      "exit_code": 1,
+      "diagnostic_count": 9,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `walk` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `find_effect_clause` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `walk` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 85,
+          "col": 5,
+          "snippet": "k += 1;"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 29,
+          "col": 31,
+          "snippet": "// Detect `fn IDENT ...` and look for an `effect` clause in the"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 35,
+          "col": 67,
+          "snippet": "if let Some((effect_start, effect_end, effects)) ="
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 40,
+          "col": 26,
+          "snippet": "table.insert(fn_name, EffectSet::from_names(effects));"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 65,
+          "col": 28,
+          "snippet": "/// clause appearing before the function body (`{...}`) or trailing `;`."
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 73,
+          "col": 1,
+          "snippet": "TokenTree::Ident(id) if id == \"effect\" => {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/registry.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `insert` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        }
+      ]
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/rule.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lints/src/lib.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lints/src/rules.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lints/src/runner.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lints/src/strict.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/lib.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/named_args.rs",
+      "exit_code": 1,
+      "diagnostic_count": 19,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `walk_for_fns` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `find_first_paren_after` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `walk_for_fns` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `rewrite_stream` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `rewrite_stream` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `rewrite_call_args` must use named arguments (arity 5)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `rewrite_stream` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `lower_with_mode` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `lower_with_mode` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `rewrite` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 374,
+          "col": 17,
+          "snippet": "',',"
+        },
+        {
+          "rule": "R0012",
+          "message": "visible function `rewrite` takes `bool` parameter `strict_mode`",
+          "line": 131,
+          "col": 19,
+          "snippet": "i += 1;"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 41,
+          "col": 32,
+          "snippet": "if let TokenTree::Ident(id) = &trees[i] {"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 64,
+          "col": 36,
+          "snippet": "walk_for_fns(g.stream(), fns);"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 88,
+          "col": 23,
+          "snippet": "let trees: Vec<TokenTree> = segment.into_iter().collect();"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 201,
+          "col": 37,
+          "snippet": "/// Mark which paren groups in `trees` are function parameter lists"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 212,
+          "col": 6,
+          "snippet": "continue;"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 220,
+          "col": 37,
+          "snippet": "// nested angle brackets like `<Vec<T>>`."
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 342,
+          "col": 29,
+          "snippet": "let reordered: Vec<(Option<String>, TokenStream)> = declared"
+        }
+      ]
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/pipe.rs",
+      "exit_code": 1,
+      "diagnostic_count": 14,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `rewrite_stream` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `rewrite_stream` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `try_rewrite_at` must use named arguments (arity 3)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `lhs_start` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `parse_rhs` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `is_boundary` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `rewrite` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 175,
+          "col": 53,
+          "snippet": "if !matches!(trees.get(i), Some(TokenTree::Ident(_))) {"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 43,
+          "col": 49,
+          "snippet": "fn find_pipe(trees: &[TokenTree]) -> Option<usize> {"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 44,
+          "col": 19,
+          "snippet": "for i in 0..trees.len().saturating_sub(1) {"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 64,
+          "col": 59,
+          "snippet": "// RHS: optional `Ident (:: Ident)*` followed by a parenthesised Group."
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 111,
+          "col": 16,
+          "snippet": "replacement.push(TokenTree::Group(new_group));"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 116,
+          "col": 60,
+          "snippet": "// LHS length not strictly needed past here; suppress unused."
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 124,
+          "col": 62,
+          "snippet": "/// Groups (parens, brackets, braces) are atomic \u2014 they never split the LHS."
+        }
+      ]
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/preprocess.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/rule.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-lsp/src/main.rs",
+      "exit_code": 0,
+      "diagnostic_count": 0,
+      "diagnostics": []
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-std/src/lib.rs",
+      "exit_code": 1,
+      "diagnostic_count": 7,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `copy` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `rename` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `set_var` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `insert` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `duration` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 97,
+          "col": 52,
+          "snippet": "/// Insert `value` into `map` under `key`, returning the previous value."
+        },
+        {
+          "rule": "R0005",
+          "message": "`unsafe` block missing `// safety:` justification",
+          "line": 69,
+          "col": 31,
+          "snippet": "pub fn set_var(name: &str, value: &str) {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/rustricted-syntax/src/lib.rs",
+      "exit_code": 1,
+      "diagnostic_count": 1,
+      "diagnostics": [
+        {
+          "rule": "R0004",
+          "message": "glob imports (`use foo::*`) are banned in strict mode",
+          "line": 23,
+          "col": 2,
+          "snippet": "mod tests {"
+        }
+      ]
+    },
+    {
+      "path": "/Users/bri/dev/One/crates/xtask/src/main.rs",
+      "exit_code": 1,
+      "diagnostic_count": 9,
+      "diagnostics": [
+        {
+          "rule": "R0042",
+          "message": "call to `check_one` must use named arguments (arity 5)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `check_one` must use named arguments (arity 5)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `check_one` must use named arguments (arity 5)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `walk_rs` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `walk_rs` must use named arguments (arity 2)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `replace_section` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0042",
+          "message": "call to `replace_section` must use named arguments (arity 4)",
+          "line": 1,
+          "col": 1,
+          "snippet": "#![strict]"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 244,
+          "col": 4,
+          "snippet": "let before = &input[..begin_idx + begin.len()];"
+        },
+        {
+          "rule": "R0014",
+          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+          "line": 245,
+          "col": 3,
+          "snippet": "let after = &input[end_idx..];"
+        }
+      ]
+    }
+  ]
+}
