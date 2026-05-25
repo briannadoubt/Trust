@@ -26,6 +26,9 @@ jobs:
       - name: test
         run: cargo test --workspace
 
+      - name: docs autogen up-to-date
+        run: cargo xtask gen-docs --check
+
       - name: example — Phase 0 hello
         run: |
           cargo run -p rustricted -- build examples/00-hello.rs --out /tmp/p0

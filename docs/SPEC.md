@@ -49,6 +49,12 @@ Lint codes are stable. Each lint is emitted as a `Diagnostic` carrying the rule
 code, a primary message, a `why:` note, and a `help:` suggestion. See the
 [Diagnostic format](#diagnostic-format) section for the rendered shape.
 
+The table below is auto-generated from `crates/rustricted-lints/src/rules.rs`
+by `cargo xtask gen-docs`. Do not edit by hand — modify the `Rule` enum and
+regenerate.
+
+<!-- BEGIN auto-generated: lints-table -->
+
 | Code  | Name                  | Phase | Severity |
 | ----- | --------------------- | ----- | -------- |
 | R0001 | no-unwrap             | 1     | error    |
@@ -57,10 +63,16 @@ code, a primary message, a `why:` note, and a `help:` suggestion. See the
 | R0004 | no-glob-import        | 1     | error    |
 | R0005 | justify-unsafe        | 1     | error    |
 | R0006 | justify-allow         | 1     | error    |
-| R0007 | no-impl-trait-return  | 1     | _unimplemented_ |
+| R0007 | no-impl-trait-return  | 1     | error    |
 | R0008 | no-user-macros        | 1     | error    |
+| R0042 | no-positional-args    | 1     | error    |
 
-Rule metadata lives in `crates/rustricted-lints/src/rules.rs`.
+<!-- END auto-generated: lints-table -->
+
+Rule metadata lives in `crates/rustricted-lints/src/rules.rs`. R0007
+(`no-impl-trait-return`) is reserved but not yet implemented in the runner;
+the catalogue entry exists so the rule code is stable when implementation
+lands.
 
 ### R0001 — no-unwrap
 
@@ -225,6 +237,58 @@ macro_rules! shout { ($s:expr) => { format!("{}!", $s) }; }
 
 Escape hatch: file-level `#![strict::macros_ok]` to allow user macros across an
 entire module.
+
+### R0042 — no-positional-args
+
+The dialect's main bug-prevention lint. Calls to locally-defined functions
+with arity > 1 must use named arguments at the call site.
+
+Rationale: positional argument ordering is the largest LLM-authored bug
+class in Rust; named arguments eliminate it.
+
+```rust
+fn area(width: u32, height: u32) -> u32 { width * height }
+
+// rejected
+let a = area(1920, 1080);
+
+// accepted
+let a = area(width: 1920, height: 1080);
+```
+
+Emission lives in `rustricted-lower::named_args` rather than the lints
+crate, because the check must run before names are stripped from call
+sites during lowering. The catalogue entry stays in `Rule` so the code
+is stable.
+
+Scope:
+- Fires when the callee is in the per-file callee registry (i.e. a `fn`
+  defined in the same file) AND the call has more than one argument AND
+  not all arguments are named.
+- Silent for calls of arity 0 or 1, fully-named calls, and calls to
+  unregistered callees (cross-crate, method calls on external types).
+  Cross-crate enforcement requires `rustricted-std`-style annotated
+  signatures; until then the cross-crate slot is the dialect's largest
+  coverage gap.
+
+Escape hatch: `#[allow(no_positional_args)] // reason: ...`.
+
+## Non-strict diagnostics
+
+Codes outside the `R00xx` strict-mode range are emitted by lowering and
+analysis passes rather than the lint runner. They fire regardless of
+`#![strict]` when their pass produces an error.
+
+| Code  | Pass                | Crate                   | Message shape                                       |
+| ----- | ------------------- | ----------------------- | --------------------------------------------------- |
+| R2001 | pipe lowering       | `rustricted-lower`      | `pipe \`|>\` requires a path-call on the right`     |
+| R3001 | named-args lowering | `rustricted-lower`      | `\`{fn}\` has no parameter named \`{arg}\``         |
+| R4001 | effects check       | `rustricted-effects`    | `\`{fn}\` is missing declared effect(s): {effects}` |
+
+The numeric prefix is a soft grouping (`R2xxx` for Phase 2 / pipe,
+`R3xxx` for Phase 3 / named args, `R4xxx` for Phase 4 / effects) and is
+documentation, not enforced by code. New codes in these ranges should
+follow the convention.
 
 ## Syntax extensions
 
