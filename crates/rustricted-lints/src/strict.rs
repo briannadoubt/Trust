@@ -82,7 +82,8 @@ impl<'a> NoUnwrapVisitor<'a> {
 
 impl<'ast, 'a> Visit<'ast> for NoUnwrapVisitor<'a> {
     fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
-        let is_test = attrs_have_cfg_test(&node.attrs);
+        let is_test = attrs_have_cfg_test(&node.attrs)
+            || node.attrs.iter().any(|a| a.path().is_ident("test"));
         self.with_test_scope(is_test, |this| visit::visit_item_fn(this, node));
     }
 
@@ -97,7 +98,8 @@ impl<'ast, 'a> Visit<'ast> for NoUnwrapVisitor<'a> {
     }
 
     fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
-        let is_test = attrs_have_cfg_test(&node.attrs);
+        let is_test = attrs_have_cfg_test(&node.attrs)
+            || node.attrs.iter().any(|a| a.path().is_ident("test"));
         self.with_test_scope(is_test, |this| visit::visit_impl_item_fn(this, node));
     }
 
@@ -736,11 +738,22 @@ fn run_no_bool_param(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
 // R0014 — no-bare-index
 // ----------------------------------------------------------------------------
 
+/// `true` for index expressions the lint should leave alone:
+/// - integer literals (`v[0]`, `v[7]`) — intentional const access
+/// - range expressions (`v[0..5]`, `v[..n]`, `v[i..]`, `v[..]`) — slice
+///   operations have different ergonomics from single-element indexing;
+///   without this exemption the lint fires on every `&s[..n]` truncation
+///   pattern. Range bounds can still panic on overflow, but flagging them
+///   produces too many false positives on real code (see
+///   eval/false-positives/REPORT.md, R0014 30.4% FP rate before this fix).
 fn index_is_int_literal(expr: &syn::Expr) -> bool {
-    match expr {
-        syn::Expr::Lit(lit) => matches!(lit.lit, syn::Lit::Int(_)),
-        _ => false,
-    }
+    matches!(
+        expr,
+        syn::Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Int(_),
+            ..
+        }) | syn::Expr::Range(_)
+    )
 }
 
 struct NoBareIndexVisitor<'a> {

@@ -77,6 +77,13 @@ mod tests {
     }
 
     #[test]
+    fn r0001_allows_unwrap_in_test_fn() {
+        let src = "#![strict]\n#[test]\nfn t() { let x: Option<u32> = None; x.unwrap(); }";
+        let d = diags_for(Rule::NoUnwrap, src);
+        assert!(d.is_empty(), "expected no R0001 diag, got {d:?}");
+    }
+
+    #[test]
     fn r0001_allows_unwrap_in_cfg_test_mod() {
         let src =
             "#![strict]\n#[cfg(test)]\nmod m { fn t() { let x: Option<u32> = None; x.unwrap(); } }";
@@ -310,6 +317,37 @@ mod tests {
     #[test]
     fn r0014_silent_in_test_fn() {
         let src = "#![strict]\n#[cfg(test)]\nfn t(v: &[u32], i: usize) -> u32 { v[i] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(d.is_empty(), "expected no R0014 diag, got {d:?}");
+    }
+
+    // Per eval/false-positives/REPORT.md: R0014 fired on every `v[a..b]`
+    // slice expression in real code (30.4% FP rate, the worst rule). The
+    // fix is to treat ranges as non-firing the same way literal ints are.
+    #[test]
+    fn r0014_silent_on_range_slice_bounded() {
+        let src = "#![strict]\nfn f(v: &[u32]) -> &[u32] { &v[0..5] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(d.is_empty(), "expected no R0014 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0014_silent_on_range_slice_open_end() {
+        let src = "#![strict]\nfn f(v: &[u32], n: usize) -> &[u32] { &v[..n] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(d.is_empty(), "expected no R0014 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0014_silent_on_range_slice_open_start() {
+        let src = "#![strict]\nfn f(v: &[u32], n: usize) -> &[u32] { &v[n..] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(d.is_empty(), "expected no R0014 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0014_silent_on_full_range_slice() {
+        let src = "#![strict]\nfn f(v: &[u32]) -> &[u32] { &v[..] }";
         let d = diags_for(Rule::NoBareIndex, src);
         assert!(d.is_empty(), "expected no R0014 diag, got {d:?}");
     }
