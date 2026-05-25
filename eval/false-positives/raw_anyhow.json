@@ -4,7 +4,7 @@
     {
       "path": "/tmp/anyhow-1.0.86/src/backtrace.rs",
       "exit_code": 1,
-      "diagnostic_count": 19,
+      "diagnostic_count": 16,
       "diagnostics": [
         {
           "rule": "R0042",
@@ -117,27 +117,6 @@
           "line": 56,
           "col": 15,
           "snippet": "backtrace!()"
-        },
-        {
-          "rule": "R0014",
-          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
-          "line": 126,
-          "col": 15,
-          "snippet": "let frames = &capture.frames[capture.actual_start..];"
-        },
-        {
-          "rule": "R0014",
-          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
-          "line": 261,
-          "col": 62,
-          "snippet": "Inner::Unsupported => return fmt.write_str(\"unsupported backtrace\"),"
-        },
-        {
-          "rule": "R0014",
-          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
-          "line": 262,
-          "col": 52,
-          "snippet": "Inner::Disabled => return fmt.write_str(\"disabled backtrace\"),"
         }
       ]
     },
@@ -1177,50 +1156,8 @@
     {
       "path": "/tmp/anyhow-1.0.86/tests/test_context.rs",
       "exit_code": 1,
-      "diagnostic_count": 8,
+      "diagnostic_count": 2,
       "diagnostics": [
-        {
-          "rule": "R0001",
-          "message": "`.unwrap()` is banned in strict mode",
-          "line": 90,
-          "col": 43,
-          "snippet": "drop: DetectDrop::new(&dropped.high),"
-        },
-        {
-          "rule": "R0001",
-          "message": "`.unwrap()` is banned in strict mode",
-          "line": 101,
-          "col": 15,
-          "snippet": "assert!(!err.is::<String>());"
-        },
-        {
-          "rule": "R0001",
-          "message": "`.unwrap()` is banned in strict mode",
-          "line": 105,
-          "col": 42,
-          "snippet": "let high = err.downcast_ref::<HighLevel>().unwrap();"
-        },
-        {
-          "rule": "R0001",
-          "message": "`.unwrap()` is banned in strict mode",
-          "line": 113,
-          "col": 1,
-          "snippet": "let low = err.downcast_ref::<LowLevel>().unwrap();"
-        },
-        {
-          "rule": "R0001",
-          "message": "`.unwrap()` is banned in strict mode",
-          "line": 123,
-          "col": 30,
-          "snippet": "let (err, dropped) = make_chain();"
-        },
-        {
-          "rule": "R0001",
-          "message": "`.unwrap()` is banned in strict mode",
-          "line": 135,
-          "col": 27,
-          "snippet": "let (err, dropped) = make_chain();"
-        },
         {
           "rule": "R0006",
           "message": "`#[allow(...)]` missing `// reason:` justification",
@@ -1254,22 +1191,8 @@
     {
       "path": "/tmp/anyhow-1.0.86/tests/test_downcast.rs",
       "exit_code": 1,
-      "diagnostic_count": 4,
+      "diagnostic_count": 2,
       "diagnostics": [
-        {
-          "rule": "R0001",
-          "message": "`.unwrap()` is banned in strict mode",
-          "line": 64,
-          "col": 8,
-          "snippet": "assert_eq!("
-        },
-        {
-          "rule": "R0001",
-          "message": "`.unwrap()` is banned in strict mode",
-          "line": 76,
-          "col": 51,
-          "snippet": "assert_eq!(bailed.downcast_mut::<String>().unwrap(), \"clobber\");"
-        },
         {
           "rule": "R0004",
           "message": "glob imports (`use foo::*`) are banned in strict mode",

@@ -119,7 +119,7 @@
     {
       "path": "/Users/bri/dev/One/crates/rustricted-effects/src/parser.rs",
       "exit_code": 1,
-      "diagnostic_count": 9,
+      "diagnostic_count": 8,
       "diagnostics": [
         {
           "rule": "R0042",
@@ -155,13 +155,6 @@
           "line": 29,
           "col": 31,
           "snippet": "// Detect `fn IDENT ...` and look for an `effect` clause in the"
-        },
-        {
-          "rule": "R0014",
-          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
-          "line": 35,
-          "col": 67,
-          "snippet": "if let Some((effect_start, effect_end, effects)) ="
         },
         {
           "rule": "R0014",
@@ -239,7 +232,7 @@
     {
       "path": "/Users/bri/dev/One/crates/rustricted-lower/src/named_args.rs",
       "exit_code": 1,
-      "diagnostic_count": 19,
+      "diagnostic_count": 17,
       "diagnostics": [
         {
           "rule": "R0042",
@@ -335,13 +328,6 @@
         {
           "rule": "R0014",
           "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
-          "line": 64,
-          "col": 36,
-          "snippet": "walk_for_fns(g.stream(), fns);"
-        },
-        {
-          "rule": "R0014",
-          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
           "line": 88,
           "col": 23,
           "snippet": "let trees: Vec<TokenTree> = segment.into_iter().collect();"
@@ -366,13 +352,6 @@
           "line": 220,
           "col": 37,
           "snippet": "// nested angle brackets like `<Vec<T>>`."
-        },
-        {
-          "rule": "R0014",
-          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
-          "line": 342,
-          "col": 29,
-          "snippet": "let reordered: Vec<(Option<String>, TokenStream)> = declared"
         }
       ]
     },
@@ -572,7 +551,7 @@
     {
       "path": "/Users/bri/dev/One/crates/xtask/src/main.rs",
       "exit_code": 1,
-      "diagnostic_count": 9,
+      "diagnostic_count": 7,
       "diagnostics": [
         {
           "rule": "R0042",
@@ -622,20 +601,6 @@
           "line": 1,
           "col": 1,
           "snippet": "#![strict]"
-        },
-        {
-          "rule": "R0014",
-          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
-          "line": 244,
-          "col": 4,
-          "snippet": "let before = &input[..begin_idx + begin.len()];"
-        },
-        {
-          "rule": "R0014",
-          "message": "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
-          "line": 245,
-          "col": 3,
-          "snippet": "let after = &input[end_idx..];"
         }
       ]
     }
