@@ -413,6 +413,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustricted-rustc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rustricted-lower",
+]
+
+[[package]]
 name = "rustricted-std"
 version = "0.1.0"
 
@@ -423,6 +431,7 @@ dependencies = [
  "prettyplease",
  "proc-macro2",
  "quote",
+ "rustricted-attrs",
  "syn",
  "thiserror",
 ]

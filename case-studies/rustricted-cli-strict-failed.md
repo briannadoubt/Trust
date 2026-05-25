@@ -1,5 +1,28 @@
 # Failed dogfood: `crates/rustricted/` CLI
 
+## Update — gap closed for single-file crates
+
+The architectural gap this writeup identified ("cargo can't build crates
+that use Rustricted's syntax extensions") was closed by `crates/rustricted-rustc/`,
+a `RUSTC_WRAPPER` shim that runs the lowering pass on each strict-marked
+`.rs` file before invoking the real rustc. End-to-end demonstrated by
+`examples/cargo-strict-fixture/`: `RUSTC_WRAPPER=$(realpath
+target/debug/rustricted-rustc) cargo build` succeeds on a file using
+named-arg syntax that stock rustc rejects.
+
+**Scope of the unblock.** Only the input `.rs` file passed to rustc is
+lowered. Child modules pulled in via `mod foo;` are loaded by rustc from
+the original on-disk paths and are NOT lowered. So a multi-file crate
+where `lib.rs` declares `mod helpers;` and `helpers.rs` uses named args
+will still fail. Re-doing this CLI dogfood requires extending the
+wrapper to walk the crate's full module tree, or restricting the
+dialect's extensions to the crate root file.
+
+What follows is the original writeup, kept as historical context for the
+architectural reasoning.
+
+---
+
 ## Outcome
 
 Reverted. The CLI **cannot be self-hosted under cargo + R0042 simultaneously**

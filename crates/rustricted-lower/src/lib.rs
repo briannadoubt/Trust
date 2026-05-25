@@ -98,6 +98,18 @@ fn detect_strict_mode(tokens: &TokenStream) -> bool {
     detect_strict_inner_attr(&trees) || detect_strict_macro_call(&trees)
 }
 
+/// Cheap source-level strict-mode detection. Used by the `rustricted-rustc`
+/// cargo wrapper to decide whether a given input file needs lowering before
+/// being handed to the real `rustc`. Returns `false` if the source can't be
+/// tokenised at all (caller should fall through to passing the file
+/// unchanged so the real rustc can produce a familiar diagnostic).
+pub fn is_strict_source(source: &str) -> bool {
+    let Ok(tokens) = source.parse::<TokenStream>() else {
+        return false;
+    };
+    detect_strict_mode(&tokens)
+}
+
 fn detect_strict_inner_attr(trees: &[proc_macro2::TokenTree]) -> bool {
     let mut i = 0;
     while i < trees.len() {

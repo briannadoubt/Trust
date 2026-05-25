@@ -48,7 +48,7 @@ which is fine for single-file inputs the Rustricted toolchain handles
 end-to-end, but unsuitable for files that need to compile under
 `cargo build`.
 
-### Cargo mode: `rustricted_attrs::strict!{}`
+### Cargo mode: `rustricted_attrs::strict!{}` (lints only by default)
 
 For files that participate in a `cargo build` (e.g. crates written in
 Rustricted), use the marker macro from the `rustricted-attrs` crate
@@ -62,7 +62,36 @@ fn main() { /* ... */ }
 
 Add `rustricted-attrs = "0.1"` to `[dependencies]`. The macro expands to
 nothing for `rustc`, so cargo builds are unaffected; the Rustricted
-toolchain detects the invocation and activates strict mode.
+toolchain detects the invocation and activates the **lints** that work
+at the AST level (R0001 unwrap, R0003 as-cast, R0004 glob, R0007
+impl-trait, R0010 todo, R0011 panic, R0012 bool-param, R0014 bare-index,
+R0005/R0006 justify-{unsafe,allow}, R0008 user-macros).
+
+**Caveat — syntax extensions need the wrapper.** The marker alone does
+not enable the syntax extensions (named arguments, pipe, `effect`). Those
+are token-level rewrites that must run *before* rustc sees the file, and
+`cargo build` invokes rustc directly. To make cargo crates accept the
+extensions, set `RUSTC_WRAPPER` to the `rustricted-rustc` binary
+(`crates/rustricted-rustc/`):
+
+```sh
+cargo build -p rustricted-rustc
+RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc) cargo build
+```
+
+The wrapper detects strict-marked input files, runs the lowering pass,
+substitutes the lowered source into the rustc invocation, and exec's the
+real rustc with `--remap-path-prefix` set so diagnostics still point at
+the original source. See `examples/cargo-strict-fixture/` for an
+end-to-end demo (the file uses `make_point(x: 1, y: 2, z: 3)` named-arg
+syntax which stock rustc rejects).
+
+**Current wrapper limitation.** Only the input `.rs` file passed to rustc
+is lowered. Child modules referenced by `mod foo;` are read by rustc from
+the original on-disk paths and are NOT lowered. A multi-file strict crate
+must either keep all extension syntax in the crate root, or pre-lower its
+sources manually. Generalising to a recursive walk of the crate's module
+tree is a Phase 1 item.
 
 ### Detection rules
 

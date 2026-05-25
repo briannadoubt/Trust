@@ -77,6 +77,22 @@ jobs:
           ! cargo run -p rustricted -- check examples/01-lints/cargo-strict-unwrap-fail.rs 2>&1 | tee /tmp/p1cs.log
           grep -q R0001 /tmp/p1cs.log
 
+      - name: rustc wrapper — named args via cargo build
+        run: |
+          # Negative: cargo build without the wrapper must fail because
+          # rustc rejects `make_point(x: 1, y: 2, z: 3)`.
+          if (cd examples/cargo-strict-fixture && cargo build 2>/dev/null); then
+            echo "FAIL: expected cargo build to reject named-arg syntax without wrapper"
+            exit 1
+          fi
+          # Positive: with the wrapper, the lowering pass runs and rustc gets
+          # the desugared positional source.
+          cargo build -p rustricted-rustc
+          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          (cd examples/cargo-strict-fixture && RUSTC_WRAPPER="$WRAPPER" cargo build)
+          out=$(examples/cargo-strict-fixture/target/debug/cargo-strict-fixture)
+          test "$out" = "(1, 2, 3)"
+
       - name: example — Phase 2 pipe
         run: |
           cargo run -p rustricted -- build examples/02-pipe/chain.rs --out /tmp/p2
