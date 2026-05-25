@@ -33,10 +33,16 @@ tasks = {t["id"]: t for t in tasks_raw}
 
 
 def score_file(rs_path: Path) -> dict:
-    stem = rs_path.stem  # e.g. "01-duration-vanilla"
-    last_dash = stem.rfind("-")
-    task_id = stem[:last_dash]
-    condition = stem[last_dash + 1 :]
+    stem = rs_path.stem  # "11-pipeline-vanilla-3" or legacy "01-duration-vanilla"
+    parts = stem.rsplit("-", 2)
+    if len(parts) == 3 and parts[2].isdigit():
+        task_id, condition, trial = parts[0], parts[1], int(parts[2])
+    else:
+        # Legacy single-trial filename: <task>-<condition>.rs
+        last_dash = stem.rfind("-")
+        task_id = stem[:last_dash]
+        condition = stem[last_dash + 1 :]
+        trial = 1
     task = tasks[task_id]
 
     source = rs_path.read_text()
@@ -71,6 +77,7 @@ def score_file(rs_path: Path) -> dict:
         "file": rs_path.name,
         "task": task_id,
         "condition": condition,
+        "trial": trial,
         "bug_in_source": bug_in_source,
         "good_in_source": good_in_source,
         "dialect_caught": dialect_caught,

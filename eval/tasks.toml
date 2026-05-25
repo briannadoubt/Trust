@@ -189,6 +189,288 @@ The program must:
 """
 
 [[task]]
+id = "11-pipeline"
+description = "Multi-helper data pipeline. Many call sites for local arity-2/3 fns. Bug surface: R0042 positional ordering."
+bug = '(make_employee|add_employee)\s*\(\s*(?!\w+\s*:)'
+good = '(make_employee|add_employee)\s*\(\s*\w+\s*:'
+expected_rule = "R0042"
+vanilla_prompt = """
+Write a complete single-file Rust program. Output ONLY the source code,
+no commentary, no markdown fences.
+
+Define this struct and three helper functions exactly:
+
+    struct Employee { name: String, dept: String, salary: u32 }
+
+    fn make_employee(name: &str, dept: &str, salary: u32) -> Employee {
+        Employee { name: name.to_string(), dept: dept.to_string(), salary }
+    }
+
+    fn add_employee(roster: &mut Vec<Employee>, e: Employee) {
+        roster.push(e);
+    }
+
+    fn total_for_dept(roster: &[Employee], dept: &str) -> u32 {
+        roster.iter().filter(|e| e.dept == dept).map(|e| e.salary).sum()
+    }
+
+In `fn main()`:
+1. Build an empty `Vec<Employee>`.
+2. Add five employees via `make_employee` + `add_employee`:
+   - Alice in Eng earning 90000
+   - Bob in Eng earning 85000
+   - Carol in Sales earning 70000
+   - Dave in Sales earning 72000
+   - Eve in Ops earning 80000
+3. Print `Eng total: <n>` and `Sales total: <n>` using `total_for_dept`.
+
+Use only std. Compile with `rustc`.
+"""
+rustricted_prompt = """
+Write a complete single-file program in the Rustricted dialect.
+Rustricted is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+Define this struct and three helper functions exactly:
+
+    struct Employee { name: String, dept: String, salary: u32 }
+
+    fn make_employee(name: &str, dept: &str, salary: u32) -> Employee {
+        Employee { name: name.to_string(), dept: dept.to_string(), salary }
+    }
+
+    fn add_employee(roster: &mut Vec<Employee>, e: Employee) {
+        roster.push(e);
+    }
+
+    fn total_for_dept(roster: &[Employee], dept: &str) -> u32 {
+        roster.iter().filter(|e| e.dept == dept).map(|e| e.salary).sum()
+    }
+
+In `fn main()`:
+1. Build an empty `Vec<Employee>`.
+2. Add five employees via `make_employee` + `add_employee`:
+   - Alice in Eng earning 90000
+   - Bob in Eng earning 85000
+   - Carol in Sales earning 70000
+   - Dave in Sales earning 72000
+   - Eve in Ops earning 80000
+3. Print `Eng total: <n>` and `Sales total: <n>` using `total_for_dept`.
+"""
+
+[[task]]
+id = "12-result-chain"
+description = "Read + parse + validate pipeline. Bug surface: R0001 .unwrap() reach."
+bug = '\.unwrap\s*\(\s*\)'
+good = '\?\s*[;)]'
+expected_rule = "R0001"
+vanilla_prompt = """
+Write a complete single-file Rust program. Output ONLY the source
+code, no commentary, no markdown fences.
+
+Define:
+
+    struct User { name: String, age: u32 }
+
+    fn load_user(path: &str) -> Result<User, std::io::Error> {
+        // Read the file at `path`. Take the first line. Split it on
+        // `,` into exactly two pieces: `name` and `age_str`. Parse
+        // `age_str` into a `u32`. Return `Ok(User { name, age })`.
+        // Any IO or parse failure should be propagated as an
+        // `std::io::Error` (use ErrorKind::InvalidData for parse
+        // failures).
+    }
+
+In `fn main()`:
+1. Call `load_user("/tmp/eval_user.txt")`.
+2. Print the result with `println!("{:?}", result);` where result is
+   the `Result<User, std::io::Error>`.
+
+Derive `Debug` on `User`. Use only std. Compile with `rustc`.
+"""
+rustricted_prompt = """
+Write a complete single-file program in the Rustricted dialect.
+Rustricted is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+Define:
+
+    struct User { name: String, age: u32 }
+
+    fn load_user(path: &str) -> Result<User, std::io::Error> {
+        // Read the file at `path`. Take the first line. Split it on
+        // `,` into exactly two pieces: `name` and `age_str`. Parse
+        // `age_str` into a `u32`. Return `Ok(User { name, age })`.
+        // Any IO or parse failure should be propagated as an
+        // `std::io::Error` (use ErrorKind::InvalidData for parse
+        // failures).
+    }
+
+In `fn main()`:
+1. Call `load_user("/tmp/eval_user.txt")`.
+2. Print the result with `println!("{:?}", result);` where result is
+   the `Result<User, std::io::Error>`.
+
+Derive `Debug` on `User`. Use only std.
+"""
+
+[[task]]
+id = "13-numeric"
+description = "u64 → u32 conversion. Bug surface: R0003 `as` cast."
+bug = '\bas\s+u32\b'
+good = '(try_into|TryFrom|try_from)'
+expected_rule = "R0003"
+vanilla_prompt = """
+Write a complete single-file Rust program. Output ONLY the source
+code, no commentary, no markdown fences.
+
+Define:
+
+    fn compute_average(values: &[u64]) -> u32 {
+        // Sum the values (note: the sum may not fit in u32).
+        // Divide the sum by `values.len()` (which is usize).
+        // Return the integer-divided average as u32.
+    }
+
+In `fn main()`:
+1. Call `compute_average(&[1_000_000_000u64, 2_000_000_000, 3_000_000_000])`.
+2. Print the result with `println!("avg = {}", avg);`.
+
+Use only std. Compile with `rustc`.
+"""
+rustricted_prompt = """
+Write a complete single-file program in the Rustricted dialect.
+Rustricted is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+Define:
+
+    fn compute_average(values: &[u64]) -> u32 {
+        // Sum the values (note: the sum may not fit in u32).
+        // Divide the sum by `values.len()` (which is usize).
+        // Return the integer-divided average as u32.
+    }
+
+In `fn main()`:
+1. Call `compute_average(&[1_000_000_000u64, 2_000_000_000, 3_000_000_000])`.
+2. Print the result with `println!("avg = {}", avg);`.
+"""
+
+[[task]]
+id = "14-imports"
+description = "Many std imports. Bug surface: R0004 glob import."
+bug = 'use\s+std::collections::\*'
+good = 'use\s+std::collections::\{[^*]+\}'
+expected_rule = "R0004"
+vanilla_prompt = """
+Write a complete single-file Rust program. Output ONLY the source
+code, no commentary, no markdown fences.
+
+The program uses many types from `std::collections`:
+`HashMap`, `HashSet`, `BTreeMap`, `BTreeSet`, `VecDeque`, and
+`BinaryHeap`. Build one of each, populate each with three reasonable
+values for its type, and print each one on its own line with
+`println!("{:?}", thing);`.
+
+Use only std. Compile with `rustc`. Use whatever import style you
+think is best for a program that touches this many types from one
+module.
+"""
+rustricted_prompt = """
+Write a complete single-file program in the Rustricted dialect.
+Rustricted is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+The program uses many types from `std::collections`:
+`HashMap`, `HashSet`, `BTreeMap`, `BTreeSet`, `VecDeque`, and
+`BinaryHeap`. Build one of each, populate each with three reasonable
+values for its type, and print each one on its own line with
+`println!("{:?}", thing);`.
+"""
+
+[[task]]
+id = "15-many-points"
+description = "Many arity-3 helper calls. Bug surface: R0042 positional ordering."
+bug = 'make_point\s*\(\s*\d'
+good = 'make_point\s*\(\s*x\s*:'
+expected_rule = "R0042"
+vanilla_prompt = """
+Write a complete single-file Rust program. Output ONLY the source
+code, no commentary, no markdown fences.
+
+Define exactly:
+
+    fn make_point(x: i32, y: i32, z: i32) -> (i32, i32, i32) {
+        (x, y, z)
+    }
+
+    fn distance(p1: (i32, i32, i32), p2: (i32, i32, i32)) -> f64 {
+        let dx = (p1.0 - p2.0) as f64;
+        let dy = (p1.1 - p2.1) as f64;
+        let dz = (p1.2 - p2.2) as f64;
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+
+In `fn main()`:
+1. Build four points using `make_point`:
+   - origin at x=0, y=0, z=0
+   - a at x=3, y=4, z=0
+   - b at x=0, y=0, z=5
+   - c at x=1, y=1, z=1
+2. Print the distance from `origin` to each of `a`, `b`, `c` as
+   `println!("{:.4}", distance(origin, p));`.
+
+Use only std. Compile with `rustc`.
+"""
+rustricted_prompt = """
+Write a complete single-file program in the Rustricted dialect.
+Rustricted is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+Define exactly:
+
+    fn make_point(x: i32, y: i32, z: i32) -> (i32, i32, i32) {
+        (x, y, z)
+    }
+
+    fn distance(p1: (i32, i32, i32), p2: (i32, i32, i32)) -> f64 {
+        let dx = (p1.0 - p2.0) as f64;
+        let dy = (p1.1 - p2.1) as f64;
+        let dz = (p1.2 - p2.2) as f64;
+        (dx * dx + dy * dy + dz * dz).sqrt()
+    }
+
+In `fn main()`:
+1. Build four points using `make_point`:
+   - origin at x=0, y=0, z=0
+   - a at x=3, y=4, z=0
+   - b at x=0, y=0, z=5
+   - c at x=1, y=1, z=1
+2. Print the distance from `origin` to each of `a`, `b`, `c` as
+   `println!("{:.4}", distance(origin, p));`.
+"""
+
+[[task]]
 id = "05-glob"
 description = "Use four types from std::collections. Bug: glob import hides scope."
 bug = 'use\s+std::collections::\*'
