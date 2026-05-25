@@ -1,0 +1,11 @@
+{
+  "file": "01-duration-vanilla.rs",
+  "task": "01-duration",
+  "condition": "vanilla",
+  "bug_in_source": true,
+  "good_in_source": true,
+  "dialect_caught": null,
+  "expected_rule": "R0042",
+  "shipped": true,
+  "lint_stderr": null
+}

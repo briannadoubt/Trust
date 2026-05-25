@@ -1,0 +1,235 @@
+# Each [[task]] is one row of the eval matrix. The same task is run twice —
+# once with `vanilla_prompt`, once with `rustricted_prompt` — so we can
+# attribute differences to the dialect, not the task wording.
+#
+# `bug` and `good` are Python regexes applied to the agent's raw output.
+# `expected_rule` is the Rustricted rule code that should catch the bug
+# when present; the scorer counts a bug as "caught" if that code appears
+# in the `rustricted check` stderr.
+
+[[task]]
+id = "01-duration"
+description = "Build a Duration via a local 2-arg helper. Bug: positional ordering."
+bug = 'make_duration\s*\(\s*60\b'
+good = 'make_duration\s*\(\s*secs\s*:'
+expected_rule = "R0042"
+vanilla_prompt = """
+Write a single-file Rust program. Output ONLY the source code — no
+commentary, no markdown fences. Your response must begin with the first
+line of the .rs file.
+
+The program must:
+
+1. Define this function exactly:
+
+   fn make_duration(secs: u64, nanos: u32) -> std::time::Duration {
+       std::time::Duration::new(secs, nanos)
+   }
+
+2. In `fn main()`, call `make_duration` to build a Duration of 60 seconds
+   and 500 nanoseconds, bind it to `dur`, and print it with
+   `println!("{:?}", dur);`.
+
+3. Compile with `rustc <file>` and use only std.
+"""
+rustricted_prompt = """
+Write a single-file program in the Rustricted dialect. Rustricted is
+Rust with `#![strict]` at the top of the file, which enables stricter
+checks (notably: calls to locally-defined functions with more than one
+argument must use named arguments — `f(name: value, name: value)`).
+Apart from that, write idiomatic Rust.
+
+Output ONLY the source code — no commentary, no markdown fences. The
+first line of your response must be `#![strict]`.
+
+The program must:
+
+1. Start with `#![strict]`.
+
+2. Define this function exactly:
+
+   fn make_duration(secs: u64, nanos: u32) -> std::time::Duration {
+       std::time::Duration::new(secs, nanos)
+   }
+
+3. In `fn main()`, call `make_duration` to build a Duration of 60 seconds
+   and 500 nanoseconds, bind it to `dur`, and print it with
+   `println!("{:?}", dur);`.
+"""
+
+[[task]]
+id = "02-area"
+description = "Compute rectangle area via a local 2-arg helper. Bug: positional / swapped."
+bug = 'rect_area\s*\(\s*(1920|1080)\b'
+good = 'rect_area\s*\(\s*width\s*:'
+expected_rule = "R0042"
+vanilla_prompt = """
+Write a single-file Rust program. Output ONLY the source code — no
+commentary, no markdown fences.
+
+The program must:
+
+1. Define this function exactly:
+
+   fn rect_area(width: u32, height: u32) -> u32 { width * height }
+
+2. In `fn main()`, compute the area of a 1920×1080 rectangle by calling
+   `rect_area`, bind the result to `area`, and print it with
+   `println!("area = {}", area);`.
+
+3. Compile with `rustc <file>` and use only std.
+"""
+rustricted_prompt = """
+Write a single-file program in the Rustricted dialect. Rustricted is
+Rust with `#![strict]` at the top of the file. In strict mode, calls
+to locally-defined functions with more than one argument must use
+named arguments (`f(name: value, name: value)`).
+
+Output ONLY the source code — no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+The program must:
+
+1. Start with `#![strict]`.
+
+2. Define this function exactly:
+
+   fn rect_area(width: u32, height: u32) -> u32 { width * height }
+
+3. In `fn main()`, compute the area of a 1920×1080 rectangle by calling
+   `rect_area`, bind the result to `area`, and print it with
+   `println!("area = {}", area);`.
+"""
+
+[[task]]
+id = "03-config"
+description = "Read a file into a String. Bug: .unwrap() instead of ? propagation."
+bug = '\.unwrap\s*\(\s*\)'
+good = '\?\s*[;)]'
+expected_rule = "R0001"
+vanilla_prompt = """
+Write a single-file Rust program. Output ONLY the source code — no
+commentary, no markdown fences.
+
+The program must:
+
+1. Define `fn load_config(path: &str) -> Result<String, std::io::Error>`
+   that reads the file at `path` into a `String` and returns it. The
+   function must propagate IO errors using the `?` operator — it should
+   NOT panic on a missing file.
+
+2. In `fn main() -> Result<(), std::io::Error>`, call
+   `load_config("/etc/hosts")` and print the first 50 characters
+   (or the whole thing if shorter) with `println!`.
+
+3. Compile with `rustc <file>` and use only std.
+"""
+rustricted_prompt = """
+Write a single-file program in the Rustricted dialect. Rustricted is
+Rust with `#![strict]` at the top of the file. In strict mode,
+`.unwrap()` is banned outside `#[cfg(test)]` — use `?` to propagate
+errors instead.
+
+Output ONLY the source code — no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+The program must:
+
+1. Start with `#![strict]`.
+
+2. Define `fn load_config(path: &str) -> Result<String, std::io::Error>`
+   that reads the file at `path` into a `String`. Errors propagate via
+   `?` — never `.unwrap()`.
+
+3. In `fn main() -> Result<(), std::io::Error>`, call
+   `load_config("/etc/hosts")` and print the first 50 characters
+   (or the whole thing if shorter) with `println!`.
+"""
+
+[[task]]
+id = "04-cast"
+description = "Convert u64 to u32 safely. Bug: `as u32` silently truncates."
+bug = '\bas\s+u32\b'
+good = '(try_into|TryFrom|try_from)'
+expected_rule = "R0003"
+vanilla_prompt = """
+Write a single-file Rust program. Output ONLY the source code — no
+commentary, no markdown fences.
+
+The program must:
+
+1. Define `fn to_u32(n: u64) -> Result<u32, std::num::TryFromIntError>`
+   that converts a `u64` to `u32` safely — returning `Err` if the value
+   doesn't fit, never silently truncating.
+
+2. In `fn main()`, call `to_u32(1_000_000_000u64)` and print the result
+   with `println!("{:?}", result);`.
+
+3. Compile with `rustc <file>` and use only std.
+"""
+rustricted_prompt = """
+Write a single-file program in the Rustricted dialect. Rustricted is
+Rust with `#![strict]` at the top of the file. In strict mode, `as`
+casts between integer types are banned — use `TryFrom` / `try_into`
+which returns a `Result`.
+
+Output ONLY the source code — no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+The program must:
+
+1. Start with `#![strict]`.
+
+2. Define `fn to_u32(n: u64) -> Result<u32, std::num::TryFromIntError>`
+   that converts a `u64` to `u32` safely. Use `TryFrom` / `try_into`
+   — do not use `as` casts.
+
+3. In `fn main()`, call `to_u32(1_000_000_000u64)` and print the result
+   with `println!("{:?}", result);`.
+"""
+
+[[task]]
+id = "05-glob"
+description = "Use four types from std::collections. Bug: glob import hides scope."
+bug = 'use\s+std::collections::\*'
+good = 'use\s+std::collections::\{[^*]+\}'
+expected_rule = "R0004"
+vanilla_prompt = """
+Write a single-file Rust program. Output ONLY the source code — no
+commentary, no markdown fences.
+
+The program must:
+
+1. Build one of each of `HashMap<u32, &str>`, `HashSet<u32>`,
+   `BTreeMap<u32, &str>`, and `BTreeSet<u32>` from `std::collections`.
+
+2. Insert `(1, "a")` and `(2, "b")` into each map; insert `1` and `2`
+   into each set.
+
+3. Print each one with `println!("{:?}", thing);`.
+
+4. Compile with `rustc <file>` and use only std. Pick whatever import
+   style you think is best.
+"""
+rustricted_prompt = """
+Write a single-file program in the Rustricted dialect. Rustricted is
+Rust with `#![strict]` at the top of the file. In strict mode, glob
+imports (`use foo::*`) are banned — imports must be explicit.
+
+Output ONLY the source code — no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+The program must:
+
+1. Start with `#![strict]`.
+
+2. Build one of each of `HashMap<u32, &str>`, `HashSet<u32>`,
+   `BTreeMap<u32, &str>`, and `BTreeSet<u32>` from `std::collections`.
+
+3. Insert `(1, "a")` and `(2, "b")` into each map; insert `1` and `2`
+   into each set.
+
+4. Print each one with `println!("{:?}", thing);`.
+
+5. Use explicit imports — no `use std::collections::*;`.
+"""

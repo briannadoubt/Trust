@@ -1,0 +1,11 @@
+{
+  "file": "02-area-vanilla.rs",
+  "task": "02-area",
+  "condition": "vanilla",
+  "bug_in_source": true,
+  "good_in_source": true,
+  "dialect_caught": null,
+  "expected_rule": "R0042",
+  "shipped": true,
+  "lint_stderr": null
+}

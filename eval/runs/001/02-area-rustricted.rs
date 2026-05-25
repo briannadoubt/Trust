@@ -1,0 +1,10 @@
+#![strict]
+
+fn rect_area(width: u32, height: u32) -> u32 {
+    width * height
+}
+
+fn main() {
+    let area = rect_area(width: 1920, height: 1080);
+    println!("area = {}", area);
+}

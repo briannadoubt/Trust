@@ -1,0 +1,11 @@
+{
+  "file": "05-glob-vanilla.rs",
+  "task": "05-glob",
+  "condition": "vanilla",
+  "bug_in_source": false,
+  "good_in_source": true,
+  "dialect_caught": null,
+  "expected_rule": "R0004",
+  "shipped": false,
+  "lint_stderr": null
+}

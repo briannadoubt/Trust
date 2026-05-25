@@ -1,0 +1,11 @@
+{
+  "file": "04-cast-vanilla.rs",
+  "task": "04-cast",
+  "condition": "vanilla",
+  "bug_in_source": false,
+  "good_in_source": true,
+  "dialect_caught": null,
+  "expected_rule": "R0003",
+  "shipped": false,
+  "lint_stderr": null
+}

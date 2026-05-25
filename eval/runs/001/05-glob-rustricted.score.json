@@ -1,0 +1,11 @@
+{
+  "file": "05-glob-rustricted.rs",
+  "task": "05-glob",
+  "condition": "rustricted",
+  "bug_in_source": false,
+  "good_in_source": false,
+  "dialect_caught": false,
+  "expected_rule": "R0004",
+  "shipped": false,
+  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/001/05-glob-rustricted.rs\n"
+}

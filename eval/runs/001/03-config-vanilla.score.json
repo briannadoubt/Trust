@@ -1,0 +1,11 @@
+{
+  "file": "03-config-vanilla.rs",
+  "task": "03-config",
+  "condition": "vanilla",
+  "bug_in_source": false,
+  "good_in_source": true,
+  "dialect_caught": null,
+  "expected_rule": "R0001",
+  "shipped": false,
+  "lint_stderr": null
+}
