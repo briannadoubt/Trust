@@ -1,3 +1,5 @@
+rustricted_attrs::strict! {}
+
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use rustricted_diag::Diagnostic;

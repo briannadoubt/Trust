@@ -25,16 +25,28 @@ pub struct CalleeRegistry {
 
 impl CalleeRegistry {
     /// Walk a token stream recursively, recording every `fn NAME(PARAMS)`
-    /// definition (free function, method, trait method). Conflicting
-    /// signatures (same name, different params) are resolved by first-wins.
+    /// definition (free function, method, trait method).
+    ///
+    /// **Conflict handling:** if the same name appears twice with
+    /// *different* parameter lists (e.g. `mod a { fn f(x: u32) }` and
+    /// `mod b { fn f(y: String) }`), the name is marked ambiguous and
+    /// excluded from the registry entirely. R0042 then falls back to
+    /// cross-crate behavior (positional silently accepted) rather than
+    /// guessing which signature the caller meant. The same name with
+    /// identical params is silently de-duplicated.
     pub fn collect(tokens: &TokenStream) -> Self {
-        let mut fns = HashMap::new();
-        walk_for_fns(tokens.clone(), &mut fns);
+        let mut fns: HashMap<String, Vec<String>> = HashMap::new();
+        let mut ambiguous: HashSet<String> = HashSet::new();
+        walk_for_fns(tokens.clone(), &mut fns, &mut ambiguous);
         CalleeRegistry { fns }
     }
 }
 
-fn walk_for_fns(tokens: TokenStream, fns: &mut HashMap<String, Vec<String>>) {
+fn walk_for_fns(
+    tokens: TokenStream,
+    fns: &mut HashMap<String, Vec<String>>,
+    ambiguous: &mut HashSet<String>,
+) {
     let trees: Vec<TokenTree> = tokens.into_iter().collect();
     for i in 0..trees.len() {
         if let TokenTree::Ident(id) = &trees[i] {
@@ -42,8 +54,6 @@ fn walk_for_fns(tokens: TokenStream, fns: &mut HashMap<String, Vec<String>>) {
                 if let (Some(TokenTree::Ident(name)), Some(rest)) =
                     (trees.get(i + 1), trees.get(i + 2))
                 {
-                    // The token after the fn name might be `<` for generics;
-                    // skip ahead to the first paren group.
                     let params_group = match rest {
                         TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis => {
                             Some(g.clone())
@@ -52,7 +62,22 @@ fn walk_for_fns(tokens: TokenStream, fns: &mut HashMap<String, Vec<String>>) {
                     };
                     if let Some(g) = params_group {
                         let params = parse_param_names(&g.stream());
-                        fns.entry(name.to_string()).or_insert(params);
+                        let name_str = name.to_string();
+                        if ambiguous.contains(&name_str) {
+                            continue;
+                        }
+                        match fns.get(&name_str) {
+                            Some(existing) if existing != &params => {
+                                fns.remove(&name_str);
+                                ambiguous.insert(name_str);
+                            }
+                            Some(_) => {
+                                // identical re-declaration, silently de-dup
+                            }
+                            None => {
+                                fns.insert(name_str, params);
+                            }
+                        }
                     }
                 }
             }
@@ -60,7 +85,7 @@ fn walk_for_fns(tokens: TokenStream, fns: &mut HashMap<String, Vec<String>>) {
     }
     for tree in &trees {
         if let TokenTree::Group(g) = tree {
-            walk_for_fns(g.stream(), fns);
+            walk_for_fns(g.stream(), fns, ambiguous);
         }
     }
 }
@@ -594,6 +619,38 @@ mod tests {
         assert!(
             diags.iter().any(|d| d.rule == "R0042"),
             "mixed positional + named should fire R0042: {diags:?}"
+        );
+    }
+
+    // Codex/FP audit follow-up: same name with different signatures across
+    // modules ("first-wins collision") used to silently mis-register. Now
+    // the name is dropped from the registry entirely and R0042 falls back
+    // to cross-crate behaviour (silent on positional, doesn't pretend to
+    // know the param list).
+    #[test]
+    fn registry_drops_ambiguous_local_fn_names() {
+        let src = "mod a { pub fn make_point(x: i32, y: i32) {} }\n\
+                   mod b { pub fn make_point(name: String) {} }\n\
+                   fn main() { a::make_point(1, 2); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "R0042 must not fire on ambiguous names — registry should drop: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn registry_keeps_identical_redeclarations() {
+        // Same name, identical params (e.g. impls of the same trait) — fine.
+        let src = "struct A; struct B;\n\
+                   impl A { pub fn area(width: u32, height: u32) -> u32 { width * height } }\n\
+                   impl B { pub fn area(width: u32, height: u32) -> u32 { width + height } }\n\
+                   fn area(width: u32, height: u32) -> u32 { width }\n\
+                   fn main() { let _ = area(4, 6); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            diags.iter().any(|d| d.rule == "R0042"),
+            "identical-param re-declarations don't make the name ambiguous: {diags:?}"
         );
     }
 }

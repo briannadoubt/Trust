@@ -2,9 +2,11 @@
 
 ## Headline
 
-**Vanilla shipped 9/15 (60%) bugs. Rustricted shipped 0/15 (0%).**
+**Vanilla shipped 9/15 (60%) bugs. Rustricted shipped 0/15 (0%) — for the bug classes Haiku produced on these prompts.**
 
-The dialect caught 100% of the bugs the agent produced. Every Haiku-authored bug — across 3 distinct rules (R0042 positional ordering, R0003 `as` cast) — was flagged by `rustricted check` before any could reach production.
+Across 3 of 5 tasks (11-pipeline and 15-many-points on R0042 positional ordering, 13-numeric on R0003 `as` cast), every Haiku-authored bug was caught by `rustricted check` before reach-prod. The other 2 tasks (12-result-chain on R0001 `.unwrap`, 14-imports on R0004 glob) elicited zero bugs in either condition — their rules weren't tested, not vindicated. The "100%" reading applies to the slice of bug surface that actually fired, not to "LLM Rust bugs" as a category.
+
+See "Limitations" below; the eval suite is small, single-file, n=3, Anthropic-only, and the tasks are aligned with the rules being measured. Cross-crate calls, macros, unsafe, and helper-by-type-prevention patterns are entirely outside the harness.
 
 ## Key finding
 

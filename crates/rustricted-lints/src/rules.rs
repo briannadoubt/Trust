@@ -80,6 +80,22 @@ impl Rule {
         true
     }
 
+    /// `true` if this rule's visitor walks `#[cfg(test)]` / `#[test]`
+    /// scopes and silences itself inside them. The asymmetry across
+    /// rules is intentional but historically lived only in visitor
+    /// source — this method makes it discoverable and renderable in
+    /// the docs catalogue.
+    pub fn is_exempt_in_cfg_test(self) -> bool {
+        matches!(
+            self,
+            Rule::NoUnwrap
+                | Rule::NoTodoMacro
+                | Rule::NoPanic
+                | Rule::NoBoolParam
+                | Rule::NoBareIndex
+        )
+    }
+
     pub fn rationale(self) -> &'static str {
         match self {
             Rule::NoUnwrap => "panics on None/Err are silent control flow; agents reach for `.unwrap()` reflexively",

@@ -138,26 +138,63 @@ fn detect_strict_inner_attr(trees: &[proc_macro2::TokenTree]) -> bool {
     false
 }
 
-/// Match `... :: strict ! GROUP` or `strict ! GROUP` at top level. Path
-/// prefix is accepted but not inspected — any path that ends in `strict`
-/// counts, so both `strict!{}` and `rustricted_attrs::strict!{}` work.
+/// Match `strict ! GROUP` (bare) or `<allowed-prefix> :: strict ! GROUP`
+/// at top level. The path prefix must be either absent or one of the
+/// known activation crates (`rustricted_attrs` or `rustricted`) — a
+/// permissive match (any prefix) would let an unrelated `wibble::strict!{}`
+/// silently activate the dialect, which the FP audit flagged as a real
+/// concern.
 fn detect_strict_macro_call(trees: &[proc_macro2::TokenTree]) -> bool {
+    use proc_macro2::TokenTree;
+
+    const ALLOWED_PREFIXES: &[&str] = &["rustricted_attrs", "rustricted"];
+
     for i in 0..trees.len() {
-        let proc_macro2::TokenTree::Ident(id) = &trees[i] else {
+        let TokenTree::Ident(id) = &trees[i] else {
             continue;
         };
         if *id != "strict" {
             continue;
         }
-        let Some(proc_macro2::TokenTree::Punct(bang)) = trees.get(i + 1) else {
+        let Some(TokenTree::Punct(bang)) = trees.get(i + 1) else {
             continue;
         };
         if bang.as_char() != '!' {
             continue;
         }
-        if matches!(trees.get(i + 2), Some(proc_macro2::TokenTree::Group(_))) {
+        if !matches!(trees.get(i + 2), Some(TokenTree::Group(_))) {
+            continue;
+        }
+
+        // Path-prefix check. Two cases:
+        //  - bare: token immediately before `strict` is NOT `:` → accept.
+        //  - qualified: the preceding tokens are `IDENT :: strict` → the
+        //    ident must be in ALLOWED_PREFIXES.
+        let preceded_by_colon = matches!(
+            trees.get(i.wrapping_sub(1)),
+            Some(TokenTree::Punct(p)) if i > 0 && p.as_char() == ':'
+        );
+        if !preceded_by_colon {
             return true;
         }
+        if i >= 3 {
+            if let (
+                Some(TokenTree::Ident(prefix)),
+                Some(TokenTree::Punct(c1)),
+                Some(TokenTree::Punct(c2)),
+            ) = (trees.get(i - 3), trees.get(i - 2), trees.get(i - 1))
+            {
+                if c1.as_char() == ':'
+                    && c2.as_char() == ':'
+                    && ALLOWED_PREFIXES.iter().any(|p| prefix == p)
+                {
+                    return true;
+                }
+            }
+        }
+        // Otherwise: qualified by something we don't recognise — keep
+        // scanning. (Don't return false; another valid invocation may
+        // appear later in the file.)
     }
     false
 }
@@ -178,5 +215,41 @@ mod tests {
         let out = lower("fn main() { println!(\"hi\"); }").expect("hello should lower");
         assert!(out.source.contains("fn main"));
         assert!(out.diagnostics.is_empty());
+    }
+
+    // Codex feedback: detect_strict_macro_call used to accept any
+    // `<anything>::strict!{}` path. That meant an unrelated crate's
+    // `wibble::strict!{}` could silently activate the dialect.
+    #[test]
+    fn detect_strict_rejects_unrecognised_path_prefix() {
+        let src = "wibble::strict!{}\nfn main() { let x: Option<u32> = None; x.unwrap(); }";
+        let out = lower(src).expect("should still parse");
+        assert!(
+            !out.strict_mode,
+            "wibble::strict!{{}} must NOT activate strict mode"
+        );
+    }
+
+    #[test]
+    fn detect_strict_accepts_bare_macro() {
+        let src = "strict!{}\nfn main() {}";
+        let out = lower(src).expect("should parse");
+        assert!(out.strict_mode);
+    }
+
+    #[test]
+    fn detect_strict_accepts_rustricted_attrs_macro() {
+        let src = "rustricted_attrs::strict!{}\nfn main() {}";
+        let out = lower(src).expect("should parse");
+        assert!(out.strict_mode);
+    }
+
+    #[test]
+    fn detect_strict_accepts_rustricted_macro() {
+        // Short-form (`rustricted::strict`) is also on the allowlist for
+        // crates that re-export the macro under the umbrella crate.
+        let src = "rustricted::strict!{}\nfn main() {}";
+        let out = lower(src).expect("should parse");
+        assert!(out.strict_mode);
     }
 }

@@ -17,9 +17,37 @@ Activate with `#![strict]`. Lower via `rustricted build` to plain Rust + `rustc`
 
 ## Status
 
-Phase 0 — scaffolding. The driver round-trips Rust source through `syn` and
-`prettyplease`, then shells out to `rustc`. Lints, syntax extensions, and effect
-tracking come in later phases.
+**Prototype.** The driver round-trips Rust source through `syn` and
+`prettyplease`, then shells out to `rustc`. Sixteen lint rules are
+implemented across `rustricted-lints` (strict mode), `rustricted-lower`
+(named-args, pipe), and `rustricted-effects` (effect inference). The
+syntax extensions — named arguments, pipe operator, `effect` keyword —
+are implemented as token-level rewrites that lower to plain Rust.
+
+Activation:
+- Single-file inputs sent to `rustricted check` use the inner attribute
+  `#![strict]` (stock `rustc` would reject this — Rustricted's toolchain
+  handles it).
+- Cargo-built crates use the `rustricted_attrs::strict!{}` marker macro
+  from the `rustricted-attrs` proc-macro crate.
+
+**What the eval supports.** The four runs in `eval/runs/` show that on a
+small, deliberately-curated suite of single-file tasks, Haiku and Sonnet
+both ship positional-argument bugs (R0042) and `as`-cast bugs (R0003) in
+vanilla Rust, and the dialect catches them every time. The same suite
+does **not** show that the dialect helps on .unwrap reflexes (R0001),
+glob imports (R0004), macros, unsafe, or any multi-file scenario. The
+generalised claim "the dialect catches LLM Rust bugs" is not yet
+defensible from the data.
+
+**What's missing for real-world use.** Span fidelity in lowering-emitted
+diagnostics (the bare-index-and-named-args lints often emit at byte
+range `0..0`), an effect system that does more than intra-procedural
+simple-name lookup, a cross-crate signature registry so R0042 fires on
+calls to upstream code, an LSP, and a multi-crate workspace story
+beyond "add the strict marker to each file." See
+`case-studies/rustricted-syntax-strict.md` for a per-file dogfood
+conversion and `eval/false-positives/REPORT.md` for the FP audit.
 
 ## Build
 
