@@ -404,17 +404,39 @@ fn reconstruct(parsed: Vec<(Option<String>, TokenStream)>) -> TokenStream {
     out
 }
 
+/// Split a token stream at top-level commas, excluding commas inside
+/// closure-parameter lists (`|x, y|`).
+///
+/// **Closure tracking.** A `|` token toggles a "we are inside closure
+/// params" flag; while the flag is set, commas are part of the closure's
+/// parameter list and must not split the surrounding call. The two-token
+/// sequence `||` (logical OR, or an empty-param closure) toggles the
+/// flag twice and so leaves splitting behaviour unchanged either way.
+///
+/// This was R0042's worst pre-fix bug: a single-argument call like
+/// `each(|x, y| x + y)` was split into two segments at the closure's
+/// internal comma, so R0042 fired on an arity-1 call. Surfaced by a
+/// dogfood subagent on `crates/rustricted/src/main.rs`.
 fn split_by_top_comma(tokens: TokenStream) -> Vec<TokenStream> {
     let trees: Vec<TokenTree> = tokens.into_iter().collect();
     let mut segments: Vec<Vec<TokenTree>> = Vec::new();
     let mut current: Vec<TokenTree> = Vec::new();
+    let mut in_closure_params = false;
     for tree in trees {
         if let TokenTree::Punct(p) = &tree {
-            if p.as_char() == ',' {
-                if !current.is_empty() {
-                    segments.push(std::mem::take(&mut current));
+            match p.as_char() {
+                '|' => {
+                    in_closure_params = !in_closure_params;
+                    current.push(tree);
+                    continue;
                 }
-                continue;
+                ',' if !in_closure_params => {
+                    if !current.is_empty() {
+                        segments.push(std::mem::take(&mut current));
+                    }
+                    continue;
+                }
+                _ => {}
             }
         }
         current.push(tree);
@@ -636,6 +658,47 @@ mod tests {
         assert!(
             !diags.iter().any(|d| d.rule == "R0042"),
             "R0042 must not fire on ambiguous names — registry should drop: {diags:?}"
+        );
+    }
+
+    // Surfaced by the rustricted CLI dogfood subagent: R0042 used to fire
+    // on `f(|x, y| body)` because the closure's internal comma got
+    // counted as a top-level arg separator, inflating the call's
+    // perceived arity from 1 to 2.
+    #[test]
+    fn r0042_silent_on_closure_arg_with_param_comma() {
+        let src = "fn each(f: fn(i32, i32) -> i32) {}\n\
+                   fn main() { each(|x, y| x + y); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "R0042 must not fire on a single closure arg: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn r0042_silent_on_closure_body_with_or() {
+        // `||` (logical OR) toggles the closure-tracker twice, leaving
+        // it in the same state — no spurious split or arg-count change.
+        let src = "fn each(f: fn(bool) -> bool) {}\n\
+                   fn main() { each(|x| x || true); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "R0042 must not trip on || in a closure body: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn r0042_still_fires_on_multi_closure_args() {
+        // Two closure arguments separated by a real top-level comma —
+        // arity is 2, R0042 should fire.
+        let src = "fn either(a: fn(i32) -> i32, b: fn(i32) -> i32) {}\n\
+                   fn main() { either(|x| x + 1, |y| y - 1); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            diags.iter().any(|d| d.rule == "R0042"),
+            "R0042 should still fire on two closure args: {diags:?}"
         );
     }
 
