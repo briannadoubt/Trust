@@ -65,6 +65,10 @@ regenerate.
 | R0006 | justify-allow         | 1     | error    |
 | R0007 | no-impl-trait-return  | 1     | error    |
 | R0008 | no-user-macros        | 1     | error    |
+| R0010 | no-todo-macro         | 1     | error    |
+| R0011 | no-panic              | 1     | error    |
+| R0012 | no-bool-param         | 1     | error    |
+| R0014 | no-bare-index         | 1     | error    |
 | R0042 | no-positional-args    | 1     | error    |
 
 <!-- END auto-generated: lints-table -->
@@ -196,23 +200,24 @@ No escape hatch.
 
 ### R0007 — no-impl-trait-return
 
-_Phase 2 unimplemented._ `impl Trait` in return position is rejected unless the
-function uses a named type alias.
+`impl Trait` in return position is rejected. Name the type with a `type`
+alias (or use a concrete type / generic) and return that.
 
-Planned rationale: anonymous return types kill local reasoning; name the type
-with an alias.
+Rationale: anonymous return types kill local reasoning; name the type
+with an alias so readers and tooling can see what's coming back.
 
 ```rust
-// will be rejected
-fn iter() -> impl Iterator<Item = u32> { ... }
+// rejected
+fn iter() -> impl Iterator<Item = u32> { [1u32].into_iter() }
 
-// will be accepted
-type Counts = std::vec::IntoIter<u32>;
-fn iter() -> Counts { ... }
+// accepted
+type Counts = std::array::IntoIter<u32, 1>;
+fn iter() -> Counts { [1u32].into_iter() }
 ```
 
 Argument-position `impl Trait` remains allowed. The lint targets only the
-return-type slot.
+return-type slot, on free `fn`s, inherent / trait impl methods, and trait
+method declarations.
 
 ### R0008 — no-user-macros
 
@@ -237,6 +242,105 @@ macro_rules! shout { ($s:expr) => { format!("{}!", $s) }; }
 
 Escape hatch: file-level `#![strict::macros_ok]` to allow user macros across an
 entire module.
+
+### R0010 — no-todo-macro
+
+`todo!()` and `unimplemented!()` are rejected outside `#[cfg(test)]` /
+`#[test]` scopes.
+
+Rationale: both macros ship as runtime panics. Strict mode treats them as
+"you forgot to finish this" and forces either an implementation or a typed
+`Err` return before the code can ship.
+
+```rust
+// rejected
+fn compute_total(x: u32, y: u32) -> u32 { todo!() }
+
+// accepted (finished)
+fn compute_total(x: u32, y: u32) -> u32 { x + y }
+
+// accepted (fenced for tests)
+#[cfg(test)]
+mod tests {
+    fn skip_for_now() -> u32 { todo!() }
+}
+```
+
+No escape hatch beyond `#[cfg(test)]`.
+
+### R0011 — no-panic
+
+`panic!()` is rejected outside `#[cfg(test)]` / `#[test]` scopes.
+
+Rationale: explicit panics drop typed error information on the floor. Return
+an `Err` and let the caller decide whether to abort.
+
+```rust
+// rejected
+fn divide(a: i32, b: i32) -> i32 {
+    if b == 0 { panic!("division by zero"); }
+    a / b
+}
+
+// accepted
+fn divide(a: i32, b: i32) -> Result<i32, &'static str> {
+    if b == 0 { return Err("division by zero"); }
+    Ok(a / b)
+}
+```
+
+No escape hatch beyond `#[cfg(test)]`.
+
+### R0012 — no-bool-param
+
+Visible (`pub`, `pub(crate)`, `pub(super)`, `pub(in path)`) functions and
+trait methods cannot take parameters of type `bool`. Private `fn` and
+methods inside `#[cfg(test)]` scopes are exempt.
+
+Rationale: raw `bool` parameters are positional footguns even with named
+args — `spawn(detached: true)` does not say what `true` means. Use a
+named enum so the call site reads as `Detached::Yes`.
+
+```rust
+// rejected
+pub fn spawn(detached: bool, inherit_env: bool) { ... }
+
+// accepted
+pub enum Detached { Yes, No }
+pub enum InheritEnv { Yes, No }
+pub fn spawn(detached: Detached, inherit_env: InheritEnv) { ... }
+```
+
+Escape hatch: keep the function private, or wrap behind a `#[cfg(test)]`
+helper. There is no `#[allow]` exemption — the dialect is opinionated
+about boolean API surface.
+
+### R0014 — no-bare-index
+
+`expr[idx]` indexing is rejected when `idx` is not a literal integer.
+Literal indices (`v[0]`, `arr[7]`) are still allowed because they
+typically encode intentional access to a known position.
+
+Rationale: `v[i]` panics on out-of-bounds; `.get(i)` returns `Option<&T>`
+and forces the call site to handle the missing case. Const indices are
+mostly used for tuple-like array access where bounds are known
+statically; non-const indices are where the bugs live.
+
+```rust
+// rejected
+fn first_or_zero(v: &[u32], i: usize) -> u32 { v[i] }
+
+// accepted
+fn first_or_zero(v: &[u32], i: usize) -> u32 {
+    v.get(i).copied().unwrap_or(0)
+}
+
+// also accepted (literal index)
+fn first(v: &[u32]) -> u32 { v[0] }
+```
+
+Escape hatch: use `.get(i)` and handle the `Option`, or move the call
+under `#[cfg(test)]`.
 
 ### R0042 — no-positional-args
 

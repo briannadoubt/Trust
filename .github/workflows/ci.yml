@@ -51,6 +51,27 @@ jobs:
           ! cargo run -p rustricted -- check examples/01-lints/positional-fail.rs 2>&1 | tee /tmp/p1p.log
           grep -q R0042 /tmp/p1p.log
 
+      - name: example — R0007 impl-trait-return-fail (must fail with R0007)
+        run: |
+          ! cargo run -p rustricted -- check examples/01-lints/impl-trait-return-fail.rs 2>&1 | tee /tmp/p1i.log
+          grep -q R0007 /tmp/p1i.log
+      - name: example — R0010 todo-fail (must fail with R0010)
+        run: |
+          ! cargo run -p rustricted -- check examples/01-lints/todo-fail.rs 2>&1 | tee /tmp/p1t.log
+          grep -q R0010 /tmp/p1t.log
+      - name: example — R0011 panic-fail (must fail with R0011)
+        run: |
+          ! cargo run -p rustricted -- check examples/01-lints/panic-fail.rs 2>&1 | tee /tmp/p1pa.log
+          grep -q R0011 /tmp/p1pa.log
+      - name: example — R0012 bool-param-fail (must fail with R0012)
+        run: |
+          ! cargo run -p rustricted -- check examples/01-lints/bool-param-fail.rs 2>&1 | tee /tmp/p1b.log
+          grep -q R0012 /tmp/p1b.log
+      - name: example — R0014 bare-index-fail (must fail with R0014)
+        run: |
+          ! cargo run -p rustricted -- check examples/01-lints/bare-index-fail.rs 2>&1 | tee /tmp/p1x.log
+          grep -q R0014 /tmp/p1x.log
+
       - name: example — Phase 2 pipe
         run: |
           cargo run -p rustricted -- build examples/02-pipe/chain.rs --out /tmp/p2

@@ -21,8 +21,12 @@ pub fn run_rule(rule: Rule, file: &syn::File, source: &str, diagnostics: &mut Ve
         Rule::NoGlobImport => run_no_glob_import(file, diagnostics),
         Rule::JustifyUnsafe => run_justify_unsafe(file, source, diagnostics),
         Rule::JustifyAllow => run_justify_allow(file, source, diagnostics),
-        Rule::NoImplTraitReturn => {}
+        Rule::NoImplTraitReturn => run_no_impl_trait_return(file, diagnostics),
         Rule::NoUserMacros => run_no_user_macros(file, diagnostics),
+        Rule::NoTodoMacro => run_no_todo_macro(file, diagnostics),
+        Rule::NoPanic => run_no_panic(file, diagnostics),
+        Rule::NoBoolParam => run_no_bool_param(file, diagnostics),
+        Rule::NoBareIndex => run_no_bare_index(file, diagnostics),
         // R0042 emission lives in `rustricted_lower::named_args`, where the
         // pass can still see name-prefixed call args before they're stripped.
         // The catalogue entry stays here so SPEC.md and the docs can refer
@@ -458,6 +462,345 @@ fn run_no_user_macros(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
     let mut v = NoUserMacrosVisitor {
         diagnostics,
         mod_opt_out_depth: 0,
+    };
+    v.visit_file(file);
+}
+
+// ----------------------------------------------------------------------------
+// R0007 — no-impl-trait-return
+// ----------------------------------------------------------------------------
+
+fn return_is_impl_trait(sig: &syn::Signature) -> Option<&syn::TypeImplTrait> {
+    let syn::ReturnType::Type(_, ty) = &sig.output else {
+        return None;
+    };
+    let syn::Type::ImplTrait(it) = ty.as_ref() else {
+        return None;
+    };
+    Some(it)
+}
+
+struct NoImplTraitReturnVisitor<'a> {
+    diagnostics: &'a mut Vec<Diagnostic>,
+}
+
+impl<'ast, 'a> Visit<'ast> for NoImplTraitReturnVisitor<'a> {
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        if let Some(it) = return_is_impl_trait(&node.sig) {
+            self.emit(it.span());
+        }
+        visit::visit_item_fn(self, node);
+    }
+
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        if let Some(it) = return_is_impl_trait(&node.sig) {
+            self.emit(it.span());
+        }
+        visit::visit_impl_item_fn(self, node);
+    }
+
+    fn visit_trait_item_fn(&mut self, node: &'ast syn::TraitItemFn) {
+        if let Some(it) = return_is_impl_trait(&node.sig) {
+            self.emit(it.span());
+        }
+        visit::visit_trait_item_fn(self, node);
+    }
+}
+
+impl<'a> NoImplTraitReturnVisitor<'a> {
+    fn emit(&mut self, span: Span) {
+        let diag = Diagnostic::error(
+            Rule::NoImplTraitReturn.code(),
+            "`impl Trait` in return position is banned in strict mode",
+            span_range(span),
+        )
+        .with_why(Rule::NoImplTraitReturn.rationale().to_string())
+        .with_help("name the type with a `type Alias = ...;` and return the alias");
+        self.diagnostics.push(diag);
+    }
+}
+
+fn run_no_impl_trait_return(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    let mut v = NoImplTraitReturnVisitor { diagnostics };
+    v.visit_file(file);
+}
+
+// ----------------------------------------------------------------------------
+// R0010 — no-todo-macro
+// R0011 — no-panic
+// ----------------------------------------------------------------------------
+
+/// Shared scaffolding for macro-name lints that should ignore `#[cfg(test)]`
+/// scopes. The `targets` slice lists macro identifiers (last path segment)
+/// that should produce a diagnostic.
+struct MacroBanVisitor<'a> {
+    diagnostics: &'a mut Vec<Diagnostic>,
+    in_test_depth: usize,
+    rule: Rule,
+    targets: &'static [&'static str],
+    help: &'static str,
+}
+
+impl<'a> MacroBanVisitor<'a> {
+    fn with_test_scope<F: FnOnce(&mut Self)>(&mut self, is_test: bool, f: F) {
+        if is_test {
+            self.in_test_depth += 1;
+        }
+        f(self);
+        if is_test {
+            self.in_test_depth -= 1;
+        }
+    }
+}
+
+impl<'ast, 'a> Visit<'ast> for MacroBanVisitor<'a> {
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        let is_test = attrs_have_cfg_test(&node.attrs)
+            || node.attrs.iter().any(|a| a.path().is_ident("test"));
+        self.with_test_scope(is_test, |this| visit::visit_item_fn(this, node));
+    }
+
+    fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_mod(this, node));
+    }
+
+    fn visit_item_impl(&mut self, node: &'ast syn::ItemImpl) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_impl(this, node));
+    }
+
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_impl_item_fn(this, node));
+    }
+
+    fn visit_macro(&mut self, node: &'ast syn::Macro) {
+        if self.in_test_depth == 0 {
+            if let Some(seg) = node.path.segments.last() {
+                let name = seg.ident.to_string();
+                if self.targets.iter().any(|t| *t == name) {
+                    let diag = Diagnostic::error(
+                        self.rule.code(),
+                        format!("`{name}!` is banned outside `#[cfg(test)]` in strict mode"),
+                        span_range(node.path.span()),
+                    )
+                    .with_why(self.rule.rationale().to_string())
+                    .with_help(self.help);
+                    self.diagnostics.push(diag);
+                }
+            }
+        }
+        visit::visit_macro(self, node);
+    }
+}
+
+fn run_no_todo_macro(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    let mut v = MacroBanVisitor {
+        diagnostics,
+        in_test_depth: 0,
+        rule: Rule::NoTodoMacro,
+        targets: &["todo", "unimplemented"],
+        help: "implement the function or return a typed `Err`",
+    };
+    v.visit_file(file);
+}
+
+fn run_no_panic(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    let mut v = MacroBanVisitor {
+        diagnostics,
+        in_test_depth: 0,
+        rule: Rule::NoPanic,
+        targets: &["panic"],
+        help: "return a typed `Err` and let the caller decide whether to abort",
+    };
+    v.visit_file(file);
+}
+
+// ----------------------------------------------------------------------------
+// R0012 — no-bool-param
+// ----------------------------------------------------------------------------
+
+fn is_visible(vis: &syn::Visibility) -> bool {
+    !matches!(vis, syn::Visibility::Inherited)
+}
+
+fn ty_is_bool(ty: &syn::Type) -> bool {
+    let syn::Type::Path(tp) = ty else {
+        return false;
+    };
+    if tp.qself.is_some() {
+        return false;
+    }
+    let last = match tp.path.segments.last() {
+        Some(seg) => seg,
+        None => return false,
+    };
+    last.ident == "bool" && tp.path.segments.len() == 1
+}
+
+struct NoBoolParamVisitor<'a> {
+    diagnostics: &'a mut Vec<Diagnostic>,
+    in_test_depth: usize,
+}
+
+impl<'a> NoBoolParamVisitor<'a> {
+    fn with_test_scope<F: FnOnce(&mut Self)>(&mut self, is_test: bool, f: F) {
+        if is_test {
+            self.in_test_depth += 1;
+        }
+        f(self);
+        if is_test {
+            self.in_test_depth -= 1;
+        }
+    }
+
+    fn check_sig(&mut self, sig: &syn::Signature, vis_visible: bool) {
+        if self.in_test_depth > 0 || !vis_visible {
+            return;
+        }
+        for input in &sig.inputs {
+            let syn::FnArg::Typed(pat_ty) = input else {
+                continue;
+            };
+            if ty_is_bool(&pat_ty.ty) {
+                let pat_name = match pat_ty.pat.as_ref() {
+                    syn::Pat::Ident(p) => p.ident.to_string(),
+                    _ => "<param>".to_string(),
+                };
+                let diag = Diagnostic::error(
+                    Rule::NoBoolParam.code(),
+                    format!(
+                        "visible function `{}` takes `bool` parameter `{pat_name}`",
+                        sig.ident
+                    ),
+                    span_range(pat_ty.ty.span()),
+                )
+                .with_why(Rule::NoBoolParam.rationale().to_string())
+                .with_help("replace with a named enum (e.g. `enum Mode { On, Off }`)");
+                self.diagnostics.push(diag);
+            }
+        }
+    }
+}
+
+impl<'ast, 'a> Visit<'ast> for NoBoolParamVisitor<'a> {
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        let is_test = attrs_have_cfg_test(&node.attrs)
+            || node.attrs.iter().any(|a| a.path().is_ident("test"));
+        self.with_test_scope(is_test, |this| {
+            this.check_sig(&node.sig, is_visible(&node.vis));
+            visit::visit_item_fn(this, node);
+        });
+    }
+
+    fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_mod(this, node));
+    }
+
+    fn visit_item_impl(&mut self, node: &'ast syn::ItemImpl) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        // Methods inside inherent impls inherit visibility from the impl
+        // block's own visibility — but inherent impls don't have an outer
+        // visibility token, so we treat them as visible iff the method itself
+        // has a visibility modifier. Trait impls expose all methods publicly.
+        self.with_test_scope(is_test, |this| visit::visit_item_impl(this, node));
+    }
+
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        // Trait-impl methods are always exposed at the visibility of the
+        // trait itself; treat them as visible. Inherent impl methods use
+        // their own visibility token.
+        self.check_sig(&node.sig, is_visible(&node.vis));
+        visit::visit_impl_item_fn(self, node);
+    }
+
+    fn visit_trait_item_fn(&mut self, node: &'ast syn::TraitItemFn) {
+        // Trait methods are visible at the trait's visibility, which is
+        // always at least as wide as the surrounding scope.
+        self.check_sig(&node.sig, true);
+        visit::visit_trait_item_fn(self, node);
+    }
+}
+
+fn run_no_bool_param(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    let mut v = NoBoolParamVisitor {
+        diagnostics,
+        in_test_depth: 0,
+    };
+    v.visit_file(file);
+}
+
+// ----------------------------------------------------------------------------
+// R0014 — no-bare-index
+// ----------------------------------------------------------------------------
+
+fn index_is_int_literal(expr: &syn::Expr) -> bool {
+    match expr {
+        syn::Expr::Lit(lit) => matches!(lit.lit, syn::Lit::Int(_)),
+        _ => false,
+    }
+}
+
+struct NoBareIndexVisitor<'a> {
+    diagnostics: &'a mut Vec<Diagnostic>,
+    in_test_depth: usize,
+}
+
+impl<'a> NoBareIndexVisitor<'a> {
+    fn with_test_scope<F: FnOnce(&mut Self)>(&mut self, is_test: bool, f: F) {
+        if is_test {
+            self.in_test_depth += 1;
+        }
+        f(self);
+        if is_test {
+            self.in_test_depth -= 1;
+        }
+    }
+}
+
+impl<'ast, 'a> Visit<'ast> for NoBareIndexVisitor<'a> {
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        let is_test = attrs_have_cfg_test(&node.attrs)
+            || node.attrs.iter().any(|a| a.path().is_ident("test"));
+        self.with_test_scope(is_test, |this| visit::visit_item_fn(this, node));
+    }
+
+    fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_mod(this, node));
+    }
+
+    fn visit_item_impl(&mut self, node: &'ast syn::ItemImpl) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_impl(this, node));
+    }
+
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_impl_item_fn(this, node));
+    }
+
+    fn visit_expr_index(&mut self, node: &'ast syn::ExprIndex) {
+        if self.in_test_depth == 0 && !index_is_int_literal(&node.index) {
+            let diag = Diagnostic::error(
+                Rule::NoBareIndex.code(),
+                "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+                span_range(node.index.span()),
+            )
+            .with_why(Rule::NoBareIndex.rationale().to_string())
+            .with_help("use `.get(idx)` and handle the `Option`");
+            self.diagnostics.push(diag);
+        }
+        visit::visit_expr_index(self, node);
+    }
+}
+
+fn run_no_bare_index(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    let mut v = NoBareIndexVisitor {
+        diagnostics,
+        in_test_depth: 0,
     };
     v.visit_file(file);
 }

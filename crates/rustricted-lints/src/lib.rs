@@ -203,4 +203,114 @@ mod tests {
         let d = diags_for(Rule::NoUserMacros, src);
         assert!(d.is_empty(), "expected no R0008 diag, got {d:?}");
     }
+
+    #[test]
+    fn r0007_fires_on_impl_trait_return() {
+        let src = "#![strict]\nfn xs() -> impl Iterator<Item = u32> { [1u32].into_iter() }";
+        assert!(fires(Rule::NoImplTraitReturn, src));
+    }
+
+    #[test]
+    fn r0007_silent_on_named_return_type() {
+        let src = "#![strict]\nfn xs() -> Vec<u32> { vec![1] }";
+        let d = diags_for(Rule::NoImplTraitReturn, src);
+        assert!(d.is_empty(), "expected no R0007 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0007_silent_on_arg_position_impl_trait() {
+        let src = "#![strict]\nfn xs(it: impl Iterator<Item = u32>) -> u32 { it.sum() }";
+        let d = diags_for(Rule::NoImplTraitReturn, src);
+        assert!(d.is_empty(), "expected no R0007 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0010_fires_on_todo() {
+        let src = "#![strict]\nfn f() -> u32 { todo!() }";
+        let d = diags_for(Rule::NoTodoMacro, src);
+        assert!(
+            d.iter().any(|x| x.rule == "R0010"),
+            "expected R0010 emission, got {d:?}"
+        );
+    }
+
+    #[test]
+    fn r0010_fires_on_unimplemented() {
+        let src = "#![strict]\nfn f() -> u32 { unimplemented!() }";
+        let d = diags_for(Rule::NoTodoMacro, src);
+        assert!(
+            d.iter().any(|x| x.rule == "R0010"),
+            "expected R0010 emission, got {d:?}"
+        );
+    }
+
+    #[test]
+    fn r0010_silent_in_cfg_test_mod() {
+        let src = "#![strict]\n#[cfg(test)]\nmod m { fn t() { let _ = todo!(); } }";
+        let d = diags_for(Rule::NoTodoMacro, src);
+        assert!(d.is_empty(), "expected no R0010 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0011_fires_on_panic() {
+        let src = "#![strict]\nfn f() { panic!(\"boom\"); }";
+        let d = diags_for(Rule::NoPanic, src);
+        assert!(
+            d.iter().any(|x| x.rule == "R0011"),
+            "expected R0011 emission, got {d:?}"
+        );
+    }
+
+    #[test]
+    fn r0011_silent_in_cfg_test_fn() {
+        let src = "#![strict]\n#[cfg(test)]\nfn t() { panic!(\"boom\"); }";
+        let d = diags_for(Rule::NoPanic, src);
+        assert!(d.is_empty(), "expected no R0011 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0012_fires_on_pub_bool_param() {
+        let src = "#![strict]\npub fn f(detached: bool) {}";
+        assert!(fires(Rule::NoBoolParam, src));
+    }
+
+    #[test]
+    fn r0012_fires_on_pub_crate_bool_param() {
+        let src = "#![strict]\npub(crate) fn f(detached: bool) {}";
+        assert!(fires(Rule::NoBoolParam, src));
+    }
+
+    #[test]
+    fn r0012_silent_on_private_fn() {
+        let src = "#![strict]\nfn f(detached: bool) {}";
+        let d = diags_for(Rule::NoBoolParam, src);
+        assert!(d.is_empty(), "expected no R0012 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0012_silent_in_test_mod() {
+        let src = "#![strict]\n#[cfg(test)]\nmod m { pub fn f(x: bool) {} }";
+        let d = diags_for(Rule::NoBoolParam, src);
+        assert!(d.is_empty(), "expected no R0012 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0014_fires_on_variable_index() {
+        let src = "#![strict]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        assert!(fires(Rule::NoBareIndex, src));
+    }
+
+    #[test]
+    fn r0014_silent_on_literal_index() {
+        let src = "#![strict]\nfn f(v: &[u32]) -> u32 { v[0] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(d.is_empty(), "expected no R0014 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0014_silent_in_test_fn() {
+        let src = "#![strict]\n#[cfg(test)]\nfn t(v: &[u32], i: usize) -> u32 { v[i] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(d.is_empty(), "expected no R0014 diag, got {d:?}");
+    }
 }
