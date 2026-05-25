@@ -146,14 +146,16 @@ pub fn rewrite(
     tokens: TokenStream,
     registry: &CalleeRegistry,
     diagnostics: &mut Vec<Diagnostic>,
+    strict_mode: bool,
 ) -> TokenStream {
-    rewrite_stream(tokens, registry, diagnostics)
+    rewrite_stream(tokens, registry, diagnostics, strict_mode)
 }
 
 fn rewrite_stream(
     tokens: TokenStream,
     registry: &CalleeRegistry,
     diagnostics: &mut Vec<Diagnostic>,
+    strict_mode: bool,
 ) -> TokenStream {
     let trees: Vec<TokenTree> = tokens.into_iter().collect();
     let param_groups = find_param_group_indices(&trees);
@@ -161,7 +163,7 @@ fn rewrite_stream(
     for (i, tree) in trees.into_iter().enumerate() {
         match tree {
             TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis => {
-                let recursed = rewrite_stream(g.stream(), registry, diagnostics);
+                let recursed = rewrite_stream(g.stream(), registry, diagnostics, strict_mode);
                 if param_groups.contains(&i) {
                     // Function parameter list — leave intact. The inner stream
                     // is still recursed in case a default-value expression (or
@@ -171,15 +173,20 @@ fn rewrite_stream(
                     out.push(TokenTree::Group(new_group));
                 } else {
                     let callee = preceding_ident(&out);
-                    let new_inner =
-                        rewrite_call_args(recursed, callee.as_deref(), registry, diagnostics);
+                    let new_inner = rewrite_call_args(
+                        recursed,
+                        callee.as_deref(),
+                        registry,
+                        diagnostics,
+                        strict_mode,
+                    );
                     let mut new_group = Group::new(Delimiter::Parenthesis, new_inner);
                     new_group.set_span(g.span());
                     out.push(TokenTree::Group(new_group));
                 }
             }
             TokenTree::Group(g) => {
-                let recursed = rewrite_stream(g.stream(), registry, diagnostics);
+                let recursed = rewrite_stream(g.stream(), registry, diagnostics, strict_mode);
                 let mut new_group = Group::new(g.delimiter(), recursed);
                 new_group.set_span(g.span());
                 out.push(TokenTree::Group(new_group));
@@ -254,6 +261,7 @@ fn rewrite_call_args(
     callee: Option<&str>,
     registry: &CalleeRegistry,
     diagnostics: &mut Vec<Diagnostic>,
+    strict_mode: bool,
 ) -> TokenStream {
     let segments = split_by_top_comma(args);
     if segments.is_empty() {
@@ -263,6 +271,36 @@ fn rewrite_call_args(
     let parsed: Vec<(Option<String>, TokenStream)> =
         segments.into_iter().map(extract_named).collect();
     let any_named = parsed.iter().any(|(n, _)| n.is_some());
+    let all_named = parsed.iter().all(|(n, _)| n.is_some());
+
+    // R0042: in strict mode, calls to locally-defined functions with
+    // arity > 1 must use named arguments. This is the dialect's main
+    // bug-prevention rule — it's why named arguments exist.
+    if strict_mode && parsed.len() > 1 && !all_named {
+        if let Some(name) = callee {
+            if let Some(declared) = registry.fns.get(name) {
+                let suggestion = declared
+                    .iter()
+                    .map(|p| format!("{p}: ..."))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                diagnostics.push(
+                    Diagnostic::error(
+                        "R0042",
+                        format!(
+                            "call to `{name}` must use named arguments (arity {})",
+                            declared.len()
+                        ),
+                        0..0,
+                    )
+                    .with_why(
+                        "positional argument ordering is the largest LLM-authored bug class in Rust; named args eliminate it".to_string(),
+                    )
+                    .with_help(format!("rewrite as `{name}({suggestion})`")),
+                );
+            }
+        }
+    }
 
     if !any_named {
         return reconstruct(parsed);
@@ -271,7 +309,6 @@ fn rewrite_call_args(
     // Validate + reorder against the local registry when possible.
     if let Some(name) = callee {
         if let Some(declared) = registry.fns.get(name) {
-            let all_named = parsed.iter().all(|(n, _)| n.is_some());
             if all_named {
                 for (n, _) in &parsed {
                     let supplied = n.as_deref().unwrap_or("");
@@ -368,10 +405,18 @@ mod tests {
     use super::*;
 
     fn lower_str(input: &str) -> (String, Vec<Diagnostic>) {
+        lower_with_mode(input, false)
+    }
+
+    fn lower_strict(input: &str) -> (String, Vec<Diagnostic>) {
+        lower_with_mode(input, true)
+    }
+
+    fn lower_with_mode(input: &str, strict: bool) -> (String, Vec<Diagnostic>) {
         let tokens: TokenStream = input.parse().expect("test input must tokenize");
         let registry = CalleeRegistry::collect(&tokens);
         let mut diags = Vec::new();
-        let out = rewrite(tokens, &registry, &mut diags);
+        let out = rewrite(tokens, &registry, &mut diags, strict);
         (out.to_string(), diags)
     }
 
@@ -489,6 +534,66 @@ mod tests {
         assert!(
             !out.contains("at :") && !out.contains("at:"),
             "name should be stripped: {out}"
+        );
+    }
+
+    #[test]
+    fn r0042_fires_on_positional_call_in_strict_mode() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = area(4, 6); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            diags.iter().any(|d| d.rule == "R0042"),
+            "expected R0042 for positional call to local fn, got {diags:?}"
+        );
+    }
+
+    #[test]
+    fn r0042_silent_outside_strict_mode() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = area(4, 6); }";
+        let (_out, diags) = lower_str(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "non-strict source must be silent for R0042: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn r0042_silent_on_named_call() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = area(width: 4, height: 6); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "named call must not fire R0042: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn r0042_silent_on_arity_one() {
+        let src = "fn double(x: u32) -> u32 { x * 2 }\nfn main() { let _ = double(5); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "arity-1 calls don't need names: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn r0042_silent_on_unregistered_callee() {
+        let src = "fn main() { let _ = upstream::area(4, 6); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "cross-crate calls fall back to positional: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn r0042_fires_on_mixed_positional_named() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = area(4, height: 6); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            diags.iter().any(|d| d.rule == "R0042"),
+            "mixed positional + named should fire R0042: {diags:?}"
         );
     }
 }

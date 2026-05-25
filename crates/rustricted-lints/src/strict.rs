@@ -23,6 +23,11 @@ pub fn run_rule(rule: Rule, file: &syn::File, source: &str, diagnostics: &mut Ve
         Rule::JustifyAllow => run_justify_allow(file, source, diagnostics),
         Rule::NoImplTraitReturn => {}
         Rule::NoUserMacros => run_no_user_macros(file, diagnostics),
+        // R0042 emission lives in `rustricted_lower::named_args`, where the
+        // pass can still see name-prefixed call args before they're stripped.
+        // The catalogue entry stays here so SPEC.md and the docs can refer
+        // to the rule by code.
+        Rule::NoPositionalArgs => {}
     }
 }
 

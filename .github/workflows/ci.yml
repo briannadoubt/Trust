@@ -41,6 +41,11 @@ jobs:
           ! cargo run -p rustricted -- check examples/01-lints/unwrap-fail.rs 2>&1 | tee /tmp/p1u.log
           grep -q R0001 /tmp/p1u.log
 
+      - name: example — R0042 positional-fail (must fail with R0042)
+        run: |
+          ! cargo run -p rustricted -- check examples/01-lints/positional-fail.rs 2>&1 | tee /tmp/p1p.log
+          grep -q R0042 /tmp/p1p.log
+
       - name: example — Phase 2 pipe
         run: |
           cargo run -p rustricted -- build examples/02-pipe/chain.rs --out /tmp/p2

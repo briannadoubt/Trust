@@ -19,6 +19,11 @@ pub enum Rule {
     NoImplTraitReturn,
     /// User-defined `macro_rules!` without `#[strict::macros_ok]` opt-in.
     NoUserMacros,
+    /// Positional argument to a locally-defined function with arity > 1.
+    /// Emission lives in `rustricted-lower::named_args` because the lint
+    /// must fire before lowering strips argument names; this catalogue
+    /// entry exists so SPEC.md, docs, and tooling can refer to R0042.
+    NoPositionalArgs,
 }
 
 impl Rule {
@@ -32,6 +37,7 @@ impl Rule {
             Rule::JustifyAllow => "R0006",
             Rule::NoImplTraitReturn => "R0007",
             Rule::NoUserMacros => "R0008",
+            Rule::NoPositionalArgs => "R0042",
         }
     }
 
@@ -45,6 +51,7 @@ impl Rule {
             Rule::JustifyAllow => "justify-allow",
             Rule::NoImplTraitReturn => "no-impl-trait-return",
             Rule::NoUserMacros => "no-user-macros",
+            Rule::NoPositionalArgs => "no-positional-args",
         }
     }
 
@@ -58,6 +65,7 @@ impl Rule {
             Rule::JustifyAllow => "every `#[allow]` must explain why the rule is being suppressed",
             Rule::NoImplTraitReturn => "anonymous return types kill local reasoning; name the type with an alias",
             Rule::NoUserMacros => "macros expand non-locally; agents misuse them frequently",
+            Rule::NoPositionalArgs => "positional argument ordering is the largest LLM-authored bug class in Rust; named args eliminate it",
         }
     }
 }
@@ -71,4 +79,5 @@ pub const ALL: &[Rule] = &[
     Rule::JustifyAllow,
     Rule::NoImplTraitReturn,
     Rule::NoUserMacros,
+    Rule::NoPositionalArgs,
 ];

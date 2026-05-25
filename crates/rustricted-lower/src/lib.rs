@@ -62,7 +62,7 @@ pub fn lower(source: &str) -> Result<LowerOutput, Error> {
     let registry = named_args::CalleeRegistry::collect(&tokens);
 
     let mut diagnostics = Vec::new();
-    let tokens = named_args::rewrite(tokens, &registry, &mut diagnostics);
+    let tokens = named_args::rewrite(tokens, &registry, &mut diagnostics, strict_mode);
     let tokens = pipe::rewrite(tokens, &mut diagnostics);
     let tokens = preprocess::strip_strict_attrs(tokens);
 
