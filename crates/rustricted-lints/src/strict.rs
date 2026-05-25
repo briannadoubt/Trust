@@ -7,9 +7,27 @@ use std::ops::Range;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
 
-/// Returns `true` if the file has the inner attribute `#![strict]`.
+/// Returns `true` if the file is in Rustricted strict mode. Two activation
+/// forms are recognised:
+///
+/// - `#![strict]` inner attribute (single-file `rustricted check` input).
+/// - A top-level `strict!{}` or `rustricted_attrs::strict!{}` macro
+///   invocation (cargo-built crates).
 pub fn detect_strict(file: &syn::File) -> bool {
-    file.attrs.iter().any(|attr| attr.path().is_ident("strict"))
+    if file.attrs.iter().any(|attr| attr.path().is_ident("strict")) {
+        return true;
+    }
+    file.items.iter().any(|item| {
+        let syn::Item::Macro(m) = item else {
+            return false;
+        };
+        m.mac
+            .path
+            .segments
+            .last()
+            .map(|seg| seg.ident == "strict")
+            .unwrap_or(false)
+    })
 }
 
 /// Run a single rule against the parsed file, appending diagnostics.

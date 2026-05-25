@@ -72,6 +72,11 @@ jobs:
           ! cargo run -p rustricted -- check examples/01-lints/bare-index-fail.rs 2>&1 | tee /tmp/p1x.log
           grep -q R0014 /tmp/p1x.log
 
+      - name: example — cargo-style activation (must fail with R0001)
+        run: |
+          ! cargo run -p rustricted -- check examples/01-lints/cargo-strict-unwrap-fail.rs 2>&1 | tee /tmp/p1cs.log
+          grep -q R0001 /tmp/p1cs.log
+
       - name: example — Phase 2 pipe
         run: |
           cargo run -p rustricted -- build examples/02-pipe/chain.rs --out /tmp/p2

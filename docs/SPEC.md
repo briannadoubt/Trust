@@ -27,21 +27,55 @@ the final Rust. The driver lives in `crates/rustricted`; the orchestration is
 
 ## Activation
 
-Rustricted is opt-in at the crate root via an inner attribute:
+Rustricted is opt-in per file. Two activation forms are accepted; pick the
+one that matches your build setup.
+
+### Single-file mode: `#![strict]`
+
+For files run through `rustricted check` directly (no cargo build of the
+file is required), an inner attribute at the crate root activates strict
+mode:
 
 ```rust
 #![strict]
+
+fn main() { /* ... */ }
 ```
 
-Lints in the `rustricted-lints` crate consult this attribute via
-`detect_strict` and return an empty report when it is absent. Lowering passes
-(pipe, named-args, effects) run unconditionally because they are pure rewrites,
-but in a crate without `#![strict]` they have nothing to rewrite — pipe and
-`effect` are syntax errors in vanilla Rust, and positional calls remain
-positional.
+This is the form used by `examples/01-lints/*.rs` and the eval tasks. Stock
+`rustc` rejects `#![strict]` because it is not a registered attribute —
+which is fine for single-file inputs the Rustricted toolchain handles
+end-to-end, but unsuitable for files that need to compile under
+`cargo build`.
 
-In practice: crates without `#![strict]` round-trip through the driver
-unchanged. Treat the attribute as a hard switch.
+### Cargo mode: `rustricted_attrs::strict!{}`
+
+For files that participate in a `cargo build` (e.g. crates written in
+Rustricted), use the marker macro from the `rustricted-attrs` crate
+instead:
+
+```rust
+rustricted_attrs::strict! {}
+
+fn main() { /* ... */ }
+```
+
+Add `rustricted-attrs = "0.1"` to `[dependencies]`. The macro expands to
+nothing for `rustc`, so cargo builds are unaffected; the Rustricted
+toolchain detects the invocation and activates strict mode.
+
+### Detection rules
+
+Both `rustricted_lower::detect_strict_mode` (token-level, runs before
+parsing) and `rustricted_lints::detect_strict` (AST-level, runs after
+lowering) accept either form. The lints crate returns an empty report
+when neither is present; the lowering passes run unconditionally because
+they are pure rewrites, but in a file without an activation marker they
+have nothing to rewrite — pipe and `effect` are syntax errors in vanilla
+Rust, and positional calls remain positional.
+
+In practice: files without either activation marker round-trip through the
+driver unchanged.
 
 ## Lints
 

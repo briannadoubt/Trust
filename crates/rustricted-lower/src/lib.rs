@@ -79,11 +79,26 @@ pub fn lower(source: &str) -> Result<LowerOutput, Error> {
     })
 }
 
-/// Scan a token stream for the inner attribute `#![strict]`. We do this at
-/// the token level so it works on the *original* Rustricted source (before
-/// any pass strips the attribute), and so it doesn't depend on syn parsing.
+/// Scan a token stream for Rustricted activation. Two forms are recognised:
+///
+/// 1. `#![strict]` inner attribute — used by single-file inputs sent through
+///    `rustricted check`. Stock `rustc` rejects this attribute, so it cannot
+///    appear in a file that will also be built by `cargo build`.
+///
+/// 2. `strict!{}` (or `rustricted_attrs::strict!{}`) function-like macro
+///    invocation at item position — the cargo-friendly activation. The
+///    `rustricted-attrs` crate exports the macro as a no-op for `rustc`.
+///
+/// Detection runs at the token level so it works on the *original* Rustricted
+/// source before any pass strips the marker, and so it doesn't depend on syn
+/// parsing (which would fail for source containing pipe / effect / named-arg
+/// extensions).
 fn detect_strict_mode(tokens: &TokenStream) -> bool {
     let trees: Vec<proc_macro2::TokenTree> = tokens.clone().into_iter().collect();
+    detect_strict_inner_attr(&trees) || detect_strict_macro_call(&trees)
+}
+
+fn detect_strict_inner_attr(trees: &[proc_macro2::TokenTree]) -> bool {
     let mut i = 0;
     while i < trees.len() {
         let proc_macro2::TokenTree::Punct(hash) = &trees[i] else {
@@ -119,6 +134,30 @@ fn detect_strict_mode(tokens: &TokenStream) -> bool {
             }
         }
         i += 3;
+    }
+    false
+}
+
+/// Match `... :: strict ! GROUP` or `strict ! GROUP` at top level. Path
+/// prefix is accepted but not inspected — any path that ends in `strict`
+/// counts, so both `strict!{}` and `rustricted_attrs::strict!{}` work.
+fn detect_strict_macro_call(trees: &[proc_macro2::TokenTree]) -> bool {
+    for i in 0..trees.len() {
+        let proc_macro2::TokenTree::Ident(id) = &trees[i] else {
+            continue;
+        };
+        if *id != "strict" {
+            continue;
+        }
+        let Some(proc_macro2::TokenTree::Punct(bang)) = trees.get(i + 1) else {
+            continue;
+        };
+        if bang.as_char() != '!' {
+            continue;
+        }
+        if matches!(trees.get(i + 2), Some(proc_macro2::TokenTree::Group(_))) {
+            return true;
+        }
     }
     false
 }
