@@ -36,8 +36,10 @@ These are not novel observations. They show up in every postmortem of
 agent-authored Rust. What is novel is that the list is _short_ and
 _stable_: the same handful of patterns dominate every corpus we have
 looked at. See [`eval/runs/`](../eval/runs/) for the run logs and
-[`case-studies/heck-strict.md`](../case-studies/heck-strict.md) for what
-the lints catch on a real third-party crate.
+[`case-studies/heck-strict.md`](../case-studies/heck-strict.md) and
+[`case-studies/tre-strict.md`](../case-studies/tre-strict.md) for what
+the lints catch on real third-party crates (a pure library and a small
+CLI with real I/O respectively).
 
 ## The thesis
 
@@ -193,7 +195,11 @@ phase-by-phase rationale for each individual rule is in
   largest open gap. See the
   [`heck` case study](../case-studies/heck-strict.md) for what a
   single-crate adoption looks like end to end, including the
-  workarounds.
+  workarounds, and the
+  [`tre` case study](../case-studies/tre-strict.md) for the same
+  exercise on an 8-file CLI with real I/O — which surfaces the
+  per-file callee registry limitation (RT-40) as the biggest gap
+  for multi-module adoption.
 
 If none of those apply and you are shipping Rust written largely by
 agents, the rest of the documentation starts at
