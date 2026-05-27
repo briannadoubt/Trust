@@ -15,6 +15,5 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
-rustricted-effects = { path = "../rustricted-effects" }
 rustricted-lints = { path = "../rustricted-lints" }
 rustricted-lower = { path = "../rustricted-lower" }

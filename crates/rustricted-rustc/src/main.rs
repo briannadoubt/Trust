@@ -1,7 +1,7 @@
 //! `rustricted-rustc` — RUSTC_WRAPPER shim that runs Rustricted's lowering
 //! pass on each strict-marked `.rs` file before handing it to the real
 //! `rustc`. Set as `RUSTC_WRAPPER` to make `cargo build` understand the
-//! dialect's syntax extensions (named args, pipe, `effect`) on cargo crates.
+//! dialect's syntax extensions (named args, pipe) on cargo crates.
 //!
 //! ## How cargo invokes a RUSTC_WRAPPER
 //!
@@ -91,8 +91,8 @@ fn run() -> Result<i32> {
         .with_context(|| format!("lowering {}", input_path.display()))?;
 
     // Bubble lowering diagnostics to stderr so the user sees them. R0042,
-    // R3001, R4001 are emitted from the lowering pass and would otherwise
-    // be invisible under `cargo build`.
+    // R3001 are emitted from the lowering pass and would otherwise be
+    // invisible under `cargo build`.
     for diag in &out.diagnostics {
         eprintln!(
             "[{}] {}: {}",

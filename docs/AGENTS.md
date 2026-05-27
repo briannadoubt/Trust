@@ -18,9 +18,8 @@ README.md
 crates/
   rustricted/              # CLI driver: `rustricted build|check|lower`
   rustricted-syntax/       # parse + roundtrip; identity round-trip in Phase 0
-  rustricted-lower/        # named-args, pipe, effect-erasure token passes
+  rustricted-lower/        # named-args and pipe token passes
   rustricted-lints/        # the `#![strict]` lint preset (R0001–R0008)
-  rustricted-effects/      # effect registry, parser, check pass
   rustricted-diag/         # Diagnostic shape + ariadne renderer
   rustricted-lsp/          # tower-lsp stub (Phase 5)
   rustricted-std/          # named-arg-friendly std shims
@@ -112,27 +111,6 @@ Phase 1 work. Step-by-step:
 
 When in doubt about diagnostic copy, mirror the prose style of existing
 rules: imperative verb, no jargon, explain the fix in concrete code.
-
-## Adding a new effect
-
-Phase 4 work. Quick version:
-
-1. **Decide whether the effect is built-in or crate-local.** Built-in if
-   most strict crates will encounter it (e.g. you discover that all `time`
-   usage deserves its own effect). Crate-local otherwise.
-2. **For a built-in:** add the name string to `BUILTIN_EFFECTS` in
-   `crates/rustricted-effects/src/lib.rs`. Document it in `SPEC.md` under
-   `Built-in effects`. Add seed annotations to the std-effect table
-   (`crates/rustricted-std/effects.toml`, planned).
-3. **For a crate-local effect:** declare it in your crate's
-   `effects.toml` and reference the name from `effect` clauses on the
-   declaring crate's signatures.
-4. **Annotate every fn that has the effect.** Effect inference compares
-   declared vs. inferred sets; an unannotated callee will be assumed to
-   have the most-permissive cross-crate set (`io + mut + panic`) and your
-   new effect will not propagate until you write it down.
-5. **Document the effect's semantics in `SPEC.md`.** What operations
-   constitute the effect? What's the upgrade path if it splits later?
 
 ## Running tests
 

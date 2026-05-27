@@ -4,14 +4,13 @@ A strict Rust dialect for LLM agents.
 
 LLMs systematically mishandle a small, predictable set of Rust footguns:
 positional arguments past arity 2, `.unwrap()` in production paths, `as` casts
-that silently truncate, glob imports, undeclared side effects, macros whose
-expansion isn't local. Rustricted is a thin layer over stable Rust that bans
-those patterns and adds three extensions designed to make agent-authored code
-reliable on the first compile:
+that silently truncate, glob imports, macros whose expansion isn't local.
+Rustricted is a thin layer over stable Rust that bans those patterns and
+adds two extensions designed to make agent-authored code reliable on the
+first compile:
 
 1. **Named arguments**, mandatory past arity 1.
-2. **Effect tracking** generalized beyond `async`.
-3. **Pipe operator** `|>`.
+2. **Pipe operator** `|>`.
 
 Activate with `#![strict]`. Lower via `rustricted build` to plain Rust + `rustc`.
 
@@ -19,9 +18,8 @@ Activate with `#![strict]`. Lower via `rustricted build` to plain Rust + `rustc`
 
 **Prototype.** The driver round-trips Rust source through `syn` and
 `prettyplease`, then shells out to `rustc`. Sixteen lint rules are
-implemented across `rustricted-lints` (strict mode), `rustricted-lower`
-(named-args, pipe), and `rustricted-effects` (effect inference). The
-syntax extensions — named arguments, pipe operator, `effect` keyword —
+implemented across `rustricted-lints` (strict mode) and `rustricted-lower`
+(named-args, pipe). The syntax extensions — named arguments, pipe operator —
 are implemented as token-level rewrites that lower to plain Rust.
 
 Activation:
@@ -40,12 +38,9 @@ glob imports (R0004), macros, unsafe, or any multi-file scenario. The
 generalised claim "the dialect catches LLM Rust bugs" is not yet
 defensible from the data.
 
-**What's missing for real-world use.** Span fidelity in lowering-emitted
-diagnostics (the bare-index-and-named-args lints often emit at byte
-range `0..0`), an effect system that does more than intra-procedural
-simple-name lookup, a cross-crate signature registry so R0042 fires on
-calls to upstream code, an LSP, and a multi-crate workspace story
-beyond "add the strict marker to each file." See
+**What's missing for real-world use.** A cross-crate signature registry so
+R0042 fires on calls to upstream code, an LSP, and a multi-crate workspace
+story beyond "add the strict marker to each file." See
 `case-studies/rustricted-syntax-strict.md` for a per-file dogfood
 conversion and `eval/false-positives/REPORT.md` for the FP audit.
 

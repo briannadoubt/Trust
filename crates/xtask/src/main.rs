@@ -76,17 +76,6 @@ fn check_emissions() -> Result<()> {
         );
         checked += 1;
     }
-    for r in rustricted_effects::rule::ALL {
-        check_one(
-            r.code(),
-            &format!("{r:?}"),
-            "rustricted-effects/src/rule.rs",
-            &texts,
-            &mut failures,
-        );
-        checked += 1;
-    }
-
     if !failures.is_empty() {
         for f in &failures {
             eprintln!("error: {f}");
@@ -184,16 +173,12 @@ fn gen_docs(check_only: bool) -> Result<()> {
     Ok(())
 }
 
-/// Build the non-strict lowering / analysis diagnostics table from the
-/// `Rule` enums in `rustricted-lower` and `rustricted-effects`. Output is
-/// sorted by code so the table order matches the numeric prefix scheme.
+/// Build the non-strict lowering diagnostics table from the `Rule` enum in
+/// `rustricted-lower`. Output is sorted by code.
 fn build_lowering_diags_table() -> String {
     let mut rows: Vec<(&'static str, &'static str, &'static str, &'static str)> = Vec::new();
     for r in rustricted_lower::rule::ALL {
         rows.push((r.code(), r.pass(), "rustricted-lower", r.message_shape()));
-    }
-    for r in rustricted_effects::rule::ALL {
-        rows.push((r.code(), r.pass(), "rustricted-effects", r.message_shape()));
     }
     rows.sort_by_key(|row| row.0);
 

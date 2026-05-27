@@ -446,9 +446,9 @@ Codes outside the `R00xx` strict-mode range are emitted by lowering and
 analysis passes rather than the lint runner. They fire regardless of
 `#![strict]` when their pass produces an error.
 
-The table below is auto-generated from the `Rule` enums in
-`rustricted-lower` and `rustricted-effects` by `cargo xtask gen-docs`.
-Add new codes by extending the appropriate enum and regenerating.
+The table below is auto-generated from the `Rule` enum in
+`rustricted-lower` by `cargo xtask gen-docs`.
+Add new codes by extending the enum and regenerating.
 
 <!-- BEGIN auto-generated: lowering-diagnostics-table -->
 
@@ -456,7 +456,6 @@ Add new codes by extending the appropriate enum and regenerating.
 | ----- | ------------------- | ---------------------- | --------------------------------------------------- |
 | R2001 | pipe lowering       | `rustricted-lower`     | pipe `|>` requires a path-call on the right         |
 | R3001 | named-args lowering | `rustricted-lower`     | `{fn}` has no parameter named `{arg}`               |
-| R4001 | effects check       | `rustricted-effects`   | `{fn}` is missing declared effect(s): {effects}     |
 
 <!-- END auto-generated: lowering-diagnostics-table -->
 
@@ -568,70 +567,6 @@ argument.
 The leading `e` is the longest preceding contiguous expression — parenthesised,
 bracketed, and braced groups count as atomic units. Statement boundaries
 (`{`, `}`, `;`, `,`, start-of-group) terminate the receiver.
-
-### `effect` keyword
-
-_Phase 4; parser, inference, and check are stubs in `rustricted-effects`._
-
-#### Signature grammar
-
-```
-FnSig ::= 'fn' Ident '(' Params ')' RetType? EffectClause? WhereClause? Block
-EffectClause ::= 'effect' Effect ('+' Effect)*
-Effect ::= Ident
-```
-
-The `effect` clause sits after the return type and before the where-clause (or
-the block, when no where-clause is present).
-
-```rust
-fn read_config(path: &Path) -> Result<Config> effect io { ... }
-fn save(state: &State) effect io + mut { ... }
-fn worker() -> () effect io + async + panic { ... }
-```
-
-#### Built-in effects
-
-Defined in `BUILTIN_EFFECTS`:
-
-| Effect   | Meaning                                                     |
-| -------- | ----------------------------------------------------------- |
-| `io`     | Reads or writes the filesystem, network, env, or clock.     |
-| `mut`    | Mutates state observable outside the function (statics, interior mutability). |
-| `async`  | Awaits, spawns tasks, or otherwise touches the async runtime. |
-| `panic`  | May panic on inputs the caller can plausibly provide.       |
-| `unsafe` | Contains an `unsafe` block or calls an `unsafe fn`.         |
-
-Crates may introduce custom effects by listing them in
-`rustricted-std/effects.toml` (planned) or by declaring them in-crate
-(syntax TBD).
-
-#### Inference rule
-
-For each function `f`, let `Declared(f)` be the effect set on its signature
-(empty if absent) and `Inferred(f) = ⋃ Declared(callee)` over every call site
-inside `f`. The check is:
-
-```
-Inferred(f) ⊆ Declared(f)
-```
-
-If `f` calls `g` and `g` declares `effect io`, then `f` must declare at least
-`io`. A function that calls only pure functions can declare no effects (the
-empty set is the default).
-
-#### Erasure
-
-Lowering strips every `effect` clause from the output. Effects are a
-compile-time check with no runtime cost — the lowered Rust is identical to the
-same code without the clause.
-
-#### Cross-crate assumption
-
-When `f` calls into an unannotated upstream crate, the callee's effect set is
-assumed to be the most-permissive built-in set: `io + mut + panic`. Annotate
-upstream signatures via `rustricted-std/effects.toml` to tighten this on a
-per-function basis.
 
 ## Standard library shims
 

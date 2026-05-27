@@ -4,14 +4,11 @@
 //! - [`pipe`] desugars `e |> f(args)` to `f(e, args)`.
 //! - [`named_args`] rewrites `f(name: value, ...)` to positional based on
 //!   a per-crate callee registry built from local function signatures.
-//! - [`effects`] strips `effect E + E` annotations from function signatures
-//!   (the [`rustricted_effects`] crate enforces them before stripping).
 //!
 //! The driver wires these together via [`lower`].
 
 use proc_macro2::TokenStream;
 use rustricted_diag::Diagnostic;
-use rustricted_effects::EffectTable;
 use thiserror::Error;
 
 pub mod named_args;
@@ -45,9 +42,6 @@ pub struct LowerOutput {
     /// Tracked here because the attribute is stripped during lowering
     /// (rustc doesn't recognise it) but downstream lints still need it.
     pub strict_mode: bool,
-    /// Effect declarations parsed out of `fn ... effect E + E` annotations.
-    /// Empty for sources that don't use the `effect` keyword.
-    pub effect_table: EffectTable,
 }
 
 /// Lower a Rustricted source file to plain Rust.
@@ -55,10 +49,6 @@ pub fn lower(source: &str) -> Result<LowerOutput, Error> {
     let tokens: TokenStream = source.parse()?;
 
     let strict_mode = detect_strict_mode(&tokens);
-
-    // Strip `effect` clauses first — they live in fn signatures, so removing
-    // them simplifies every later pass and guarantees syn can parse the result.
-    let (tokens, effect_table) = rustricted_effects::strip_effect_annotations(tokens);
 
     // Build the local callee registry from the cleaned signatures so named-args
     // can rewrite calls against the declared parameter list.
@@ -75,7 +65,6 @@ pub fn lower(source: &str) -> Result<LowerOutput, Error> {
         source,
         diagnostics,
         strict_mode,
-        effect_table,
     })
 }
 

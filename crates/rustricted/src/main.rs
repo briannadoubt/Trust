@@ -131,13 +131,6 @@ fn run_pipeline(input: &Path, source: &str, skip_lints: bool) -> Result<Pipeline
             rustricted_lints::lint_strict(&file, &lower_out.source, lower_out.strict_mode);
         all_diagnostics.extend(lint_report.diagnostics);
 
-        // Effect check: only audit functions that explicitly declared an
-        // effect set. Outside strict mode the table is still populated, but
-        // we skip the check entirely so non-strict crates pay nothing.
-        if lower_out.strict_mode {
-            let effect_report = rustricted_effects::check(&file, &lower_out.effect_table);
-            all_diagnostics.extend(effect_report.diagnostics);
-        }
     }
 
     let any_errors = all_diagnostics.iter().any(Diagnostic::is_error);

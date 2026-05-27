@@ -351,7 +351,6 @@ dependencies = [
  "clap",
  "proc-macro2",
  "rustricted-diag",
- "rustricted-effects",
  "rustricted-lints",
  "rustricted-lower",
  "rustricted-syntax",
@@ -368,17 +367,6 @@ name = "rustricted-diag"
 version = "0.1.0"
 dependencies = [
  "ariadne",
-]
-
-[[package]]
-name = "rustricted-effects"
-version = "0.1.0"
-dependencies = [
- "insta",
- "proc-macro2",
- "rustricted-diag",
- "syn",
- "thiserror",
 ]
 
 [[package]]
@@ -400,7 +388,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rustricted-diag",
- "rustricted-effects",
  "syn",
  "thiserror",
 ]
@@ -730,7 +717,6 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "rustricted-effects",
  "rustricted-lints",
  "rustricted-lower",
 ]

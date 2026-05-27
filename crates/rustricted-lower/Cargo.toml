@@ -15,7 +15,6 @@ quote.workspace = true
 syn.workspace = true
 thiserror.workspace = true
 rustricted-diag = { path = "../rustricted-diag" }
-rustricted-effects = { path = "../rustricted-effects" }
 
 [dev-dependencies]
 insta.workspace = true
