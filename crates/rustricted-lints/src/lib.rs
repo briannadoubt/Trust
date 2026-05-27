@@ -145,6 +145,19 @@ mod tests {
     }
 
     #[test]
+    fn r0004_silent_on_super_glob_in_cfg_test_mod() {
+        let src = "#![strict]\nfn production() {}\n#[cfg(test)]\nmod tests {\n    use super::*;\n    #[test]\n    fn it_works() {}\n}";
+        let d = diags_for(Rule::NoGlobImport, src);
+        assert!(d.is_empty(), "expected no R0004 for use super::* in cfg(test), got {d:?}");
+    }
+
+    #[test]
+    fn r0004_still_fires_outside_cfg_test() {
+        let src = "#![strict]\nuse super::*;\nfn f() {}";
+        assert!(fires(Rule::NoGlobImport, src));
+    }
+
+    #[test]
     fn r0005_fires_on_unjustified_unsafe_block() {
         let src = "#![strict]\nfn f() { unsafe { let _ = 1; } }";
         assert!(fires(Rule::JustifyUnsafe, src));
@@ -168,6 +181,15 @@ mod tests {
         let src = "#![strict]\n// safety: pointer is checked by caller\nunsafe fn f() {}";
         let d = diags_for(Rule::JustifyUnsafe, src);
         assert!(d.is_empty(), "expected no R0005 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0005_silent_on_doc_comment_safety_in_unsafe_fn() {
+        // anyhow-style: Safety: paragraph lives in the doc comment, not an
+        // inline block comment within 200 bytes of the unsafe keyword.
+        let src = "#![strict]\n/// Does something.\n///\n/// # Safety\n///\n/// The pointer must be valid.\nunsafe fn f() {}";
+        let d = diags_for(Rule::JustifyUnsafe, src);
+        assert!(d.is_empty(), "expected no R0005 for Safety: in doc comment, got {d:?}");
     }
 
     #[test]

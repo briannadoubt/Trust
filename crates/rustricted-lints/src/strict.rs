@@ -211,11 +211,29 @@ fn tree_has_glob(tree: &syn::UseTree) -> bool {
 
 struct NoGlobImportVisitor<'a> {
     diagnostics: &'a mut Vec<Diagnostic>,
+    in_test_depth: usize,
+}
+
+impl<'a> NoGlobImportVisitor<'a> {
+    fn with_test_scope<F: FnOnce(&mut Self)>(&mut self, is_test: bool, f: F) {
+        if is_test {
+            self.in_test_depth += 1;
+        }
+        f(self);
+        if is_test {
+            self.in_test_depth -= 1;
+        }
+    }
 }
 
 impl<'ast, 'a> Visit<'ast> for NoGlobImportVisitor<'a> {
+    fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_mod(this, node));
+    }
+
     fn visit_item_use(&mut self, node: &'ast syn::ItemUse) {
-        if tree_has_glob(&node.tree) {
+        if self.in_test_depth == 0 && tree_has_glob(&node.tree) {
             let diag = Diagnostic::error(
                 Rule::NoGlobImport.code(),
                 "glob imports (`use foo::*`) are banned in strict mode",
@@ -230,7 +248,10 @@ impl<'ast, 'a> Visit<'ast> for NoGlobImportVisitor<'a> {
 }
 
 fn run_no_glob_import(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
-    let mut v = NoGlobImportVisitor { diagnostics };
+    let mut v = NoGlobImportVisitor {
+        diagnostics,
+        in_test_depth: 0,
+    };
     v.visit_file(file);
 }
 
@@ -272,6 +293,34 @@ fn window_contains_marker(window: &str, marker: &str) -> bool {
     false
 }
 
+/// Check whether any `#[doc = "..."]` / `///` attribute on an item mentions
+/// a safety justification. Accepts both `safety:` (inline prose) and
+/// `# safety` (standard rustdoc section header). Anyhow-style crates write
+/// `// Safety:` paragraphs in the doc comment rather than as inline block
+/// comments, so the 200-byte leading-window check misses them.
+fn doc_attrs_contain_marker(attrs: &[syn::Attribute], marker: &str) -> bool {
+    for attr in attrs {
+        if !attr.path().is_ident("doc") {
+            continue;
+        }
+        if let syn::Meta::NameValue(nv) = &attr.meta {
+            if let syn::Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Str(s),
+                ..
+            }) = &nv.value
+            {
+                let lower = s.value().to_ascii_lowercase();
+                // Accept "safety:" (inline) and "# safety" (rustdoc section).
+                let alt_marker = marker.trim_end_matches(':');
+                if lower.contains(marker) || lower.contains(&format!("# {alt_marker}")) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 struct JustifyUnsafeVisitor<'a, 'src> {
     diagnostics: &'a mut Vec<Diagnostic>,
     source: &'src str,
@@ -305,14 +354,16 @@ impl<'ast, 'a, 'src> Visit<'ast> for JustifyUnsafeVisitor<'a, 'src> {
                 .unwrap_or_else(|| node.sig.span());
             let range = span_range(span);
             let window = leading_window(self.source, range.start);
-            if !window_contains_marker(window, "safety:") {
+            let justified = window_contains_marker(window, "safety:")
+                || doc_attrs_contain_marker(&node.attrs, "safety:");
+            if !justified {
                 let diag = Diagnostic::error(
                     Rule::JustifyUnsafe.code(),
                     "`unsafe fn` missing `// safety:` justification",
                     range,
                 )
                 .with_why(Rule::JustifyUnsafe.rationale().to_string())
-                .with_help("add a `// safety:` comment in the 200 bytes preceding this function");
+                .with_help("add a `// safety:` comment in the 200 bytes preceding this function, or in the function's doc comment");
                 self.diagnostics.push(diag);
             }
         }

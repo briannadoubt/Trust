@@ -89,6 +89,7 @@ impl Rule {
         matches!(
             self,
             Rule::NoUnwrap
+                | Rule::NoGlobImport
                 | Rule::NoTodoMacro
                 | Rule::NoPanic
                 | Rule::NoBoolParam
