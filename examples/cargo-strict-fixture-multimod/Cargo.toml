@@ -1,0 +1,18 @@
+[workspace]
+
+[package]
+name = "cargo-strict-fixture-multimod"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "cargo_strict_fixture_multimod"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cargo-strict-fixture-multimod"
+path = "src/main.rs"
+
+[dependencies]
+rustricted-attrs = { path = "../../crates/rustricted-attrs" }

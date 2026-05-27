@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+build = "build.rs"
+
+[build-dependencies]
+syn = { workspace = true }
 
 [dependencies]
 prettyplease.workspace = true
@@ -15,7 +19,6 @@ quote.workspace = true
 syn.workspace = true
 thiserror.workspace = true
 rustricted-diag = { path = "../rustricted-diag" }
-rustricted-effects = { path = "../rustricted-effects" }
 
 [dev-dependencies]
 insta.workspace = true

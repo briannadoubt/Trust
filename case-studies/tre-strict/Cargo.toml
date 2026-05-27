@@ -1,0 +1,38 @@
+[workspace]
+
+[package]
+name = "tre-strict"
+version = "0.4.0"
+edition = "2018"
+license = "MIT"
+description = "tre v0.4.0 vendored for Rustricted strict-mode case study (RT-29)"
+
+# Source: https://github.com/dduan/tre @ v0.4.0 (commit 2caab28)
+# Original author: Daniel Duan <daniel@duan.ca>
+# Vendored 2026-05-27. See LICENSE.md.
+#
+# Modifications from upstream:
+#  - Removed build.rs (shell completion generation requires include!("src/cli.rs")
+#    which conflicts with per-file strict markers).
+#  - Removed [[bin]] override; using default src/main.rs auto-discovery.
+#  - Pinned `lscolors` to 0.7.1 (matches upstream Cargo.toml).
+#  - Added rustricted-attrs dep + strict!{} marker in each .rs file.
+
+[dependencies]
+atty = "0.2"
+clap = { version = "3.1.8", features = ["derive"] }
+getopts = "0.2"
+indexmap = "1.9.0"
+lscolors = "0.7.1"
+regex = "1.5.5"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+slab = "0.4.2"
+termcolor = "1"
+walkdir = "2"
+
+rustricted-attrs = { path = "../../crates/rustricted-attrs" }
+
+[[bin]]
+name = "tre"
+path = "src/main.rs"

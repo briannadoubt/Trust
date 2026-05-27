@@ -8,10 +8,15 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
+[lib]
+name = "rustricted_rustc"
+path = "src/lib.rs"
+
 [[bin]]
 name = "rustricted-rustc"
 path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
+rustricted-attrs = { path = "../rustricted-attrs" }
 rustricted-lower = { path = "../rustricted-lower" }

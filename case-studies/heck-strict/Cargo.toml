@@ -1,0 +1,17 @@
+[workspace]
+
+[package]
+name = "heck-strict"
+version = "0.5.0"
+edition = "2021"
+rust-version = "1.56"
+license = "MIT OR Apache-2.0"
+description = "heck vendored for Rustricted strict-mode case study (RT-12)"
+
+[lib]
+# Doc-tests are disabled: rustdoc does not use RUSTC_WRAPPER, so named-arg
+# syntax in the lowered source is not pre-processed before doc compilation.
+doctest = false
+
+[dependencies]
+rustricted-attrs = { path = "../../crates/rustricted-attrs" }

@@ -1,6 +1,8 @@
 //! Rule registry. Each entry is a stable code (`R0001`, `R0002`, …), a short
 //! name, and a one-sentence rationale. The runner dispatches by `Rule`.
 
+rustricted_attrs::strict! {}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Rule {
     /// `.unwrap()` used outside `#[cfg(test)]`.
@@ -89,6 +91,8 @@ impl Rule {
         matches!(
             self,
             Rule::NoUnwrap
+                | Rule::NoGlobImport
+                | Rule::NoUserMacros
                 | Rule::NoTodoMacro
                 | Rule::NoPanic
                 | Rule::NoBoolParam

@@ -1,0 +1,206 @@
+# Why Rustricted
+
+Audience: an engineer deciding whether to adopt Rustricted on an
+agent-driven codebase, or a designer building something similar. If you
+are looking to contribute to the toolchain itself, start with
+[AGENTS.md](AGENTS.md) and [SPEC.md](SPEC.md) instead.
+
+This document is the rationale, not the reference. It is short on
+purpose.
+
+## The problem
+
+LLMs write Rust that compiles and looks plausible, then ships a small,
+predictable set of bugs. The set is narrow enough to name:
+
+- **Positional arguments past arity 2.** A model that knows
+  `make_rect(width, height)` will, on a sibling call site three files
+  later, write `make_rect(height, width)`. The compiler accepts it. The
+  type checker accepts it. The reviewer skims it. The bug ships.
+- **`.unwrap()` in production paths.** The reflex is overwhelming.
+  Training data is saturated with example code that unwraps because the
+  example is two lines long and the alternative would dilute the point.
+  Models reproduce the reflex in 500-line files where the alternative is
+  the point.
+- **`as` casts that silently truncate.** `len as u32` on a `usize`
+  that came from user input is a bug class, not an idiom. The model
+  reaches for `as` because it is shorter than `.try_into()?`.
+- **Glob imports.** `use crate::types::*;` in a test module hides what
+  is in scope and lets unrelated refactors change which symbol resolves.
+  Models add globs the moment a file has more than four imports.
+- **Opaque macros.** A `macro_rules!` two files away expands into the
+  call site and changes what the code means. The model that wrote the
+  macro and the model that called it are not the same session.
+
+These are not novel observations. They show up in every postmortem of
+agent-authored Rust. What is novel is that the list is _short_ and
+_stable_: the same handful of patterns dominate every corpus we have
+looked at. See [`eval/runs/`](../eval/runs/) for the run logs and
+[`case-studies/heck-strict.md`](../case-studies/heck-strict.md) and
+[`case-studies/tre-strict.md`](../case-studies/tre-strict.md) for what
+the lints catch on real third-party crates (a pure library and a small
+CLI with real I/O respectively).
+
+## The thesis
+
+Rust is already excellent at the parts of language design that are hard
+to get right. Exhaustive `match`. No null. Explicit mutation. Sum types
+with payloads. A borrow checker that, whatever its costs, makes a large
+class of bugs impossible to express. An agent writing Rust starts ahead.
+
+The delta from "Rust" to "Rust an agent writes correctly on the first
+try" is small. It is the list above. Rustricted is the toolchain that
+closes that delta and nothing else. There is no new type system, no new
+runtime, no replacement standard library. The output is plain Rust
+source, handed to a stock `rustc`. If you stop using Rustricted
+tomorrow, the lowered Rust your codebase produced still builds.
+
+## What you write
+
+### Named arguments
+
+In a strict crate, calls with more than one argument must name them.
+The lowering pass rewrites the call back to positional before `rustc`
+sees it.
+
+```rust
+#![strict]
+
+fn make_rect(width: u32, height: u32) -> u32 {
+    width * height
+}
+
+fn main() {
+    // rejected by R0042
+    let a = make_rect(10, 5);
+
+    // accepted; order is free
+    let b = make_rect(width: 10, height: 5);
+    let c = make_rect(height: 5, width: 10);
+
+    println!("{b} {c}");
+}
+```
+
+Arity-1 calls remain positional. Calls into upstream crates that have
+not opted in remain positional. The rule fires where the bug class
+actually lives: in-crate calls with multiple parameters whose order is
+easy to swap. See [`examples/03-named-args/area.rs`](../examples/03-named-args/area.rs).
+
+### Strict lints
+
+`.unwrap()` outside `#[cfg(test)]` is a hard error. The replacement is
+in the diagnostic.
+
+```rust
+#![strict]
+
+use std::path::Path;
+
+// rejected: R0001 no-unwrap
+fn load(path: &Path) -> String {
+    std::fs::read_to_string(path).unwrap()
+}
+
+// accepted: propagate the error
+fn load(path: &Path) -> std::io::Result<String> {
+    std::fs::read_to_string(path)
+}
+```
+
+The full catalogue (R0001 through R0042) is in
+[SPEC.md § Lints](SPEC.md#lints). Every diagnostic carries a `why:`
+note explaining the rule and a `help:` line with a literal replacement;
+that contract is documented in
+[AGENTS.md § The teaching-error contract](AGENTS.md#the-teaching-error-contract).
+
+## What it costs
+
+Honestly:
+
+- **Verbose call sites.** `make_rect(width: 10, height: 5)` is longer
+  than `make_rect(10, 5)`. Most engineers feel this most on the first
+  day. The agent does not feel it at all.
+- **Activation per file or per crate.** Single-file inputs use
+  `#![strict]` at the crate root. Crates built through cargo use the
+  `rustricted_attrs::strict!{}` marker macro instead, because stock
+  `rustc` does not recognise `#![strict]`. See
+  [SPEC.md § Activation](SPEC.md#activation).
+- **Cargo needs a wrapper for the syntax extensions.** The named-arg
+  rewrite has to run before `rustc` sees the file, and `cargo build`
+  invokes `rustc` directly. You set
+  `RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc)` for the
+  build. The lints alone work without the wrapper; the syntax
+  extensions do not.
+- **The wrapper is single-file at the moment.** Only the `.rs` file
+  passed to `rustc` is lowered. Submodules referenced by `mod foo;` are
+  read by `rustc` from disk and not lowered. Multi-file crates either
+  keep extension syntax in the crate root or pre-lower their sources.
+  See the limitation note in
+  [SPEC.md § Cargo mode](SPEC.md#cargo-mode-rustricted_attrsstrict-lints-only-by-default).
+- **The LSP is a stub.** The `rustricted-lsp` binary prints a
+  placeholder. Diagnostics today come from `rustricted check` on the
+  command line.
+- **Cross-crate signature data is missing.** R0042 fires on in-crate
+  callees only. Calls into upstream crates accept positional arguments
+  unconditionally. The bug class the rule targets is not yet caught at
+  the API boundary.
+
+If any of those is a blocker, Rustricted is not ready for you yet.
+
+## Design priorities
+
+Rustricted is agent-first and human-second. When a design choice trades
+verbosity for explicitness, or rigidity for fewer authoring mistakes,
+the agent-friendly side wins and the doc does not apologise for it.
+Mandatory named arguments, exhaustive `// safety:` and `// reason:`
+comments, no-glob imports, no-bool-param on public surface — every one
+of those is more typing for the human and fewer wrong call sites for
+the agent.
+
+The phrase from the original design conversation was "this is for me,
+not for you" — me being the agent, you being the human reader. The
+language exists to reduce the systematic mistakes LLMs make. Where a
+choice is hostile to both humans and agents (cryptic errors, surprising
+semantics), it is rejected on its own merits; this is about resolving
+genuine tradeoffs, not licensing bad design.
+
+The full lint catalogue, rule-by-rule rationale, and grammar for the
+two syntax extensions are in [SPEC.md](SPEC.md). The
+phase-by-phase rationale for each individual rule is in
+[RATIONALE.md](RATIONALE.md).
+
+## When not to use it
+
+- **Single-author projects with no LLM contribution.** The dialect's
+  whole reason to exist is to catch agent-authoring mistakes. A human
+  writing Rust alone gets the cost (verbosity, activation, wrapper)
+  without the benefit.
+- **Teams that cannot tolerate `RUSTC_WRAPPER` in their build.** The
+  wrapper is how the syntax extensions reach `rustc`. If your CI,
+  vendor builds, or distro packaging cannot set the environment
+  variable, you get the lints but not named arguments or pipe.
+- **Performance-sensitive hot paths that audit every line.** Lowering
+  is source-to-source with no runtime cost — the extra dispatch claim
+  is not real. But if your team's bar is "every line is reviewed by a
+  human who knows the codebase cold," the bugs Rustricted catches were
+  already going to be caught at review, and the verbosity tax is pure
+  loss.
+- **Codebases that lean heavily on `macro_rules!` or proc-macros.**
+  R0008 bans user macros without explicit opt-in. The opt-in exists
+  (`#[strict::macros_ok]`), but if every other file needs it, the rule
+  is fighting the codebase instead of helping it.
+- **Multi-crate workspaces today, if you need named arguments enforced
+  across crate boundaries.** The cross-crate registry is the dialect's
+  largest open gap. See the
+  [`heck` case study](../case-studies/heck-strict.md) for what a
+  single-crate adoption looks like end to end, including the
+  workarounds, and the
+  [`tre` case study](../case-studies/tre-strict.md) for the same
+  exercise on an 8-file CLI with real I/O — which surfaces the
+  per-file callee registry limitation (RT-40) as the biggest gap
+  for multi-module adoption.
+
+If none of those apply and you are shipping Rust written largely by
+agents, the rest of the documentation starts at
+[SPEC.md](SPEC.md).

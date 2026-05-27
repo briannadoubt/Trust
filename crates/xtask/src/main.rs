@@ -5,6 +5,8 @@
 //! - `cargo xtask check-emissions` — verify every implemented `Rule` variant
 //!   has at least one emission site in the workspace.
 
+rustricted_attrs::strict! {}
+
 use anyhow::{bail, Context, Result};
 use std::env;
 use std::fs;
@@ -58,35 +60,24 @@ fn check_emissions() -> Result<()> {
             continue;
         }
         check_one(
-            r.code(),
-            &format!("{r:?}"),
-            "rustricted-lints/src/rules.rs",
-            &texts,
-            &mut failures,
+            code: r.code(),
+            variant: &format!("{r:?}"),
+            catalogue_suffix: "rustricted-lints/src/rules.rs",
+            texts: &texts,
+            failures: &mut failures,
         );
         checked += 1;
     }
     for r in rustricted_lower::rule::ALL {
         check_one(
-            r.code(),
-            &format!("{r:?}"),
-            "rustricted-lower/src/rule.rs",
-            &texts,
-            &mut failures,
+            code: r.code(),
+            variant: &format!("{r:?}"),
+            catalogue_suffix: "rustricted-lower/src/rule.rs",
+            texts: &texts,
+            failures: &mut failures,
         );
         checked += 1;
     }
-    for r in rustricted_effects::rule::ALL {
-        check_one(
-            r.code(),
-            &format!("{r:?}"),
-            "rustricted-effects/src/rule.rs",
-            &texts,
-            &mut failures,
-        );
-        checked += 1;
-    }
-
     if !failures.is_empty() {
         for f in &failures {
             eprintln!("error: {f}");
@@ -126,7 +117,7 @@ fn check_one(
 
 fn collect_rust_files(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut out = Vec::new();
-    walk_rs(dir, &mut out)?;
+    walk_rs(dir: dir, out: &mut out)?;
     Ok(out)
 }
 
@@ -135,7 +126,7 @@ fn walk_rs(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
         let entry = entry?;
         let p = entry.path();
         if p.is_dir() {
-            walk_rs(&p, out)?;
+            walk_rs(dir: &p, out: out)?;
         } else if p.extension().and_then(|e| e.to_str()) == Some("rs") {
             out.push(p);
         }
@@ -162,8 +153,8 @@ fn gen_docs(check_only: bool) -> Result<()> {
 
     let lints_table = build_lints_table();
     let lowering_table = build_lowering_diags_table();
-    let updated = replace_section(&original, LINTS_BEGIN, LINTS_END, &lints_table)?;
-    let updated = replace_section(&updated, LOWER_BEGIN, LOWER_END, &lowering_table)?;
+    let updated = replace_section(input: &original, begin: LINTS_BEGIN, end: LINTS_END, content: &lints_table)?;
+    let updated = replace_section(input: &updated, begin: LOWER_BEGIN, end: LOWER_END, content: &lowering_table)?;
 
     if check_only {
         if updated != original {
@@ -184,16 +175,12 @@ fn gen_docs(check_only: bool) -> Result<()> {
     Ok(())
 }
 
-/// Build the non-strict lowering / analysis diagnostics table from the
-/// `Rule` enums in `rustricted-lower` and `rustricted-effects`. Output is
-/// sorted by code so the table order matches the numeric prefix scheme.
+/// Build the non-strict lowering diagnostics table from the `Rule` enum in
+/// `rustricted-lower`. Output is sorted by code.
 fn build_lowering_diags_table() -> String {
     let mut rows: Vec<(&'static str, &'static str, &'static str, &'static str)> = Vec::new();
     for r in rustricted_lower::rule::ALL {
         rows.push((r.code(), r.pass(), "rustricted-lower", r.message_shape()));
-    }
-    for r in rustricted_effects::rule::ALL {
-        rows.push((r.code(), r.pass(), "rustricted-effects", r.message_shape()));
     }
     rows.sort_by_key(|row| row.0);
 

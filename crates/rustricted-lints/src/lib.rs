@@ -4,6 +4,11 @@
 //! diagnostic for a specific footgun. Activated by `#![strict]` at the
 //! crate root; individual lints can be silenced with `#[allow(...)]` if
 //! accompanied by a `// reason:` justification comment.
+//!
+//! Intentionally not `#![strict]`-marked: this file's `#[cfg(test)]` block
+//! has 45+ positional helper calls (`fires(Rule::X, src)`, `diags_for(...)`)
+//! that R0042 correctly flags but mass-rewriting hits >100-LOC stop cond
+//! for RT-31. `runner.rs` / `rules.rs` are strict-marked.
 
 mod rules;
 mod runner;
@@ -145,6 +150,22 @@ mod tests {
     }
 
     #[test]
+    fn r0004_silent_on_super_glob_in_cfg_test_mod() {
+        let src = "#![strict]\nfn production() {}\n#[cfg(test)]\nmod tests {\n    use super::*;\n    #[test]\n    fn it_works() {}\n}";
+        let d = diags_for(Rule::NoGlobImport, src);
+        assert!(
+            d.is_empty(),
+            "expected no R0004 for use super::* in cfg(test), got {d:?}"
+        );
+    }
+
+    #[test]
+    fn r0004_still_fires_outside_cfg_test() {
+        let src = "#![strict]\nuse super::*;\nfn f() {}";
+        assert!(fires(Rule::NoGlobImport, src));
+    }
+
+    #[test]
     fn r0005_fires_on_unjustified_unsafe_block() {
         let src = "#![strict]\nfn f() { unsafe { let _ = 1; } }";
         assert!(fires(Rule::JustifyUnsafe, src));
@@ -168,6 +189,18 @@ mod tests {
         let src = "#![strict]\n// safety: pointer is checked by caller\nunsafe fn f() {}";
         let d = diags_for(Rule::JustifyUnsafe, src);
         assert!(d.is_empty(), "expected no R0005 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0005_silent_on_doc_comment_safety_in_unsafe_fn() {
+        // anyhow-style: Safety: paragraph lives in the doc comment, not an
+        // inline block comment within 200 bytes of the unsafe keyword.
+        let src = "#![strict]\n/// Does something.\n///\n/// # Safety\n///\n/// The pointer must be valid.\nunsafe fn f() {}";
+        let d = diags_for(Rule::JustifyUnsafe, src);
+        assert!(
+            d.is_empty(),
+            "expected no R0005 for Safety: in doc comment, got {d:?}"
+        );
     }
 
     #[test]
@@ -209,6 +242,14 @@ mod tests {
         let src = "#![strict]\nfn f() { println!(\"hi\"); }";
         let d = diags_for(Rule::NoUserMacros, src);
         assert!(d.is_empty(), "expected no R0008 diag, got {d:?}");
+    }
+
+    #[test]
+    fn r0008_silent_in_cfg_test_mod() {
+        // Heck-style: test helper macros inside #[cfg(test)] mod must not fire R0008.
+        let src = "#![strict]\n#[cfg(test)]\nmod tests {\n    macro_rules! t {\n        ($s:expr) => { $s.to_string() }\n    }\n    #[test]\n    fn it_works() { assert_eq!(t!(\"hi\"), \"hi\"); }\n}";
+        let d = diags_for(Rule::NoUserMacros, src);
+        assert!(d.is_empty(), "expected no R0008 in cfg(test), got {d:?}");
     }
 
     #[test]

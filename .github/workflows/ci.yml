@@ -20,7 +20,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: fmt
-        run: cargo fmt --all -- --check
+        run: bash scripts/fmt.sh --check
       - name: clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: test
@@ -98,18 +98,69 @@ jobs:
           cargo run -p rustricted -- build examples/02-pipe/chain.rs --out /tmp/p2
           test "$(/tmp/p2)" = "11"
 
+      - name: rustc wrapper — multi-module crate
+        run: |
+          cargo build -p rustricted-rustc
+          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          (cd examples/cargo-strict-fixture-multimod && RUSTC_WRAPPER="$WRAPPER" cargo run) \
+            | grep -qx "50"
+
+      - name: rustdoc wrapper — doc-tests with named-arg syntax
+        run: |
+          # rustdoc bypasses RUSTC_WRAPPER and invokes rustc directly on
+          # each doc-test snippet. A RUSTDOC shim that lowers code blocks
+          # inside `///` doc comments fixes this.
+          cargo build -p rustricted-rustc -p rustricted-rustdoc
+          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          RUSTDOC_SHIM=$(realpath target/debug/rustricted-rustdoc)
+          # Negative: without RUSTDOC, named-arg doctests fail.
+          (cd examples/cargo-strict-fixture-multimod && cargo clean >/dev/null)
+          if (cd examples/cargo-strict-fixture-multimod \
+              && RUSTC_WRAPPER="$WRAPPER" cargo test --doc 2>/dev/null); then
+            echo "FAIL: expected cargo test --doc to reject named-arg doctest without RUSTDOC shim"
+            exit 1
+          fi
+          # Positive: with RUSTDOC, doc-test snippets are lowered too.
+          (cd examples/cargo-strict-fixture-multimod && cargo clean >/dev/null)
+          (cd examples/cargo-strict-fixture-multimod \
+            && RUSTC_WRAPPER="$WRAPPER" RUSTDOC="$RUSTDOC_SHIM" cargo test --doc) \
+            | tee /tmp/rt28.log
+          grep -q "2 passed" /tmp/rt28.log
+
+      - name: rustc wrapper — cross-crate named args (rustricted-std)
+        run: |
+          # Negative: without the wrapper, rustc must reject the named-arg
+          # call to a fn declared in another crate.
+          if (cd examples/cargo-strict-cross-crate && cargo build 2>/dev/null); then
+            echo "FAIL: expected cargo build to reject cross-crate named-arg syntax without wrapper"
+            exit 1
+          fi
+          # Positive: with the wrapper, lowering seeds the CalleeRegistry
+          # from rustricted-std's bundled signature index and rewrites the
+          # call to positional (reordered against the real signature).
+          cargo build -p rustricted-rustc
+          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          (cd examples/cargo-strict-cross-crate && RUSTC_WRAPPER="$WRAPPER" cargo run) \
+            | grep -qx "ok"
+
       - name: example — Phase 3 named args
         run: |
           cargo run -p rustricted -- build examples/03-named-args/area.rs --out /tmp/p3
           test "$(/tmp/p3)" = "24 24"
 
-      - name: example — Phase 4 effects declared
+      - name: dogfood — build strict crates under wrapper
         run: |
-          cargo run -p rustricted -- build examples/04-effects/declared.rs --out /tmp/p4d
-          /tmp/p4d
-          test "$(/tmp/p4d | tail -1)" = "42"
+          # Several rustricted-* crates have been dogfooded with
+          # `rustricted_attrs::strict!{}` (RT-31). They use named-arg
+          # syntax internally, so they ONLY build under RUSTC_WRAPPER.
+          # See case-studies/dogfooding.md for the per-crate status.
+          cargo build -p rustricted-rustc --release
+          WRAPPER=$(realpath target/release/rustricted-rustc)
+          RUSTC_WRAPPER="$WRAPPER" cargo build \
+            -p rustricted \
+            -p rustricted-diag \
+            -p rustricted-lsp \
+            -p rustricted-rustc \
+            -p rustricted-syntax \
+            -p xtask
 
-      - name: example — Phase 4 effects undeclared (must fail with R4001)
-        run: |
-          ! cargo run -p rustricted -- check examples/04-effects/undeclared.rs 2>&1 | tee /tmp/p4u.log
-          grep -q R4001 /tmp/p4u.log

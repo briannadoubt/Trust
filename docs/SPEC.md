@@ -75,8 +75,10 @@ extensions, set `RUSTC_WRAPPER` to the `rustricted-rustc` binary
 (`crates/rustricted-rustc/`):
 
 ```sh
-cargo build -p rustricted-rustc
-RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc) cargo build
+cargo build -p rustricted-rustc -p rustricted-rustdoc
+RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc) \
+RUSTDOC=$(realpath target/debug/rustricted-rustdoc) \
+  cargo build
 ```
 
 The wrapper detects strict-marked input files, runs the lowering pass,
@@ -85,6 +87,20 @@ real rustc with `--remap-path-prefix` set so diagnostics still point at
 the original source. See `examples/cargo-strict-fixture/` for an
 end-to-end demo (the file uses `make_point(x: 1, y: 2, z: 3)` named-arg
 syntax which stock rustc rejects).
+
+**Why both `RUSTC_WRAPPER` and `RUSTDOC`?** `rustdoc` does NOT honour
+`RUSTC_WRAPPER` — it invokes rustc directly when compiling each doc-test
+snippet. So any doc-test that uses Rustricted syntax (named-args, pipe)
+would fail with a plain rustc parse error during `cargo test --doc`. The
+sibling `rustricted-rustdoc` shim wraps rustdoc the same way: it lowers
+the source file before rustdoc extracts doc-tests, and also rewrites the
+code inside `///` / `//!` fenced code blocks so the extracted snippets
+parse as plain Rust. Set it via the `RUSTDOC` env var (cargo replaces
+the rustdoc binary outright on stable; `RUSTDOC_WRAPPER` works on
+newer-cargo wrapper-style invocations and is also supported by the
+shim). See `examples/cargo-strict-fixture-multimod/src/geom.rs` for a
+doc-test that uses named-arg syntax — `cargo test --doc` fails without
+the shim and passes with it.
 
 **Current wrapper limitation.** Only the input `.rs` file passed to rustc
 is lowered. Child modules referenced by `mod foo;` are read by rustc from
@@ -446,9 +462,9 @@ Codes outside the `R00xx` strict-mode range are emitted by lowering and
 analysis passes rather than the lint runner. They fire regardless of
 `#![strict]` when their pass produces an error.
 
-The table below is auto-generated from the `Rule` enums in
-`rustricted-lower` and `rustricted-effects` by `cargo xtask gen-docs`.
-Add new codes by extending the appropriate enum and regenerating.
+The table below is auto-generated from the `Rule` enum in
+`rustricted-lower` by `cargo xtask gen-docs`.
+Add new codes by extending the enum and regenerating.
 
 <!-- BEGIN auto-generated: lowering-diagnostics-table -->
 
@@ -456,7 +472,6 @@ Add new codes by extending the appropriate enum and regenerating.
 | ----- | ------------------- | ---------------------- | --------------------------------------------------- |
 | R2001 | pipe lowering       | `rustricted-lower`     | pipe `|>` requires a path-call on the right         |
 | R3001 | named-args lowering | `rustricted-lower`     | `{fn}` has no parameter named `{arg}`               |
-| R4001 | effects check       | `rustricted-effects`   | `{fn}` is missing declared effect(s): {effects}     |
 
 <!-- END auto-generated: lowering-diagnostics-table -->
 
@@ -568,70 +583,6 @@ argument.
 The leading `e` is the longest preceding contiguous expression — parenthesised,
 bracketed, and braced groups count as atomic units. Statement boundaries
 (`{`, `}`, `;`, `,`, start-of-group) terminate the receiver.
-
-### `effect` keyword
-
-_Phase 4; parser, inference, and check are stubs in `rustricted-effects`._
-
-#### Signature grammar
-
-```
-FnSig ::= 'fn' Ident '(' Params ')' RetType? EffectClause? WhereClause? Block
-EffectClause ::= 'effect' Effect ('+' Effect)*
-Effect ::= Ident
-```
-
-The `effect` clause sits after the return type and before the where-clause (or
-the block, when no where-clause is present).
-
-```rust
-fn read_config(path: &Path) -> Result<Config> effect io { ... }
-fn save(state: &State) effect io + mut { ... }
-fn worker() -> () effect io + async + panic { ... }
-```
-
-#### Built-in effects
-
-Defined in `BUILTIN_EFFECTS`:
-
-| Effect   | Meaning                                                     |
-| -------- | ----------------------------------------------------------- |
-| `io`     | Reads or writes the filesystem, network, env, or clock.     |
-| `mut`    | Mutates state observable outside the function (statics, interior mutability). |
-| `async`  | Awaits, spawns tasks, or otherwise touches the async runtime. |
-| `panic`  | May panic on inputs the caller can plausibly provide.       |
-| `unsafe` | Contains an `unsafe` block or calls an `unsafe fn`.         |
-
-Crates may introduce custom effects by listing them in
-`rustricted-std/effects.toml` (planned) or by declaring them in-crate
-(syntax TBD).
-
-#### Inference rule
-
-For each function `f`, let `Declared(f)` be the effect set on its signature
-(empty if absent) and `Inferred(f) = ⋃ Declared(callee)` over every call site
-inside `f`. The check is:
-
-```
-Inferred(f) ⊆ Declared(f)
-```
-
-If `f` calls `g` and `g` declares `effect io`, then `f` must declare at least
-`io`. A function that calls only pure functions can declare no effects (the
-empty set is the default).
-
-#### Erasure
-
-Lowering strips every `effect` clause from the output. Effects are a
-compile-time check with no runtime cost — the lowered Rust is identical to the
-same code without the clause.
-
-#### Cross-crate assumption
-
-When `f` calls into an unannotated upstream crate, the callee's effect set is
-assumed to be the most-permissive built-in set: `io + mut + panic`. Annotate
-upstream signatures via `rustricted-std/effects.toml` to tighten this on a
-per-function basis.
 
 ## Standard library shims
 
