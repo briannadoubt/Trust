@@ -497,23 +497,38 @@ fn item_has_macros_ok(attrs: &[syn::Attribute]) -> bool {
 struct NoUserMacrosVisitor<'a> {
     diagnostics: &'a mut Vec<Diagnostic>,
     mod_opt_out_depth: usize,
+    in_test_depth: usize,
+}
+
+impl<'a> NoUserMacrosVisitor<'a> {
+    fn with_scope<F: FnOnce(&mut Self)>(&mut self, opt_out: bool, is_test: bool, f: F) {
+        if opt_out {
+            self.mod_opt_out_depth += 1;
+        }
+        if is_test {
+            self.in_test_depth += 1;
+        }
+        f(self);
+        if opt_out {
+            self.mod_opt_out_depth -= 1;
+        }
+        if is_test {
+            self.in_test_depth -= 1;
+        }
+    }
 }
 
 impl<'ast, 'a> Visit<'ast> for NoUserMacrosVisitor<'a> {
     fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
         let opt_out = item_has_macros_ok(&node.attrs);
-        if opt_out {
-            self.mod_opt_out_depth += 1;
-        }
-        visit::visit_item_mod(self, node);
-        if opt_out {
-            self.mod_opt_out_depth -= 1;
-        }
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_scope(opt_out, is_test, |this| visit::visit_item_mod(this, node));
     }
 
     fn visit_item_macro(&mut self, node: &'ast syn::ItemMacro) {
         if node.mac.path.is_ident("macro_rules")
             && self.mod_opt_out_depth == 0
+            && self.in_test_depth == 0
             && !item_has_macros_ok(&node.attrs)
         {
             let diag = Diagnostic::error(
@@ -533,6 +548,7 @@ fn run_no_user_macros(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
     let mut v = NoUserMacrosVisitor {
         diagnostics,
         mod_opt_out_depth: 0,
+        in_test_depth: 0,
     };
     v.visit_file(file);
 }

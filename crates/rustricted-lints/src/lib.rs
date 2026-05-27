@@ -234,6 +234,14 @@ mod tests {
     }
 
     #[test]
+    fn r0008_silent_in_cfg_test_mod() {
+        // Heck-style: test helper macros inside #[cfg(test)] mod must not fire R0008.
+        let src = "#![strict]\n#[cfg(test)]\nmod tests {\n    macro_rules! t {\n        ($s:expr) => { $s.to_string() }\n    }\n    #[test]\n    fn it_works() { assert_eq!(t!(\"hi\"), \"hi\"); }\n}";
+        let d = diags_for(Rule::NoUserMacros, src);
+        assert!(d.is_empty(), "expected no R0008 in cfg(test), got {d:?}");
+    }
+
+    #[test]
     fn r0007_fires_on_impl_trait_return() {
         let src = "#![strict]\nfn xs() -> impl Iterator<Item = u32> { [1u32].into_iter() }";
         assert!(fires(Rule::NoImplTraitReturn, src));

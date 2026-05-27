@@ -90,6 +90,7 @@ impl Rule {
             self,
             Rule::NoUnwrap
                 | Rule::NoGlobImport
+                | Rule::NoUserMacros
                 | Rule::NoTodoMacro
                 | Rule::NoPanic
                 | Rule::NoBoolParam

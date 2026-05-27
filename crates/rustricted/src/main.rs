@@ -126,9 +126,15 @@ fn run_pipeline(input: &Path, source: &str, skip_lints: bool) -> Result<Pipeline
     // Lints (only fire in `#![strict]` files; safe to skip on bootstrap).
     // strict_mode comes from the lowering pass — it reads `#![strict]` from
     // the original token stream before that attribute is stripped for rustc.
+    //
+    // NOTE: pass the *original* source string (not lower_out.source) so that
+    // comment-window checks (R0005 "// safety:", R0006 "// reason:") can find
+    // their justification comments. prettyplease strips all comments from the
+    // lowered output, which would make those rules fire unconditionally if we
+    // passed lower_out.source here.
     if !skip_lints {
         let lint_report =
-            rustricted_lints::lint_strict(&file, &lower_out.source, lower_out.strict_mode);
+            rustricted_lints::lint_strict(&file, source, lower_out.strict_mode);
         all_diagnostics.extend(lint_report.diagnostics);
     }
 
