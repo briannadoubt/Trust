@@ -148,7 +148,10 @@ mod tests {
     fn r0004_silent_on_super_glob_in_cfg_test_mod() {
         let src = "#![strict]\nfn production() {}\n#[cfg(test)]\nmod tests {\n    use super::*;\n    #[test]\n    fn it_works() {}\n}";
         let d = diags_for(Rule::NoGlobImport, src);
-        assert!(d.is_empty(), "expected no R0004 for use super::* in cfg(test), got {d:?}");
+        assert!(
+            d.is_empty(),
+            "expected no R0004 for use super::* in cfg(test), got {d:?}"
+        );
     }
 
     #[test]
@@ -189,7 +192,10 @@ mod tests {
         // inline block comment within 200 bytes of the unsafe keyword.
         let src = "#![strict]\n/// Does something.\n///\n/// # Safety\n///\n/// The pointer must be valid.\nunsafe fn f() {}";
         let d = diags_for(Rule::JustifyUnsafe, src);
-        assert!(d.is_empty(), "expected no R0005 for Safety: in doc comment, got {d:?}");
+        assert!(
+            d.is_empty(),
+            "expected no R0005 for Safety: in doc comment, got {d:?}"
+        );
     }
 
     #[test]
