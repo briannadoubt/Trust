@@ -5,6 +5,8 @@
 //! formats them via `ariadne` so callers see file/line context with the
 //! help text inline.
 
+rustricted_attrs::strict! {}
+
 use std::ops::Range;
 
 pub use ariadne;

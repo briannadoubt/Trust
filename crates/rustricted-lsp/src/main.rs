@@ -2,6 +2,8 @@
 //!
 //! Speaks LSP over stdio. Wire your editor to this binary; see README.
 
+rustricted_attrs::strict! {}
+
 use rustricted_lsp::Backend;
 use tower_lsp::{LspService, Server};
 

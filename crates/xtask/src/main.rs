@@ -5,6 +5,8 @@
 //! - `cargo xtask check-emissions` — verify every implemented `Rule` variant
 //!   has at least one emission site in the workspace.
 
+rustricted_attrs::strict! {}
+
 use anyhow::{bail, Context, Result};
 use std::env;
 use std::fs;
@@ -58,21 +60,21 @@ fn check_emissions() -> Result<()> {
             continue;
         }
         check_one(
-            r.code(),
-            &format!("{r:?}"),
-            "rustricted-lints/src/rules.rs",
-            &texts,
-            &mut failures,
+            code: r.code(),
+            variant: &format!("{r:?}"),
+            catalogue_suffix: "rustricted-lints/src/rules.rs",
+            texts: &texts,
+            failures: &mut failures,
         );
         checked += 1;
     }
     for r in rustricted_lower::rule::ALL {
         check_one(
-            r.code(),
-            &format!("{r:?}"),
-            "rustricted-lower/src/rule.rs",
-            &texts,
-            &mut failures,
+            code: r.code(),
+            variant: &format!("{r:?}"),
+            catalogue_suffix: "rustricted-lower/src/rule.rs",
+            texts: &texts,
+            failures: &mut failures,
         );
         checked += 1;
     }
@@ -115,7 +117,7 @@ fn check_one(
 
 fn collect_rust_files(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut out = Vec::new();
-    walk_rs(dir, &mut out)?;
+    walk_rs(dir: dir, out: &mut out)?;
     Ok(out)
 }
 
@@ -124,7 +126,7 @@ fn walk_rs(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
         let entry = entry?;
         let p = entry.path();
         if p.is_dir() {
-            walk_rs(&p, out)?;
+            walk_rs(dir: &p, out: out)?;
         } else if p.extension().and_then(|e| e.to_str()) == Some("rs") {
             out.push(p);
         }
@@ -151,8 +153,8 @@ fn gen_docs(check_only: bool) -> Result<()> {
 
     let lints_table = build_lints_table();
     let lowering_table = build_lowering_diags_table();
-    let updated = replace_section(&original, LINTS_BEGIN, LINTS_END, &lints_table)?;
-    let updated = replace_section(&updated, LOWER_BEGIN, LOWER_END, &lowering_table)?;
+    let updated = replace_section(input: &original, begin: LINTS_BEGIN, end: LINTS_END, content: &lints_table)?;
+    let updated = replace_section(input: &updated, begin: LOWER_BEGIN, end: LOWER_END, content: &lowering_table)?;
 
     if check_only {
         if updated != original {

@@ -19,6 +19,8 @@
 //! The doc-test sibling `rustricted-rustdoc` (set as `RUSTDOC`) reuses the
 //! same lowering/cache layer — see `src/lib.rs`.
 
+rustricted_attrs::strict! {}
+
 use anyhow::{bail, Context, Result};
 use rustricted_rustc::{find_input_rs, prepare_strict_input};
 use std::env;
@@ -44,20 +46,20 @@ fn run() -> Result<i32> {
     let rustc_args: Vec<String> = argv[1..].to_vec();
 
     let Some(idx) = find_input_rs(&rustc_args) else {
-        return run_rustc(rustc, &rustc_args);
+        return run_rustc(path: rustc, args: &rustc_args);
     };
 
     let input_path = PathBuf::from(&rustc_args[idx]);
     let Some(prepared) = prepare_strict_input(&input_path)
         .with_context(|| format!("preparing {}", input_path.display()))?
     else {
-        return run_rustc(rustc, &rustc_args);
+        return run_rustc(path: rustc, args: &rustc_args);
     };
 
     let mut new_args = rustc_args.clone();
     new_args[idx] = prepared.lowered_root.to_string_lossy().into_owned();
     new_args.push(prepared.remap_flag);
-    run_rustc(rustc, &new_args)
+    run_rustc(path: rustc, args: &new_args)
 }
 
 fn run_rustc(path: &str, args: &[String]) -> Result<i32> {

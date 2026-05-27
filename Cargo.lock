@@ -699,6 +699,7 @@ dependencies = [
  "anyhow",
  "clap",
  "proc-macro2",
+ "rustricted-attrs",
  "rustricted-diag",
  "rustricted-lints",
  "rustricted-lower",
@@ -716,6 +717,7 @@ name = "rustricted-diag"
 version = "0.1.0"
 dependencies = [
  "ariadne",
+ "rustricted-attrs",
 ]
 
 [[package]]
@@ -724,6 +726,7 @@ version = "0.1.0"
 dependencies = [
  "insta",
  "proc-macro2",
+ "rustricted-attrs",
  "rustricted-diag",
  "syn",
 ]
@@ -747,6 +750,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "proc-macro2",
+ "rustricted-attrs",
  "rustricted-diag",
  "rustricted-lints",
  "rustricted-lower",
@@ -761,6 +765,7 @@ name = "rustricted-rustc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "rustricted-attrs",
  "rustricted-lower",
 ]
 
@@ -1290,6 +1295,7 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "rustricted-attrs",
  "rustricted-lints",
  "rustricted-lower",
 ]

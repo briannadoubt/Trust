@@ -1,4 +1,12 @@
 //! Strict-mode activation + per-rule dispatch.
+//!
+//! Intentionally not `#![strict]`-marked: dogfooding (RT-31) surfaced
+//! RT-41 (method calls match free-fn signatures by simple name). This file
+//! has dozens of `visit::visit_X(this, node)` calls inside `Visit` impls
+//! that the per-file registry mis-resolves to local `fn visit_X(&mut self,
+//! node)` methods, producing arity-mismatch R0042 FPs. Fixing requires
+//! either path-aware callee resolution or a per-callsite `#[allow]`
+//! mechanism (neither exists yet).
 
 use crate::Rule;
 use proc_macro2::Span;

@@ -4,6 +4,11 @@
 //! diagnostic for a specific footgun. Activated by `#![strict]` at the
 //! crate root; individual lints can be silenced with `#[allow(...)]` if
 //! accompanied by a `// reason:` justification comment.
+//!
+//! Intentionally not `#![strict]`-marked: this file's `#[cfg(test)]` block
+//! has 45+ positional helper calls (`fires(Rule::X, src)`, `diags_for(...)`)
+//! that R0042 correctly flags but mass-rewriting hits >100-LOC stop cond
+//! for RT-31. `runner.rs` / `rules.rs` are strict-marked.
 
 mod rules;
 mod runner;

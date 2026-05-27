@@ -148,3 +148,19 @@ jobs:
           cargo run -p rustricted -- build examples/03-named-args/area.rs --out /tmp/p3
           test "$(/tmp/p3)" = "24 24"
 
+      - name: dogfood — build strict crates under wrapper
+        run: |
+          # Several rustricted-* crates have been dogfooded with
+          # `rustricted_attrs::strict!{}` (RT-31). They use named-arg
+          # syntax internally, so they ONLY build under RUSTC_WRAPPER.
+          # See case-studies/dogfooding.md for the per-crate status.
+          cargo build -p rustricted-rustc --release
+          WRAPPER=$(realpath target/release/rustricted-rustc)
+          RUSTC_WRAPPER="$WRAPPER" cargo build \
+            -p rustricted \
+            -p rustricted-diag \
+            -p rustricted-lsp \
+            -p rustricted-rustc \
+            -p rustricted-syntax \
+            -p xtask
+

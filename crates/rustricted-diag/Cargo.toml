@@ -10,3 +10,4 @@ repository.workspace = true
 
 [dependencies]
 ariadne.workspace = true
+rustricted-attrs = { path = "../rustricted-attrs" }

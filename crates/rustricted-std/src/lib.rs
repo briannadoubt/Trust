@@ -5,6 +5,13 @@
 //! positional `std::fs::read_to_string(p)`. The wrappers carry no logic;
 //! they exist purely to make parameter names part of the signature for
 //! Rustricted's named-args lowering pass.
+//!
+//! Intentionally not `#![strict]`-marked: this crate is the source of truth
+//! for the `STD_SIGNATURES` build-time index in `rustricted-lower/build.rs`,
+//! which parses this file with `syn`. Strict-mode syntax (named args, pipe)
+//! is not parseable by stock `syn`, so strict-marking here would empty the
+//! signature index and break cross-crate named-arg lowering everywhere.
+//! See dogfooding case study + RT-46.
 
 pub mod fs {
     use std::io;

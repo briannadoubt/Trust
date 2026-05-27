@@ -445,6 +445,15 @@ fn split_by_top_comma(tokens: TokenStream) -> Vec<TokenStream> {
     let mut segments: Vec<Vec<TokenTree>> = Vec::new();
     let mut current: Vec<TokenTree> = Vec::new();
     let mut in_closure_params = false;
+    // Depth of unmatched `<` we're currently inside. Commas inside generic
+    // argument lists (e.g. `HashMap<K, V>`, or turbofish `foo::<A, B>(..)`)
+    // must NOT split the surrounding arg/param list. RT-39: without this,
+    // a param like `map: &mut HashMap<K, V>` was split into two segments at
+    // the comma between `K` and `V`, inflating reported arity. We only
+    // count `<`/`>` when they appear as `Alone`-spacing punct, to avoid
+    // tangling with operators like `<<`, `<=`, `->`, `=>`. This is heuristic
+    // but matches every well-formed Rust signature.
+    let mut angle_depth: i32 = 0;
     for tree in trees {
         if let TokenTree::Punct(p) = &tree {
             match p.as_char() {
@@ -453,7 +462,17 @@ fn split_by_top_comma(tokens: TokenStream) -> Vec<TokenStream> {
                     current.push(tree);
                     continue;
                 }
-                ',' if !in_closure_params => {
+                '<' if p.spacing() == Spacing::Alone => {
+                    angle_depth += 1;
+                    current.push(tree);
+                    continue;
+                }
+                '>' if p.spacing() == Spacing::Alone && angle_depth > 0 => {
+                    angle_depth -= 1;
+                    current.push(tree);
+                    continue;
+                }
+                ',' if !in_closure_params && angle_depth == 0 => {
                     if !current.is_empty() {
                         segments.push(std::mem::take(&mut current));
                     }

@@ -1,6 +1,12 @@
 //! Lint runner: drives visitors over a parsed `syn::File` and collects
 //! diagnostics. Phase 0 stub returns an empty report; Phase 1 subagent
 //! fills in `visit::Visit` impls per rule.
+//!
+//! Intentionally not `#![strict]`-marked: calls cross-file fns
+//! `crate::strict::run_rule` and `crate::strict::detect_strict` whose
+//! signatures aren't visible to this file's per-file callee registry
+//! (RT-40). Without cross-file resolution, named-arg lowering can't strip
+//! the names, and rustc rejects them.
 
 use crate::strict::detect_strict;
 use crate::Rule;

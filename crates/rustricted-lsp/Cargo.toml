@@ -19,6 +19,7 @@ path = "src/lib.rs"
 anyhow.workspace = true
 syn.workspace = true
 proc-macro2.workspace = true
+rustricted-attrs = { path = "../rustricted-attrs" }
 rustricted-diag = { path = "../rustricted-diag" }
 rustricted-lower = { path = "../rustricted-lower" }
 rustricted-lints = { path = "../rustricted-lints" }

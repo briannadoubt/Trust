@@ -1,3 +1,5 @@
+rustricted_attrs::strict! {}
+
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use rustricted_diag::Diagnostic;
@@ -92,7 +94,7 @@ fn main() -> Result<()> {
             out,
             edition,
             no_lint,
-        } => build(&input, out.as_deref(), &edition, no_lint),
+        } => build(input: &input, out: out.as_deref(), edition: &edition, no_lint: no_lint),
         Cmd::Check { input } => check(&input),
         Cmd::Lower { input } => lower_to_stdout(&input),
     }
@@ -101,7 +103,7 @@ fn main() -> Result<()> {
 fn build(input: &Path, out: Option<&Path>, edition: &str, no_lint: bool) -> Result<()> {
     let (source, label) = read_source(input)?;
 
-    let pipeline = run_pipeline(&label, &source, no_lint)?;
+    let pipeline = run_pipeline(label: &label, source: &source, skip_lints: no_lint)?;
 
     let tmp = tempfile::Builder::new()
         .prefix("rustricted-")
@@ -141,14 +143,14 @@ fn build(input: &Path, out: Option<&Path>, edition: &str, no_lint: bool) -> Resu
 
 fn check(input: &Path) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let _ = run_pipeline(&label, &source, false)?;
+    let _ = run_pipeline(label: &label, source: &source, skip_lints: false)?;
     eprintln!("ok: {label}");
     Ok(())
 }
 
 fn lower_to_stdout(input: &Path) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let pipeline = run_pipeline(&label, &source, true)?;
+    let pipeline = run_pipeline(label: &label, source: &source, skip_lints: true)?;
     print!("{}", pipeline.lowered);
     Ok(())
 }
