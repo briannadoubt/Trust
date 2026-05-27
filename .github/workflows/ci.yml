@@ -105,6 +105,22 @@ jobs:
           (cd examples/cargo-strict-fixture-multimod && RUSTC_WRAPPER="$WRAPPER" cargo run) \
             | grep -qx "50"
 
+      - name: rustc wrapper — cross-crate named args (rustricted-std)
+        run: |
+          # Negative: without the wrapper, rustc must reject the named-arg
+          # call to a fn declared in another crate.
+          if (cd examples/cargo-strict-cross-crate && cargo build 2>/dev/null); then
+            echo "FAIL: expected cargo build to reject cross-crate named-arg syntax without wrapper"
+            exit 1
+          fi
+          # Positive: with the wrapper, lowering seeds the CalleeRegistry
+          # from rustricted-std's bundled signature index and rewrites the
+          # call to positional (reordered against the real signature).
+          cargo build -p rustricted-rustc
+          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          (cd examples/cargo-strict-cross-crate && RUSTC_WRAPPER="$WRAPPER" cargo run) \
+            | grep -qx "ok"
+
       - name: example — Phase 3 named args
         run: |
           cargo run -p rustricted -- build examples/03-named-args/area.rs --out /tmp/p3

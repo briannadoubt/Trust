@@ -15,6 +15,7 @@ use rustricted_diag::Diagnostic;
 use std::collections::{HashMap, HashSet};
 
 use crate::preprocess::from_vec;
+use crate::std_signatures::STD_SIGNATURES;
 
 #[derive(Debug, Default)]
 pub struct CalleeRegistry {
@@ -34,10 +35,32 @@ impl CalleeRegistry {
     /// cross-crate behavior (positional silently accepted) rather than
     /// guessing which signature the caller meant. The same name with
     /// identical params is silently de-duplicated.
+    ///
+    /// **Cross-crate seeding (RT-32):** after collecting the local fns,
+    /// the registry is seeded from `STD_SIGNATURES` — a build-time index
+    /// of every `pub fn` in `rustricted-std`. Local definitions take
+    /// precedence; std entries fill the gaps so call sites like
+    /// `rustricted_std::fs::write_text(path: p, contents: c)` get
+    /// reordered/stripped to the real `(path, contents)` order. If a
+    /// std name collides with a local fn of a *different* signature, the
+    /// local one wins (the closer scope is more likely what the caller
+    /// meant).
     pub fn collect(tokens: &TokenStream) -> Self {
         let mut fns: HashMap<String, Vec<String>> = HashMap::new();
         let mut ambiguous: HashSet<String> = HashSet::new();
         walk_for_fns(tokens.clone(), &mut fns, &mut ambiguous);
+        // Seed from the bundled std index. Local fns and locally-ambiguous
+        // names take precedence — don't overwrite either.
+        for (name, params) in STD_SIGNATURES {
+            let name_string = (*name).to_string();
+            if ambiguous.contains(&name_string) || fns.contains_key(&name_string) {
+                continue;
+            }
+            fns.insert(
+                name_string,
+                params.iter().map(|s| (*s).to_string()).collect(),
+            );
+        }
         CalleeRegistry { fns }
     }
 }
@@ -699,6 +722,38 @@ mod tests {
         assert!(
             diags.iter().any(|d| d.rule == "R0042"),
             "R0042 should still fire on two closure args: {diags:?}"
+        );
+    }
+
+    // RT-32: cross-crate seeding from `rustricted-std` lets the registry
+    // resolve qualified call sites like
+    // `rustricted_std::fs::write_text(path: ..., contents: ...)`. The
+    // simple-name lookup means a *bare* `write_text(...)` matches too —
+    // that's a known limitation (worth flagging if it ever causes a real
+    // mis-lowering bug).
+    #[test]
+    fn cross_crate_std_seed_reorders_named_args() {
+        let src =
+            "fn main() { let _ = rustricted_std::fs::write_text(contents: \"hi\", path: \"x\"); }";
+        let (out, diags) = lower_strict(src);
+        assert!(diags.is_empty(), "expected no diags: {diags:?}");
+        // After reorder, declared param order is (path, contents), so
+        // "x" must come before "hi".
+        let x_pos = out.find("\"x\"").expect("path arg present");
+        let hi_pos = out.find("\"hi\"").expect("contents arg present");
+        assert!(x_pos < hi_pos, "expected path before contents: {out}");
+    }
+
+    #[test]
+    fn cross_crate_std_seed_emits_r3001_on_unknown_param() {
+        // `write_text` is in the std index — supplying a name it doesn't
+        // declare should fire R3001 just like a local-fn unknown name.
+        let src =
+            "fn main() { let _ = rustricted_std::fs::write_text(path: \"x\", body: \"hi\"); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            diags.iter().any(|d| d.rule == "R3001"),
+            "expected R3001 for unknown std param: {diags:?}"
         );
     }
 
