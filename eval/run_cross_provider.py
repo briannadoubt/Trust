@@ -1,0 +1,195 @@
+"""Cross-provider eval runner for Rustricted.
+
+Runs the same task suite (tasks.toml) through a non-Anthropic model and saves
+.rs files in eval/runs/<run-id>/ so the existing score.py + summarize.py
+pipeline can score and aggregate them.
+
+Usage:
+    python3 eval/run_cross_provider.py \\
+        --provider openai \\
+        --model gpt-4o \\
+        --run 005 \\
+        --tasks 11,12,13,14,15 \\
+        --trials 3
+
+    python3 eval/run_cross_provider.py \\
+        --provider gemini \\
+        --model gemini-1.5-pro \\
+        --run 006 \\
+        --tasks 11,12,13,14,15 \\
+        --trials 3
+
+After running:
+    python3 eval/score.py 005
+    python3 eval/summarize.py 005
+    cat eval/runs/005/summary.md
+
+Requirements:
+    - openai provider:  pip install openai; OPENAI_API_KEY set
+    - gemini provider:  pip install google-generativeai; GOOGLE_API_KEY set
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+import tomllib
+import time
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent
+
+# ---------------------------------------------------------------------------
+# Provider adapters
+# ---------------------------------------------------------------------------
+
+def call_openai(model: str, prompt: str) -> str:
+    import openai  # type: ignore
+    client = openai.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+    )
+    return response.choices[0].message.content or ""
+
+
+def call_gemini(model: str, prompt: str) -> str:
+    import google.generativeai as genai  # type: ignore
+    genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+    m = genai.GenerativeModel(model)
+    response = m.generate_content(
+        prompt,
+        generation_config=genai.types.GenerationConfig(temperature=0.0),
+    )
+    return response.text or ""
+
+
+PROVIDERS: dict[str, dict] = {
+    "openai": {
+        "call": call_openai,
+        "default_model": "gpt-4o",
+        "env_key": "OPENAI_API_KEY",
+    },
+    "gemini": {
+        "call": call_gemini,
+        "default_model": "gemini-1.5-pro",
+        "env_key": "GOOGLE_API_KEY",
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Prompt extraction
+# ---------------------------------------------------------------------------
+
+def extract_source(raw: str) -> str:
+    """Strip markdown fences if the model wrapped its output."""
+    raw = raw.strip()
+    if raw.startswith("```"):
+        lines = raw.splitlines()
+        # drop opening fence
+        lines = lines[1:]
+        # drop closing fence (last non-empty line that starts with ```)
+        while lines and lines[-1].strip().startswith("```"):
+            lines.pop()
+        return "\n".join(lines).strip()
+    return raw
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Cross-provider Rustricted eval runner")
+    parser.add_argument("--provider", required=True, choices=list(PROVIDERS),
+                        help="LLM provider to use")
+    parser.add_argument("--model", help="Model name (defaults to provider default)")
+    parser.add_argument("--run", required=True, help="Run ID, e.g. 005")
+    parser.add_argument("--tasks", default="11,12,13,14,15",
+                        help="Comma-separated task IDs to run")
+    parser.add_argument("--trials", type=int, default=3,
+                        help="Number of trials per task × condition")
+    parser.add_argument("--conditions", default="vanilla,rustricted",
+                        help="Comma-separated conditions to run")
+    args = parser.parse_args()
+
+    provider_cfg = PROVIDERS[args.provider]
+    model = args.model or provider_cfg["default_model"]
+    env_key = provider_cfg["env_key"]
+    call = provider_cfg["call"]
+
+    if not os.environ.get(env_key):
+        print(f"error: {env_key} is not set", file=sys.stderr)
+        sys.exit(1)
+
+    task_ids = [t.strip() for t in args.tasks.split(",")]
+    conditions = [c.strip() for c in args.conditions.split(",")]
+
+    tasks_raw = tomllib.loads((ROOT / "tasks.toml").read_text())["task"]
+    tasks = {t["id"]: t for t in tasks_raw}
+
+    for tid in task_ids:
+        if tid not in tasks:
+            print(f"warning: unknown task id '{tid}', skipping", file=sys.stderr)
+
+    run_dir = ROOT / "runs" / args.run
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    notes_path = run_dir / "NOTES.md"
+    if not notes_path.exists():
+        notes_path.write_text(
+            f"# Run {args.run}\n\n"
+            f"Provider: {args.provider}  \nModel: {model}  \n"
+            f"Trials: {args.trials}  \n"
+            f"Tasks: {args.tasks}  \n\n"
+            "Generated by `eval/run_cross_provider.py`.\n"
+        )
+
+    total = len(task_ids) * len(conditions) * args.trials
+    done = 0
+
+    for tid in task_ids:
+        task = tasks.get(tid)
+        if task is None:
+            continue
+
+        for condition in conditions:
+            prompt_key = f"{condition}_prompt"
+            prompt = task.get(prompt_key)
+            if not prompt:
+                print(f"  skip {tid}/{condition}: no {prompt_key}", file=sys.stderr)
+                continue
+
+            for trial in range(1, args.trials + 1):
+                out_path = run_dir / f"{tid}-{condition}-{trial}.rs"
+                if out_path.exists():
+                    print(f"  skip {out_path.name} (exists)")
+                    done += 1
+                    continue
+
+                print(f"  [{done+1}/{total}] {tid}-{condition}-{trial} ... ", end="", flush=True)
+                try:
+                    raw = call(model, prompt.strip())
+                    source = extract_source(raw)
+                    out_path.write_text(source)
+                    print("ok")
+                except Exception as exc:
+                    print(f"ERROR: {exc}", file=sys.stderr)
+                done += 1
+
+                # Gentle rate limiting between calls.
+                if done < total:
+                    time.sleep(0.5)
+
+    print(f"\nRun {args.run} complete. To score:")
+    print(f"  python3 eval/score.py {args.run}")
+    print(f"  python3 eval/summarize.py {args.run}")
+    print(f"  cat eval/runs/{args.run}/summary.md")
+
+
+if __name__ == "__main__":
+    main()
