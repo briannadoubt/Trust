@@ -27,8 +27,11 @@
 //!   `helpers.rs` uses named args will fail to compile. The workaround
 //!   today is: keep strict crates single-file, or apply lowering manually
 //!   per file before checking in.
-//! - **No incremental cache.** Every rustc invocation re-lowers the file.
-//!   Fine for prototypes; would matter for large workspaces.
+//! - **Incremental cache.** The lowered output is cached in
+//!   `$TMPDIR/rustricted-cache/<hash>/` keyed by an FNV-1a hash of the
+//!   source content and the lowering-version constant. A cache hit skips
+//!   re-lowering and re-checks entirely — cargo's own incremental logic
+//!   often means the same file is submitted multiple times across targets.
 //! - **Lowering diagnostics go to stderr.** They look like rustc-style
 //!   notes but aren't structured for editor consumption.
 
@@ -37,6 +40,24 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
+
+/// Version string mixed into the cache key. Bump this (or it bumps
+/// automatically from the package version) whenever the lowering logic
+/// changes in a way that would make cached output stale.
+const LOWERING_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// FNV-1a 64-bit hash of the lowering-version string concatenated with the
+/// source bytes. Fast, no deps, deterministic across processes and OSes.
+fn source_cache_key(source: &str) -> u64 {
+    const FNV_OFFSET: u64 = 0xcbf29ce484222325;
+    const FNV_PRIME: u64 = 0x100000001b3;
+    let mut hash = FNV_OFFSET;
+    for byte in LOWERING_VERSION.bytes().chain(source.bytes()) {
+        hash ^= byte as u64;
+        hash = hash.wrapping_mul(FNV_PRIME);
+    }
+    hash
+}
 
 fn main() -> ExitCode {
     match run() {
@@ -86,41 +107,56 @@ fn run() -> Result<i32> {
         return run_rustc(rustc, &rustc_args);
     }
 
-    // Lower.
-    let out = rustricted_lower::lower(&source)
-        .with_context(|| format!("lowering {}", input_path.display()))?;
-
-    // Bubble lowering diagnostics to stderr so the user sees them. R0042,
-    // R3001 are emitted from the lowering pass and would otherwise be
-    // invisible under `cargo build`.
-    for diag in &out.diagnostics {
-        eprintln!(
-            "[{}] {}: {}",
-            diag.rule,
-            if diag.is_error() { "error" } else { "warning" },
-            diag.message
-        );
-    }
-    if out.diagnostics.iter().any(|d| d.is_error()) {
-        bail!("rustricted check failed on {}", input_path.display());
-    }
-
-    // Write the lowered source to a per-invocation temp file.
-    let temp_dir = env::temp_dir().join(format!(
-        "rustricted-rustc-{}-{}",
-        std::process::id(),
-        input_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("input")
-    ));
-    fs::create_dir_all(&temp_dir).with_context(|| format!("creating {}", temp_dir.display()))?;
     let file_name = input_path
         .file_name()
         .context("input path has no file name")?;
-    let temp_file = temp_dir.join(file_name);
-    fs::write(&temp_file, &out.source)
-        .with_context(|| format!("writing {}", temp_file.display()))?;
+
+    // Incremental cache: keyed by FNV-1a hash of (LOWERING_VERSION, source).
+    // A cache hit means the same strict source was already lowered this
+    // session (or a previous one before /tmp was cleared) — skip re-lowering.
+    let cache_key = source_cache_key(&source);
+    let cache_dir = env::temp_dir()
+        .join("rustricted-cache")
+        .join(format!("{cache_key:016x}"));
+    let cached_file = cache_dir.join(file_name);
+
+    if !cached_file.exists() {
+        // Cache miss — lower, check, write.
+        let out = rustricted_lower::lower(&source)
+            .with_context(|| format!("lowering {}", input_path.display()))?;
+
+        // Bubble lowering diagnostics to stderr so the user sees them. R0042,
+        // R3001 are emitted from the lowering pass and would otherwise be
+        // invisible under `cargo build`.
+        for diag in &out.diagnostics {
+            eprintln!(
+                "[{}] {}: {}",
+                diag.rule,
+                if diag.is_error() { "error" } else { "warning" },
+                diag.message
+            );
+        }
+        if out.diagnostics.iter().any(|d| d.is_error()) {
+            bail!("rustricted check failed on {}", input_path.display());
+        }
+
+        fs::create_dir_all(&cache_dir)
+            .with_context(|| format!("creating cache dir {}", cache_dir.display()))?;
+        // Write atomically: temp → rename, so a concurrent invocation never
+        // sees a partial file.
+        let tmp_write = cache_dir.join(format!(
+            ".{}.{}.tmp",
+            file_name.to_string_lossy(),
+            std::process::id()
+        ));
+        fs::write(&tmp_write, &out.source)
+            .with_context(|| format!("writing {}", tmp_write.display()))?;
+        // rename is atomic on POSIX within the same filesystem (tmp is).
+        fs::rename(&tmp_write, &cached_file)
+            .with_context(|| format!("renaming to {}", cached_file.display()))?;
+    }
+
+    let temp_file = &cached_file;
 
     // Substitute the lowered path in the rustc args and remap so
     // diagnostics still point at the original location.
@@ -133,16 +169,11 @@ fn run() -> Result<i32> {
         .unwrap_or_else(|| PathBuf::from("."));
     new_args.push(format!(
         "--remap-path-prefix={}={}",
-        temp_dir.display(),
+        cache_dir.display(),
         parent.display()
     ));
 
-    let exit = run_rustc(rustc, &new_args);
-
-    // Best-effort cleanup. Failures here don't affect the build result.
-    let _ = fs::remove_dir_all(&temp_dir);
-
-    exit
+    run_rustc(rustc, &new_args)
 }
 
 fn run_rustc(path: &str, args: &[String]) -> Result<i32> {
