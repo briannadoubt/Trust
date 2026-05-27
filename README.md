@@ -14,6 +14,19 @@ first compile:
 
 Activate with `#![strict]`. Lower via `rustricted build` to plain Rust + `rustc`.
 
+The `check`, `build`, and `lower` subcommands accept `-` in place of an input
+path to read source from stdin, matching the rustc/cat convention:
+
+```
+echo '#![strict]
+fn main() { println!("hi"); }' | rustricted check -
+```
+
+`build -` additionally requires `--out PATH` because there is no input
+filename to derive the binary name from.
+
+[Why Rustricted?](docs/WHY.md) — the one-page rationale.
+
 ## Status
 
 **Prototype.** The driver round-trips Rust source through `syn` and
