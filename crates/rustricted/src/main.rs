@@ -130,7 +130,6 @@ fn run_pipeline(input: &Path, source: &str, skip_lints: bool) -> Result<Pipeline
         let lint_report =
             rustricted_lints::lint_strict(&file, &lower_out.source, lower_out.strict_mode);
         all_diagnostics.extend(lint_report.diagnostics);
-
     }
 
     let any_errors = all_diagnostics.iter().any(Diagnostic::is_error);
