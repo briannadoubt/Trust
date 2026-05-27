@@ -98,6 +98,13 @@ jobs:
           cargo run -p rustricted -- build examples/02-pipe/chain.rs --out /tmp/p2
           test "$(/tmp/p2)" = "11"
 
+      - name: rustc wrapper — multi-module crate
+        run: |
+          cargo build -p rustricted-rustc
+          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          (cd examples/cargo-strict-fixture-multimod && RUSTC_WRAPPER="$WRAPPER" cargo run) \
+            | grep -qx "50"
+
       - name: example — Phase 3 named args
         run: |
           cargo run -p rustricted -- build examples/03-named-args/area.rs --out /tmp/p3

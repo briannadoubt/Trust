@@ -20,13 +20,11 @@
 //!
 //! ## Phase 0 scope (knowingly limited)
 //!
-//! - **Single-file lowering.** Only the `.rs` file passed to rustc is
-//!   lowered. Child modules pulled in via `mod foo;` are loaded by rustc
-//!   from the *original* on-disk paths and are NOT lowered. So a crate
-//!   where `lib.rs` is strict but `lib.rs` contains `mod helpers;` whose
-//!   `helpers.rs` uses named args will fail to compile. The workaround
-//!   today is: keep strict crates single-file, or apply lowering manually
-//!   per file before checking in.
+//! - **Multi-module lowering.** When a strict root file is lowered, the
+//!   wrapper recursively finds every `mod X;` declaration (file-backed
+//!   modules) and lowers those `.rs` files into the same temp directory.
+//!   Non-strict module files are hard-linked (or copied) unchanged so
+//!   rustc can resolve them relative to the temp root.
 //! - **Incremental cache.** The lowered output is cached in
 //!   `$TMPDIR/rustricted-cache/<hash>/` keyed by an FNV-1a hash of the
 //!   source content and the lowering-version constant. A cache hit skips
@@ -121,39 +119,40 @@ fn run() -> Result<i32> {
     let cached_file = cache_dir.join(file_name);
 
     if !cached_file.exists() {
-        // Cache miss — lower, check, write.
-        let out = rustricted_lower::lower(&source)
-            .with_context(|| format!("lowering {}", input_path.display()))?;
+        // Cache miss — mirror the entire source directory into the cache dir.
+        // This handles both single-file and multi-module crates: every .rs
+        // file in the crate's src tree is either lowered (if strict-marked)
+        // or hard-linked/copied unchanged, so rustc can resolve `mod X;`
+        // declarations relative to the cache dir.
+        let src_dir = input_path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| PathBuf::from("."));
 
-        // Bubble lowering diagnostics to stderr so the user sees them. R0042,
-        // R3001 are emitted from the lowering pass and would otherwise be
-        // invisible under `cargo build`.
-        for diag in &out.diagnostics {
-            eprintln!(
-                "[{}] {}: {}",
-                diag.rule,
-                if diag.is_error() { "error" } else { "warning" },
-                diag.message
-            );
-        }
-        if out.diagnostics.iter().any(|d| d.is_error()) {
-            bail!("rustricted check failed on {}", input_path.display());
-        }
+        let mut visited = std::collections::HashSet::new();
+        mirror_module_tree(&src_dir, &cache_dir, &mut visited)
+            .with_context(|| format!("mirroring src tree from {}", src_dir.display()))?;
 
-        fs::create_dir_all(&cache_dir)
-            .with_context(|| format!("creating cache dir {}", cache_dir.display()))?;
-        // Write atomically: temp → rename, so a concurrent invocation never
-        // sees a partial file.
-        let tmp_write = cache_dir.join(format!(
-            ".{}.{}.tmp",
-            file_name.to_string_lossy(),
-            std::process::id()
-        ));
-        fs::write(&tmp_write, &out.source)
-            .with_context(|| format!("writing {}", tmp_write.display()))?;
-        // rename is atomic on POSIX within the same filesystem (tmp is).
-        fs::rename(&tmp_write, &cached_file)
-            .with_context(|| format!("renaming to {}", cached_file.display()))?;
+        // Ensure the root file is present (mirror_module_tree writes it, but
+        // if src_dir had no .rs files for some reason, create it directly).
+        if !cached_file.exists() {
+            let out = rustricted_lower::lower(&source)
+                .with_context(|| format!("lowering {}", input_path.display()))?;
+            for diag in &out.diagnostics {
+                eprintln!(
+                    "[{}] {}: {}",
+                    diag.rule,
+                    if diag.is_error() { "error" } else { "warning" },
+                    diag.message
+                );
+            }
+            if out.diagnostics.iter().any(|d| d.is_error()) {
+                bail!("rustricted check failed on {}", input_path.display());
+            }
+            fs::create_dir_all(&cache_dir)?;
+            fs::write(&cached_file, &out.source)?;
+        }
     }
 
     let temp_file = &cached_file;
@@ -182,4 +181,81 @@ fn run_rustc(path: &str, args: &[String]) -> Result<i32> {
         .status()
         .with_context(|| format!("invoking {path}"))?;
     Ok(status.code().unwrap_or(1))
+}
+
+/// Recursively mirror the source tree rooted at `src_dir` into `dest_dir`,
+/// lowering strict-marked `.rs` files and copying (or hard-linking) others.
+///
+/// `root_src` is the canonical source directory (`input_path.parent()`).
+/// `rel_dir` is the sub-path being processed relative to `root_src`
+/// (empty string for the root level).
+///
+/// The function scans each lowered `.rs` file for `mod X;` declarations
+/// and recurses into `<src_dir>/X.rs` and `<src_dir>/X/mod.rs`.
+pub fn mirror_module_tree(
+    src_dir: &Path,
+    dest_dir: &Path,
+    already_done: &mut std::collections::HashSet<PathBuf>,
+) -> Result<()> {
+    if !src_dir.is_dir() {
+        return Ok(());
+    }
+    fs::create_dir_all(dest_dir)
+        .with_context(|| format!("creating {}", dest_dir.display()))?;
+
+    for entry in fs::read_dir(src_dir)
+        .with_context(|| format!("reading dir {}", src_dir.display()))?
+    {
+        let entry = entry?;
+        let path = entry.path();
+        let dest = dest_dir.join(entry.file_name());
+
+        // Canonicalise to avoid processing the same file twice via symlinks.
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+        if !already_done.insert(canonical) {
+            continue;
+        }
+
+        if path.is_dir() {
+            mirror_module_tree(&path, &dest, already_done)?;
+        } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+            let source = fs::read_to_string(&path)
+                .with_context(|| format!("reading {}", path.display()))?;
+            if rustricted_lower::is_strict_source(&source) {
+                let out = rustricted_lower::lower(&source)
+                    .with_context(|| format!("lowering {}", path.display()))?;
+                // Emit lowering diagnostics.
+                for diag in &out.diagnostics {
+                    eprintln!(
+                        "[{}] {}: {}",
+                        diag.rule,
+                        if diag.is_error() { "error" } else { "warning" },
+                        diag.message
+                    );
+                }
+                if out.diagnostics.iter().any(|d| d.is_error()) {
+                    bail!("rustricted check failed on {}", path.display());
+                }
+                let tmp = dest_dir.join(format!(
+                    ".{}.{}.tmp",
+                    entry.file_name().to_string_lossy(),
+                    std::process::id()
+                ));
+                fs::write(&tmp, &out.source)?;
+                fs::rename(&tmp, &dest)?;
+            } else {
+                // Non-strict: hard-link (cheap) or fall back to copy.
+                if fs::hard_link(&path, &dest).is_err() {
+                    fs::copy(&path, &dest)
+                        .with_context(|| format!("copying {}", path.display()))?;
+                }
+            }
+        } else {
+            // Non-.rs files (build scripts, data files, etc.): hard-link/copy.
+            if fs::hard_link(&path, &dest).is_err() {
+                let _ = fs::copy(&path, &dest);
+            }
+        }
+    }
+    Ok(())
 }
