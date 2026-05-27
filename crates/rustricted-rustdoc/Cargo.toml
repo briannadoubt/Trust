@@ -1,6 +1,6 @@
 [package]
-name = "rustricted-rustc"
-description = "RUSTC_WRAPPER shim: lowers Rustricted source before invoking rustc"
+name = "rustricted-rustdoc"
+description = "RUSTDOC shim: lowers Rustricted source before invoking rustdoc (doc-tests etc.)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,14 +8,11 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 
-[lib]
-name = "rustricted_rustc"
-path = "src/lib.rs"
-
 [[bin]]
-name = "rustricted-rustc"
+name = "rustricted-rustdoc"
 path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
 rustricted-lower = { path = "../rustricted-lower" }
+rustricted-rustc = { path = "../rustricted-rustc" }

@@ -105,6 +105,28 @@ jobs:
           (cd examples/cargo-strict-fixture-multimod && RUSTC_WRAPPER="$WRAPPER" cargo run) \
             | grep -qx "50"
 
+      - name: rustdoc wrapper — doc-tests with named-arg syntax
+        run: |
+          # rustdoc bypasses RUSTC_WRAPPER and invokes rustc directly on
+          # each doc-test snippet. A RUSTDOC shim that lowers code blocks
+          # inside `///` doc comments fixes this.
+          cargo build -p rustricted-rustc -p rustricted-rustdoc
+          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          RUSTDOC_SHIM=$(realpath target/debug/rustricted-rustdoc)
+          # Negative: without RUSTDOC, named-arg doctests fail.
+          (cd examples/cargo-strict-fixture-multimod && cargo clean >/dev/null)
+          if (cd examples/cargo-strict-fixture-multimod \
+              && RUSTC_WRAPPER="$WRAPPER" cargo test --doc 2>/dev/null); then
+            echo "FAIL: expected cargo test --doc to reject named-arg doctest without RUSTDOC shim"
+            exit 1
+          fi
+          # Positive: with RUSTDOC, doc-test snippets are lowered too.
+          (cd examples/cargo-strict-fixture-multimod && cargo clean >/dev/null)
+          (cd examples/cargo-strict-fixture-multimod \
+            && RUSTC_WRAPPER="$WRAPPER" RUSTDOC="$RUSTDOC_SHIM" cargo test --doc) \
+            | tee /tmp/rt28.log
+          grep -q "2 passed" /tmp/rt28.log
+
       - name: rustc wrapper — cross-crate named args (rustricted-std)
         run: |
           # Negative: without the wrapper, rustc must reject the named-arg

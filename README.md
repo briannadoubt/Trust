@@ -66,6 +66,25 @@ cargo run -p rustricted -- build examples/00-hello.rs
 ./examples/00-hello
 ```
 
+## Using strict source from `cargo`
+
+For `cargo build` / `cargo test` to accept Rustricted syntax extensions
+(named args, pipe) you need both wrappers set:
+
+```sh
+cargo build -p rustricted-rustc -p rustricted-rustdoc
+export RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc)
+export RUSTDOC=$(realpath target/debug/rustricted-rustdoc)
+cargo build         # lowers .rs files before rustc
+cargo test --doc    # also lowers code inside doc comments
+```
+
+`RUSTC_WRAPPER` covers ordinary builds and unit/integration tests.
+`RUSTDOC` (or `RUSTDOC_WRAPPER` on cargo versions that support it) is
+needed separately because rustdoc does *not* honour `RUSTC_WRAPPER` —
+without it, doc-tests that use named-arg syntax fail with a rustc parse
+error. See `docs/SPEC.md` for details.
+
 ## Editor integration (LSP)
 
 `rustricted-lsp` is a Language Server that speaks LSP over stdio. It runs

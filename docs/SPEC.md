@@ -75,8 +75,10 @@ extensions, set `RUSTC_WRAPPER` to the `rustricted-rustc` binary
 (`crates/rustricted-rustc/`):
 
 ```sh
-cargo build -p rustricted-rustc
-RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc) cargo build
+cargo build -p rustricted-rustc -p rustricted-rustdoc
+RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc) \
+RUSTDOC=$(realpath target/debug/rustricted-rustdoc) \
+  cargo build
 ```
 
 The wrapper detects strict-marked input files, runs the lowering pass,
@@ -85,6 +87,20 @@ real rustc with `--remap-path-prefix` set so diagnostics still point at
 the original source. See `examples/cargo-strict-fixture/` for an
 end-to-end demo (the file uses `make_point(x: 1, y: 2, z: 3)` named-arg
 syntax which stock rustc rejects).
+
+**Why both `RUSTC_WRAPPER` and `RUSTDOC`?** `rustdoc` does NOT honour
+`RUSTC_WRAPPER` — it invokes rustc directly when compiling each doc-test
+snippet. So any doc-test that uses Rustricted syntax (named-args, pipe)
+would fail with a plain rustc parse error during `cargo test --doc`. The
+sibling `rustricted-rustdoc` shim wraps rustdoc the same way: it lowers
+the source file before rustdoc extracts doc-tests, and also rewrites the
+code inside `///` / `//!` fenced code blocks so the extracted snippets
+parse as plain Rust. Set it via the `RUSTDOC` env var (cargo replaces
+the rustdoc binary outright on stable; `RUSTDOC_WRAPPER` works on
+newer-cargo wrapper-style invocations and is also supported by the
+shim). See `examples/cargo-strict-fixture-multimod/src/geom.rs` for a
+doc-test that uses named-arg syntax — `cargo test --doc` fails without
+the shim and passes with it.
 
 **Current wrapper limitation.** Only the input `.rs` file passed to rustc
 is lowered. Child modules referenced by `mod foo;` are read by rustc from
