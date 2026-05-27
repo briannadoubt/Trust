@@ -66,6 +66,46 @@ cargo run -p rustricted -- build examples/00-hello.rs
 ./examples/00-hello
 ```
 
+## Editor integration (LSP)
+
+`rustricted-lsp` is a Language Server that speaks LSP over stdio. It runs
+the same lower + lint pipeline as the CLI and publishes diagnostics live,
+plus minimal hover (named-arg + callee signature) and go-to-definition
+(local functions).
+
+Build the server, then point your editor at the resulting binary:
+
+```sh
+cargo build -p rustricted-lsp --release
+# binary path: target/release/rustricted-lsp
+```
+
+Editor wiring (any LSP client works; the binary takes no flags):
+
+- **VS Code**: install any "generic LSP client" extension and configure
+  it to launch `target/release/rustricted-lsp` for `*.rs` in Rustricted
+  projects. (A dedicated VS Code extension is a follow-up.)
+- **Neovim** (with `nvim-lspconfig`):
+  ```lua
+  vim.lsp.start({
+    name = "rustricted",
+    cmd = { "/path/to/target/release/rustricted-lsp" },
+    root_dir = vim.fs.dirname(vim.fs.find({ "Cargo.toml" }, { upward = true })[1]),
+  })
+  ```
+- **Helix** (`languages.toml`):
+  ```toml
+  [[language]]
+  name = "rust"
+  language-servers = ["rustricted-lsp"]
+  [language-server.rustricted-lsp]
+  command = "/path/to/target/release/rustricted-lsp"
+  ```
+
+Current capabilities: full-sync diagnostics, hover, go-to-def. Completion,
+code actions, formatting, cross-file go-to-def, and watch-config are
+follow-ups (see scope tickets).
+
 ## License
 
 MIT OR Apache-2.0.

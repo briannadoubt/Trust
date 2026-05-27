@@ -1,6 +1,6 @@
 [package]
 name = "rustricted-lsp"
-description = "Language server for Rustricted (stub)"
+description = "Language server for Rustricted"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,5 +12,16 @@ repository.workspace = true
 name = "rustricted-lsp"
 path = "src/main.rs"
 
+[lib]
+path = "src/lib.rs"
+
 [dependencies]
 anyhow.workspace = true
+syn.workspace = true
+proc-macro2.workspace = true
+rustricted-diag = { path = "../rustricted-diag" }
+rustricted-lower = { path = "../rustricted-lower" }
+rustricted-lints = { path = "../rustricted-lints" }
+tower-lsp = "0.20"
+tokio = { version = "1", features = ["rt-multi-thread", "io-std", "macros", "sync"] }
+serde_json = "1"
