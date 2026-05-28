@@ -767,6 +767,7 @@ dependencies = [
  "anyhow",
  "rustricted-attrs",
  "rustricted-lower",
+ "syn",
 ]
 
 [[package]]
@@ -781,6 +782,9 @@ dependencies = [
 [[package]]
 name = "rustricted-std"
 version = "0.1.0"
+dependencies = [
+ "rustricted-attrs",
+]
 
 [[package]]
 name = "rustricted-syntax"
@@ -1298,6 +1302,7 @@ dependencies = [
  "rustricted-attrs",
  "rustricted-lints",
  "rustricted-lower",
+ "syn",
 ]
 
 [[package]]

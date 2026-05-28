@@ -42,6 +42,131 @@ pub struct Prepared {
     pub remap_flag: String,
 }
 
+/// Walk `src_dir` recursively, parsing every `.rs` file with `syn` and
+/// collecting `(fn_name, [param_names...])` for every module-level `fn`
+/// definition (free fns, `pub` or otherwise; module-nested `fn`s
+/// included). Used by [`prepare_strict_input`] to build a crate-wide
+/// callee registry so cross-file named-arg call sites resolve (RT-40).
+///
+/// **What's covered:** plain free fns at module level, including inside
+/// `mod foo { ... }` blocks within a single file. **What's not:** trait
+/// methods, `impl` methods, and fns inside file-mod descendants that
+/// `syn::parse_file` can't reach (those will still be picked up when the
+/// file itself is parsed, because the recursive walk visits every `.rs`).
+///
+/// **Ambiguity policy:** if two files declare a fn with the same name
+/// but different param lists, the name is dropped from the index — same
+/// behaviour as the in-file collector. Dropping is safer than guessing
+/// which signature the caller meant.
+///
+/// Parse errors and unreadable files are silently skipped — the wrapper
+/// stays best-effort.  The downstream lowering pass will surface real
+/// errors on the file that actually has the syntax problem.
+pub fn collect_crate_callees(src_dir: &Path) -> Vec<(String, Vec<String>)> {
+    use std::collections::{HashMap, HashSet};
+    let mut sigs: HashMap<String, Vec<String>> = HashMap::new();
+    let mut ambiguous: HashSet<String> = HashSet::new();
+    let mut visited: HashSet<PathBuf> = HashSet::new();
+    collect_crate_callees_recursive(src_dir, &mut sigs, &mut ambiguous, &mut visited);
+    let mut out: Vec<(String, Vec<String>)> = sigs.into_iter().collect();
+    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out
+}
+
+fn collect_crate_callees_recursive(
+    dir: &Path,
+    sigs: &mut std::collections::HashMap<String, Vec<String>>,
+    ambiguous: &mut std::collections::HashSet<String>,
+    visited: &mut std::collections::HashSet<PathBuf>,
+) {
+    if !dir.is_dir() {
+        return;
+    }
+    let Ok(read) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in read.flatten() {
+        let path = entry.path();
+        let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+        if !visited.insert(canonical) {
+            continue;
+        }
+        if path.is_dir() {
+            collect_crate_callees_recursive(&path, sigs, ambiguous, visited);
+        } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+            if let Ok(source) = fs::read_to_string(&path) {
+                // Pre-lower the source so syn can parse it. The crate-wide
+                // index is derived from the *lowered* signatures — but
+                // since fn signatures don't use named-arg call syntax,
+                // syn::parse_file on the raw source usually works. Try
+                // raw first; on failure, fall through to lowered.
+                let file = syn::parse_file(&source).ok().or_else(|| {
+                    rustricted_lower::lower(&source)
+                        .ok()
+                        .and_then(|lo| syn::parse_file(&lo.source).ok())
+                });
+                if let Some(file) = file {
+                    walk_items_for_sigs(&file.items, sigs, ambiguous);
+                }
+            }
+        }
+    }
+}
+
+fn walk_items_for_sigs(
+    items: &[syn::Item],
+    sigs: &mut std::collections::HashMap<String, Vec<String>>,
+    ambiguous: &mut std::collections::HashSet<String>,
+) {
+    for item in items {
+        match item {
+            syn::Item::Fn(f) => record_fn_sig(&f.sig, sigs, ambiguous),
+            syn::Item::Mod(m) => {
+                if let Some((_, inner)) = &m.content {
+                    walk_items_for_sigs(inner, sigs, ambiguous);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+fn record_fn_sig(
+    sig: &syn::Signature,
+    sigs: &mut std::collections::HashMap<String, Vec<String>>,
+    ambiguous: &mut std::collections::HashSet<String>,
+) {
+    let name = sig.ident.to_string();
+    if ambiguous.contains(&name) {
+        return;
+    }
+    let mut params: Vec<String> = Vec::new();
+    for input in &sig.inputs {
+        match input {
+            syn::FnArg::Receiver(_) => {} // skip self
+            syn::FnArg::Typed(pat_type) => match &*pat_type.pat {
+                syn::Pat::Ident(pi) => params.push(pi.ident.to_string()),
+                _ => {
+                    // Non-ident pattern (destructure) — can't bind by name.
+                    sigs.remove(&name);
+                    ambiguous.insert(name);
+                    return;
+                }
+            },
+        }
+    }
+    match sigs.get(&name) {
+        Some(existing) if existing != &params => {
+            sigs.remove(&name);
+            ambiguous.insert(name);
+        }
+        Some(_) => {}
+        None => {
+            sigs.insert(name, params);
+        }
+    }
+}
+
 /// Find the input `.rs` file argument in a rustc/rustdoc arg list.
 ///
 /// Cargo passes exactly one `.rs` crate-root per invocation. Flag args
@@ -91,14 +216,20 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
             .map(Path::to_path_buf)
             .unwrap_or_else(|| PathBuf::from("."));
 
+        // RT-40: pre-scan the whole `src/` tree for `fn` definitions so
+        // cross-file named-arg call sites resolve. The wrapper is the
+        // first place that has a crate-wide view; individual `lower()`
+        // calls only see one file at a time.
+        let extras = collect_crate_callees(&src_dir);
+
         let mut visited = std::collections::HashSet::new();
-        mirror_module_tree(&src_dir, &cache_dir, &mut visited)
+        mirror_module_tree_with_extras(&src_dir, &cache_dir, &mut visited, &extras)
             .with_context(|| format!("mirroring src tree from {}", src_dir.display()))?;
 
         // Defensive: if the src_dir traversal somehow didn't write the
         // crate root (e.g. empty dir), do it directly.
         if !cached_file.exists() {
-            let out = rustricted_lower::lower(&source)
+            let out = rustricted_lower::lower_with_extra_callees(&source, &extras)
                 .with_context(|| format!("lowering {}", input_path.display()))?;
             emit_diagnostics(&out, input_path)?;
             fs::create_dir_all(&cache_dir)?;
@@ -144,6 +275,19 @@ pub fn mirror_module_tree(
     dest_dir: &Path,
     already_done: &mut std::collections::HashSet<PathBuf>,
 ) -> Result<()> {
+    mirror_module_tree_with_extras(src_dir, dest_dir, already_done, &[])
+}
+
+/// Variant of [`mirror_module_tree`] that threads a crate-wide list of
+/// `(fn_name, params)` entries into every per-file lowering call. Used by
+/// `prepare_strict_input` to resolve cross-file named-arg call sites
+/// (RT-40).
+pub fn mirror_module_tree_with_extras(
+    src_dir: &Path,
+    dest_dir: &Path,
+    already_done: &mut std::collections::HashSet<PathBuf>,
+    extras: &[(String, Vec<String>)],
+) -> Result<()> {
     if !src_dir.is_dir() {
         return Ok(());
     }
@@ -162,12 +306,12 @@ pub fn mirror_module_tree(
         }
 
         if path.is_dir() {
-            mirror_module_tree(&path, &dest, already_done)?;
+            mirror_module_tree_with_extras(&path, &dest, already_done, extras)?;
         } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
             let source =
                 fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
             if rustricted_lower::is_strict_source(&source) {
-                let out = rustricted_lower::lower(&source)
+                let out = rustricted_lower::lower_with_extra_callees(&source, extras)
                     .with_context(|| format!("lowering {}", path.display()))?;
                 emit_diagnostics(&out, &path)?;
                 // Also lower any doc-test code blocks embedded in `///` /

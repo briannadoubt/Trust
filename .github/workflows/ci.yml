@@ -105,6 +105,19 @@ jobs:
           (cd examples/cargo-strict-fixture-multimod && RUSTC_WRAPPER="$WRAPPER" cargo run) \
             | grep -qx "50"
 
+      - name: rustc wrapper — cross-file named args (RT-40)
+        run: |
+          # RT-40: a call in main.rs to a fn defined in sibling geom.rs must
+          # resolve against the *crate-wide* registry. Pre-RT-40 the wrapper
+          # only saw one file at a time, so the cross-file fn was unknown.
+          # The fixture's call site uses reversed-from-declared arg order
+          # to prove reordering kicks in — `make_rect(height: 5, width: 10)`
+          # must produce `(10, 5)`, so `rect.0` prints `10`.
+          cargo build -p rustricted-rustc
+          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          (cd examples/cargo-strict-fixture-cross-file && RUSTC_WRAPPER="$WRAPPER" cargo run) \
+            | grep -qx "10"
+
       - name: rustdoc wrapper — doc-tests with named-arg syntax
         run: |
           # rustdoc bypasses RUSTC_WRAPPER and invokes rustc directly on
@@ -151,7 +164,7 @@ jobs:
       - name: dogfood — build strict crates under wrapper
         run: |
           # Several rustricted-* crates have been dogfooded with
-          # `rustricted_attrs::strict!{}` (RT-31). They use named-arg
+          # `rustricted_attrs::strict!{}` (RT-31, RT-44). They use named-arg
           # syntax internally, so they ONLY build under RUSTC_WRAPPER.
           # See case-studies/dogfooding.md for the per-crate status.
           cargo build -p rustricted-rustc --release
@@ -161,6 +174,22 @@ jobs:
             -p rustricted-diag \
             -p rustricted-lsp \
             -p rustricted-rustc \
+            -p rustricted-std \
             -p rustricted-syntax \
             -p xtask
+
+      - name: std-signatures manifest up-to-date (RT-44)
+        run: |
+          # The `STD_SIGNATURES` index baked into `rustricted-lower` is
+          # generated from the checked-in
+          # `crates/rustricted-std/std-signatures.txt` manifest, which is
+          # itself regenerated from `crates/rustricted-std/src/lib.rs` by
+          # `cargo xtask gen-std-signatures`. CI verifies the checked-in
+          # manifest is fresh — stale manifests would silently break
+          # cross-crate named-arg lowering.
+          #
+          # xtask is strict-marked (RT-31), so this step runs under the
+          # wrapper built by the dogfood step above.
+          WRAPPER=$(realpath target/release/rustricted-rustc)
+          RUSTC_WRAPPER="$WRAPPER" cargo xtask gen-std-signatures --check
 

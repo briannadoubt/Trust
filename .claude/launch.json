@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "scope",
+      "runtimeExecutable": "scope",
+      "runtimeArgs": ["serve", "--no-open"],
+      "port": 4321,
+      "autoPort": false
+    }
+  ]
+}

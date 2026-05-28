@@ -1,0 +1,14 @@
+[workspace]
+
+[package]
+name = "cargo-strict-fixture-cross-file"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "cargo-strict-fixture-cross-file"
+path = "src/main.rs"
+
+[dependencies]
+rustricted-attrs = { path = "../../crates/rustricted-attrs" }

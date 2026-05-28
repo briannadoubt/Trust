@@ -47,13 +47,27 @@ pub struct LowerOutput {
 
 /// Lower a Rustricted source file to plain Rust.
 pub fn lower(source: &str) -> Result<LowerOutput, Error> {
+    lower_with_extra_callees(source, &[])
+}
+
+/// Lower a Rustricted source file with a supplementary list of
+/// `(name, params)` entries seeded into the callee registry. Used by
+/// `rustricted-rustc` to provide a crate-wide view of every `pub fn` /
+/// module-level `fn` defined elsewhere in the same `src/` tree — RT-40.
+///
+/// Local fns in this file still win on name conflict; cross-file extras
+/// outrank the bundled `rustricted-std` index.
+pub fn lower_with_extra_callees(
+    source: &str,
+    extras: &[(String, Vec<String>)],
+) -> Result<LowerOutput, Error> {
     let tokens: TokenStream = source.parse()?;
 
     let strict_mode = detect_strict_mode(&tokens);
 
-    // Build the local callee registry from the cleaned signatures so named-args
-    // can rewrite calls against the declared parameter list.
-    let registry = named_args::CalleeRegistry::collect(&tokens);
+    // Build the callee registry from the local signatures plus any
+    // crate-wide extras the caller supplied.
+    let registry = named_args::CalleeRegistry::collect_with_extras(&tokens, extras);
 
     let mut diagnostics = Vec::new();
     let tokens = named_args::rewrite(tokens, &registry, &mut diagnostics, strict_mode);

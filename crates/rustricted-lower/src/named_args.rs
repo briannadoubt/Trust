@@ -46,11 +46,37 @@ impl CalleeRegistry {
     /// local one wins (the closer scope is more likely what the caller
     /// meant).
     pub fn collect(tokens: &TokenStream) -> Self {
+        Self::collect_with_extras(tokens, &[])
+    }
+
+    /// Like [`collect`], but also seeds the registry from an externally
+    /// supplied list of `(name, params)` entries (e.g. a crate-wide index
+    /// gathered by `rustricted-rustc` from sibling files in the same
+    /// `src/` tree — see RT-40).
+    ///
+    /// Precedence (highest to lowest):
+    ///   1. Locally defined fns in this file (this is the closest scope).
+    ///   2. Cross-file (crate-wide) extras passed in here.
+    ///   3. Bundled `STD_SIGNATURES` (rustricted-std).
+    ///
+    /// Names that are *locally ambiguous* (two definitions in this file
+    /// with different param lists) are excluded from every layer — we'd
+    /// rather fall back to cross-crate behaviour than guess.
+    pub fn collect_with_extras(
+        tokens: &TokenStream,
+        extras: &[(String, Vec<String>)],
+    ) -> Self {
         let mut fns: HashMap<String, Vec<String>> = HashMap::new();
         let mut ambiguous: HashSet<String> = HashSet::new();
         walk_for_fns(tokens.clone(), &mut fns, &mut ambiguous);
-        // Seed from the bundled std index. Local fns and locally-ambiguous
-        // names take precedence — don't overwrite either.
+        // Layer 2: crate-wide extras. Local fns win on conflict.
+        for (name, params) in extras {
+            if ambiguous.contains(name) || fns.contains_key(name) {
+                continue;
+            }
+            fns.insert(name.clone(), params.clone());
+        }
+        // Layer 3: bundled std index. Local fns / extras win on conflict.
         for (name, params) in STD_SIGNATURES {
             let name_string = (*name).to_string();
             if ambiguous.contains(&name_string) || fns.contains_key(&name_string) {
@@ -296,11 +322,28 @@ fn find_param_group_indices(trees: &[TokenTree]) -> HashSet<usize> {
 
 /// The callee, if the paren group's preceding token is an identifier.
 /// For paths like `foo::bar(...)` this returns `"bar"` — the final segment.
-/// For method calls `x.foo(...)` it also returns `"foo"`. Registry lookup
-/// treats these the same (best-effort matching by simple name).
+///
+/// **RT-41:** Returns `None` for method calls (`x.foo(...)`). The leading
+/// `.` separates the receiver expression from the method ident, and a
+/// method's signature has no relation to a free fn of the same simple
+/// name. Matching `xs.insert(k, v)` against `rustricted_std::*::insert`
+/// (or any local free fn named `insert`) would either fire a spurious
+/// R0042 or reorder by the wrong param list. Best to fall through to the
+/// "unknown callee" branch (strip names, keep order).
 fn preceding_ident(out: &[TokenTree]) -> Option<String> {
     match out.last() {
-        Some(TokenTree::Ident(id)) => Some(id.to_string()),
+        Some(TokenTree::Ident(id)) => {
+            // Method-call detection: an ident immediately preceded by a
+            // `.` punct is a method name, not a free-fn callee.
+            if out.len() >= 2 {
+                if let Some(TokenTree::Punct(p)) = out.get(out.len() - 2) {
+                    if p.as_char() == '.' {
+                        return None;
+                    }
+                }
+            }
+            Some(id.to_string())
+        }
         _ => None,
     }
 }
@@ -860,6 +903,68 @@ mod tests {
             "R3001 span should start at `wodth`: {:?}",
             diag.span
         );
+    }
+
+    // RT-41: a method call `xs.insert(k, v)` must NOT be matched against
+    // a free fn with the same simple name. Without the leading-`.` check,
+    // the registry entry for `insert` (e.g. from rustricted-std's
+    // `hashmap_insert`, or a local `fn insert(...)`) would either fire a
+    // spurious R0042 or rewrite the call by the wrong param list.
+    #[test]
+    fn r0042_silent_on_method_call_matching_free_fn_name() {
+        // The free fn `insert(a, b)` would normally make `insert(1, 2)`
+        // fire R0042. The method call `m.insert(...)` must be exempt.
+        let src = "fn insert(a: u32, b: u32) -> u32 { a + b }\n\
+                   fn main() { let mut m = std::collections::HashMap::new(); m.insert(1, 2); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "method call must not match free-fn registry entry: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn method_call_with_named_args_doesnt_reorder_against_free_fn() {
+        // A free fn `insert(a, b)` is in the registry. A method call
+        // `m.insert(b: 2, a: 1)` must NOT be reordered (the method's real
+        // signature has nothing to do with the free fn). Names get stripped
+        // in the same order they appear.
+        let src = "fn insert(a: u32, b: u32) -> u32 { a + b }\n\
+                   fn main() { let mut m = std::collections::HashMap::new(); m.insert(b: 2, a: 1); }";
+        let (out, _diags) = lower_str(src);
+        let m_insert = out.find("m . insert").or_else(|| out.find("m.insert"));
+        assert!(m_insert.is_some(), "expected method call preserved: {out}");
+        let two_pos = out[m_insert.unwrap()..].find('2').expect("expected 2");
+        let one_pos = out[m_insert.unwrap()..].find('1').expect("expected 1");
+        assert!(
+            two_pos < one_pos,
+            "method-call args must keep source order (no reorder against free fn): {out}"
+        );
+    }
+
+    // RT-40: cross-file extras let the registry resolve fns defined in
+    // sibling files of the same crate. Local fns still win on conflict.
+    #[test]
+    fn registry_seeds_from_extras() {
+        let src = "fn main() { let _ = make_rect(width: 10, height: 5); }";
+        let tokens: TokenStream = src.parse().expect("test input must tokenize");
+        let extras = vec![(
+            "make_rect".to_string(),
+            vec!["width".to_string(), "height".to_string()],
+        )];
+        let reg = CalleeRegistry::collect_with_extras(&tokens, &extras);
+        let params = reg.fns.get("make_rect").expect("extras should seed registry");
+        assert_eq!(params, &vec!["width".to_string(), "height".to_string()]);
+    }
+
+    #[test]
+    fn registry_local_wins_over_extras() {
+        let src = "fn f(local_param: u32) {}\nfn main() { f(local_param: 1); }";
+        let tokens: TokenStream = src.parse().expect("test input must tokenize");
+        let extras = vec![("f".to_string(), vec!["different".to_string()])];
+        let reg = CalleeRegistry::collect_with_extras(&tokens, &extras);
+        let params = reg.fns.get("f").expect("f should be in registry");
+        assert_eq!(params, &vec!["local_param".to_string()]);
     }
 
     #[test]

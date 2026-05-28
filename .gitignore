@@ -3,3 +3,5 @@
 **/*.rs.bk
 *.swp
 .DS_Store
+.claude/worktrees/
+package-lock.json

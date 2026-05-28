@@ -22,13 +22,13 @@ was a real bug, and what was a language/tooling gap.
 | `xtask`               | STRICT | 0 (rewrote 6 call sites) | 0 |
 | `rustricted-lints/rules.rs`     | STRICT (file-level) | 0 | 0 |
 | `rustricted-attrs`    | SKIPPED | — | proc-macro crate; strict markers don't apply to `#[proc_macro]` definitions |
-| `rustricted-std`      | SKIPPED | — | RT-44 (circular: `build.rs` parses this with `syn`, which rejects named-arg syntax) |
+| `rustricted-std`      | STRICT (RT-44) | 0 (rewrote 2 fs shims to named form) | tests hoisted to non-strict sibling `tests.rs` (generic-fn arity gap in registry) |
 | `rustricted-lints/lib.rs`     | SKIPPED | — | 45+ positional helper calls in `#[cfg(test)]` block; bulk rewrite hits >100-LOC stop |
 | `rustricted-lints/runner.rs`  | SKIPPED (with documented reason in file head) | — | RT-40 (cross-file calls to `crate::strict::run_rule`) |
 | `rustricted-lints/strict.rs`  | SKIPPED | — | RT-41 (visit-pattern method calls match free-fn signatures by simple name) |
 | `rustricted-lower`    | NOT ATTEMPTED | — | known: uses `|>` operator in its own tests; `fmt.sh` already skips it. Worth a follow-up. |
 
-**Crates fully strict-marked:** 6 of 11. **At least 3 acceptance criterion: met.**
+**Crates fully strict-marked:** 7 of 11 (after RT-44). **At least 3 acceptance criterion: met.**
 
 ## Per-crate notes
 
@@ -63,23 +63,45 @@ Worth a follow-up once those land.
 Added strict marker. Found 6 positional calls (`check_one`, `walk_rs`,
 `replace_section`). Rewritten. Builds clean.
 
-### `rustricted-std` — SKIPPED (RT-44)
-Discovered the hard way that **strict-marking `rustricted-std` creates a
-circular dependency.** `rustricted-lower/build.rs` parses
-`crates/rustricted-std/src/lib.rs` with `syn::parse_file` to build the
-bundled signature index (RT-32). `syn` rejects named-arg syntax, so the
-moment we add a `(from: from, to: to)` inside `std::fs::copy`, the build
-script silently writes an empty `STD_SIGNATURES` constant and every
-downstream test that relies on cross-crate named-arg lowering fails.
+### `rustricted-std` — STRICT (after RT-44)
 
-This is a real architectural gap: `rustricted-std` is the *source* of
-named-arg knowledge for the rest of the workspace; it can't itself be
-named-arg syntax. Either (a) `build.rs` needs to invoke the lowering pass
-before `syn`, (b) `rustricted-std` stays plain Rust by policy, or (c)
-introduce a separate machine-readable signature manifest format.
+RT-31 discovered the circular trap: `rustricted-lower/build.rs` was
+parsing `crates/rustricted-std/src/lib.rs` directly with `syn::parse_file`
+to build the bundled `STD_SIGNATURES` index (RT-32). `syn` rejects
+named-arg syntax, and the build script *silently* wrote an empty
+constant on parse failure — a particularly nasty silent footgun, because
+the resulting workspace builds but every downstream cross-crate
+named-arg call site fails at lower-time with no obvious connection back
+to the empty manifest.
 
-I left `rustricted-std` unmarked and added a comment in the file head
-documenting why. Filed **RT-44**.
+**RT-44 fix — option B (checked-in manifest):**
+- Added `crates/rustricted-std/std-signatures.txt`, a hand-written
+  manifest (one `name:p1,p2,…` line per `pub fn`). This is the source
+  of truth that `build.rs` reads.
+- `build.rs` no longer parses Rust source. Any read/parse failure now
+  *panics* loudly (this also folds in option C's loud-failure mitigation
+  — empty `STD_SIGNATURES` is unreachable by construction).
+- `cargo xtask gen-std-signatures` regenerates the manifest from
+  `lib.rs`. It calls `rustricted_lower::lower()` *first* to desugar any
+  Rustricted-specific syntax, then walks the lowered `syn::File` for
+  `pub fn` signatures. CI runs `cargo xtask gen-std-signatures --check`
+  under the wrapper to verify the checked-in file is fresh.
+- Decoupling `build.rs` from `lib.rs`'s dialect lets the std-shim crate
+  be strict-marked. The `lib.rs` head now uses
+  `rustricted_attrs::strict!{}` and the two two-arg fs shims (`copy`,
+  `rename`) were rewritten to call `std::fs::copy(from: …, to: …)`.
+
+**Surprise: generic-fn arity gap.** Two shims have generics
+(`hashmap_insert<K, V>`, `vec_push<T>`). The `CalleeRegistry` token scan
+in `rustricted-lower/src/named_args.rs` mis-handles `Vec<T>>` and
+similar (the trailing `>>` has joint spacing, so `angle_depth` never
+returns to zero, swallowing the following parameter commas). Symptoms:
+local R0042 fires with the wrong arity, R3001 rejects valid param
+names. The fix belongs in `split_by_top_comma`; for now, the smoke
+tests are hoisted to a non-strict sibling file
+`crates/rustricted-std/src/tests.rs` so they can call the generic shims
+positionally without tripping the buggy registry. Worth filing as a
+follow-up; the workaround keeps RT-44 on-scope.
 
 ### `rustricted-lints` — PARTIAL
 `rules.rs` is strict-marked (just an enum, no calls).
@@ -121,8 +143,14 @@ clean dogfood pass on `rustricted-lower` needs design work to split
   fns with generic-type-parameter commas like `&mut HashMap<K, V>`. Added
   angle-bracket depth tracking to `split_by_top_comma` in
   `rustricted-lower/src/named_args.rs`.
-- **RT-44** *(filed)* — circular: `rustricted-std` can't be strict-marked
-  because `rustricted-lower/build.rs` parses it with `syn`.
+- **RT-44** *(shipped — option B + C, see `rustricted-std` section
+  above)*. `build.rs` now reads a checked-in
+  `crates/rustricted-std/std-signatures.txt` manifest instead of
+  re-parsing Rust source; the manifest is regenerated by
+  `cargo xtask gen-std-signatures` (which lowers first, then `syn`s)
+  and CI enforces freshness with `--check`. Any manifest read/parse
+  failure panics loudly — the previous silent empty-`STD_SIGNATURES`
+  footgun is unreachable.
 - **RT-45** *(filed and fixed inline)* — `scripts/fmt.sh` only skipped
   packages containing `|>`; extended it to skip packages whose `src/`
   contains a strict-mode activation marker, since rustfmt also rejects
@@ -140,18 +168,17 @@ regressions early. See `.github/workflows/`.
 
 ## Bottom line
 
-6 of the 11 `rustricted-*` crates are now fully strict-marked and build
-under `RUSTC_WRAPPER`. The remaining 5 are blocked by:
+7 of the 11 `rustricted-*` crates are now fully strict-marked and build
+under `RUSTC_WRAPPER` (after RT-44). The remaining 4 are blocked by:
 
 1. **RT-40** (cross-file callee resolution) — blocks the bulk of
    `rustricted-lints`.
 2. **RT-41** (path-aware callee matching for method calls) — blocks
    `rustricted-lints/strict.rs` and any visitor-heavy code.
-3. **RT-44** (build.rs circular dep) — blocks `rustricted-std`
-   permanently unless we change how the signature index is generated.
-4. **Proc-macro crates** can't be strict by design.
-5. **`rustricted-lower`** has bidirectional roles (defines `|>`, tests
+3. **Proc-macro crates** can't be strict by design.
+4. **`rustricted-lower`** has bidirectional roles (defines `|>`, tests
    `|>`); needs a tests-only carveout.
 
 Most of those gaps were known going in (RT-40, RT-41 pre-existed). RT-44
-and RT-46 are the new findings. RT-39 was caught and fixed in passing.
+was shipped as part of this case-study iteration; RT-46 is still
+outstanding. RT-39 was caught and fixed in passing during RT-31.

@@ -1,25 +1,25 @@
-//! Build script: parse `crates/rustricted-std/src/lib.rs` and emit a static
-//! table of `(simple_fn_name, [param_names...])` tuples for every `pub fn`
-//! found at any module depth. The lowering pass uses this table to seed the
-//! `CalleeRegistry` so that cross-crate named-arg call sites like
-//! `rustricted_std::fs::write_text(path: p, contents: c)` can be lowered to
-//! positional form against the *real* signature.
+//! Build script: read the checked-in `crates/rustricted-std/std-signatures.txt`
+//! manifest and emit a static `STD_SIGNATURES` table that the named-args
+//! lowering pass uses to seed the `CalleeRegistry` for cross-crate calls
+//! like `rustricted_std::fs::write_text(path: p, contents: c)`.
 //!
-//! Design choice (RT-32): bundled signature index at build time, generated
-//! from the canonical `rustricted-std` source. Compared to the other two
-//! options considered:
+//! Design history (RT-32 → RT-44):
 //!
-//! - "parse-on-demand via cargo metadata" — works for *any* crate but slow
-//!   and brittle (would need a cargo metadata invocation at lower time).
-//! - "compile-time macro registry" — most idiomatic, but requires runtime
-//!   registration and a shared static; harder to thread through a token-
-//!   level rewrite that runs out-of-process.
+//! - RT-32 parsed `rustricted-std/src/lib.rs` directly with `syn` at build
+//!   time. That worked as long as the std-shim source stayed plain Rust.
+//! - RT-31 dogfooding discovered the circular trap: if `rustricted-std`
+//!   itself is `#![strict]`-marked (a perfectly natural future state),
+//!   `syn` rejects the named-arg / strict-marker syntax and the build
+//!   script *silently* emits an empty `STD_SIGNATURES`, breaking
+//!   cross-crate named-arg lowering everywhere downstream.
+//! - RT-44 (this file) switches to a checked-in TOML-ish manifest. The
+//!   manifest is auditable, the build is decoupled from `rustricted-std`'s
+//!   source dialect, and freshness is enforced by
+//!   `cargo xtask gen-std-signatures --check` in CI.
 //!
-//! The bundled-index approach is fast (a single `include!`), deterministic
-//! (rebuilds when `rustricted-std/src/lib.rs` changes), and self-contained.
-//! Limitation: it only covers `rustricted-std`. Other strict crates that
-//! want cross-crate named args will need a follow-up (RT-33 candidate)
-//! that generalises this to any dependency.
+//! Any parse error here is now a HARD FAILURE (panic) — empty
+//! `STD_SIGNATURES` was the single nastiest silent footgun in the previous
+//! design and we refuse to reintroduce it.
 
 use std::collections::HashMap;
 use std::env;
@@ -27,63 +27,48 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() {
-    // Locate `rustricted-std/src/lib.rs` relative to this crate's manifest.
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
-    let std_lib = PathBuf::from(&manifest_dir)
+    let sig_file = PathBuf::from(&manifest_dir)
         .join("..")
         .join("rustricted-std")
-        .join("src")
-        .join("lib.rs");
+        .join("std-signatures.txt");
 
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed={}", std_lib.display());
+    println!("cargo:rerun-if-changed={}", sig_file.display());
 
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR");
     let out_path = PathBuf::from(&out_dir).join("std_signatures.rs");
 
-    // If the source isn't readable for any reason, emit an empty table so
-    // the crate still compiles. (Tests and lint passes don't care about the
-    // table's contents, only that the symbol exists.)
-    let source = match fs::read_to_string(&std_lib) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!(
-                "rustricted-lower build.rs: could not read {} ({e}); emitting empty index",
-                std_lib.display()
-            );
-            fs::write(
-                &out_path,
-                "pub static STD_SIGNATURES: &[(&str, &[&str])] = &[];\n",
-            )
-            .expect("write empty std_signatures.rs");
-            return;
-        }
-    };
+    let source = fs::read_to_string(&sig_file).unwrap_or_else(|e| {
+        panic!(
+            "rustricted-lower build.rs: could not read {} ({e}). \
+             This file is the checked-in source of truth for STD_SIGNATURES. \
+             Run `cargo xtask gen-std-signatures` to regenerate it from \
+             rustricted-std/src/lib.rs.",
+            sig_file.display()
+        )
+    });
 
-    let file: syn::File = match syn::parse_file(&source) {
-        Ok(f) => f,
-        Err(e) => {
-            eprintln!(
-                "rustricted-lower build.rs: syn parse error on {} ({e}); emitting empty index",
-                std_lib.display()
-            );
-            fs::write(
-                &out_path,
-                "pub static STD_SIGNATURES: &[(&str, &[&str])] = &[];\n",
-            )
-            .expect("write empty std_signatures.rs");
-            return;
-        }
-    };
+    let sigs = parse_manifest(&source).unwrap_or_else(|e| {
+        panic!(
+            "rustricted-lower build.rs: malformed manifest at {} ({e}). \
+             Run `cargo xtask gen-std-signatures` to regenerate it.",
+            sig_file.display()
+        )
+    });
 
-    // name -> param-list, with ambiguity tracking (drop names whose
-    // signatures disagree across modules so we don't mis-lower).
-    let mut sigs: HashMap<String, Vec<String>> = HashMap::new();
-    let mut ambiguous: std::collections::HashSet<String> = std::collections::HashSet::new();
-    walk_items(&file.items, &mut sigs, &mut ambiguous);
+    if sigs.is_empty() {
+        panic!(
+            "rustricted-lower build.rs: manifest at {} parsed to zero entries. \
+             That would silently break cross-crate named-arg lowering. \
+             Run `cargo xtask gen-std-signatures` to regenerate it.",
+            sig_file.display()
+        );
+    }
 
     let mut out = String::new();
-    out.push_str("// @generated by rustricted-lower/build.rs — do not edit.\n");
+    out.push_str("// @generated by rustricted-lower/build.rs from\n");
+    out.push_str("// crates/rustricted-std/std-signatures.txt — do not edit.\n");
     out.push_str("pub static STD_SIGNATURES: &[(&str, &[&str])] = &[\n");
     let mut keys: Vec<&String> = sigs.keys().collect();
     keys.sort();
@@ -107,72 +92,51 @@ fn main() {
     fs::write(&out_path, out).expect("write std_signatures.rs");
 }
 
-fn walk_items(
-    items: &[syn::Item],
-    sigs: &mut HashMap<String, Vec<String>>,
-    ambiguous: &mut std::collections::HashSet<String>,
-) {
-    for item in items {
-        match item {
-            syn::Item::Fn(f) => record_fn(&f.sig, &f.vis, sigs, ambiguous),
-            syn::Item::Mod(m) => {
-                if let Some((_, inner)) = &m.content {
-                    walk_items(inner, sigs, ambiguous);
-                }
-            }
-            _ => {}
+/// Parse the `std-signatures.txt` manifest into a `name -> [params]` map.
+///
+/// Lines starting with `#` and blank lines are ignored. Each data line is
+/// `name:p1,p2,...`. Duplicates with mismatched param lists are a hard
+/// error — the upstream generator is responsible for dropping ambiguous
+/// names, so a duplicate here means the manifest has been hand-edited
+/// incorrectly.
+fn parse_manifest(source: &str) -> Result<HashMap<String, Vec<String>>, String> {
+    let mut out: HashMap<String, Vec<String>> = HashMap::new();
+    for (lineno, raw) in source.lines().enumerate() {
+        let line = raw.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
         }
-    }
-}
-
-fn record_fn(
-    sig: &syn::Signature,
-    vis: &syn::Visibility,
-    sigs: &mut HashMap<String, Vec<String>>,
-    ambiguous: &mut std::collections::HashSet<String>,
-) {
-    // Only index pub fns — those are the ones a downstream caller could
-    // name. Private helpers aren't reachable cross-crate.
-    if !matches!(vis, syn::Visibility::Public(_)) {
-        return;
-    }
-    let name = sig.ident.to_string();
-    if ambiguous.contains(&name) {
-        return;
-    }
-    let mut params: Vec<String> = Vec::new();
-    for input in &sig.inputs {
-        match input {
-            syn::FnArg::Receiver(_) => {} // skip self
-            syn::FnArg::Typed(pat_type) => {
-                if let Some(ident) = pat_ident(&pat_type.pat) {
-                    params.push(ident);
-                } else {
-                    // Non-ident patterns (destructuring) — can't bind by
-                    // name. Drop the whole entry to avoid lying about the
-                    // signature.
-                    sigs.remove(&name);
-                    ambiguous.insert(name);
-                    return;
-                }
+        let (name, tail) = line
+            .split_once(':')
+            .ok_or_else(|| format!("line {}: missing `:` separator: {raw:?}", lineno + 1))?;
+        let name = name.trim().to_string();
+        if name.is_empty() {
+            return Err(format!("line {}: empty function name", lineno + 1));
+        }
+        let params: Vec<String> = if tail.trim().is_empty() {
+            Vec::new()
+        } else {
+            tail.split(',').map(|p| p.trim().to_string()).collect()
+        };
+        for p in &params {
+            if p.is_empty() {
+                return Err(format!(
+                    "line {}: empty parameter name in `{name}`",
+                    lineno + 1
+                ));
+            }
+        }
+        match out.get(&name) {
+            Some(existing) if existing != &params => {
+                return Err(format!(
+                    "line {}: duplicate signature for `{name}` with mismatched params",
+                    lineno + 1
+                ));
+            }
+            _ => {
+                out.insert(name, params);
             }
         }
     }
-    match sigs.get(&name) {
-        Some(existing) if existing != &params => {
-            sigs.remove(&name);
-            ambiguous.insert(name);
-        }
-        Some(_) => {}
-        None => {
-            sigs.insert(name, params);
-        }
-    }
-}
-
-fn pat_ident(pat: &syn::Pat) -> Option<String> {
-    match pat {
-        syn::Pat::Ident(pi) => Some(pi.ident.to_string()),
-        _ => None,
-    }
+    Ok(out)
 }

@@ -9,9 +9,6 @@ authors.workspace = true
 repository.workspace = true
 build = "build.rs"
 
-[build-dependencies]
-syn = { workspace = true }
-
 [dependencies]
 prettyplease.workspace = true
 proc-macro2 = { workspace = true, features = ["span-locations"] }
