@@ -1,3 +1,4 @@
+
 //! `trust-rustc` — RUSTC_WRAPPER shim that runs Trust's lowering
 //! pass on each strict-marked `.rs` file before handing it to the real
 //! `rustc`. Set as `RUSTC_WRAPPER` to make `cargo build` understand the
@@ -20,6 +21,8 @@
 //! same lowering/cache layer — see `src/lib.rs`.
 
 trust_attrs::strict! {}
+
+
 
 use anyhow::{bail, Context, Result};
 use trust_rustc::{find_input_rs, prepare_strict_input};

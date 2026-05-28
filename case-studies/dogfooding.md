@@ -30,6 +30,10 @@ was a real bug, and what was a language/tooling gap.
 
 **Crates fully strict-marked:** 7 of 11 (after RT-44). **At least 3 acceptance criterion: met.**
 
+
+
+**Update (RT-50):** All three bin crates (`trust`, `trust-rustc`, `xtask`) and `trust-std` are now strict-marked after RT-48 (skip attribute-internal call-like syntax) and RT-49 (skip std/core/alloc-prefixed qualified calls) landed. The trust-std signature index has been restored to its full set including `command`, `copy`, `rename`, `set_var` — these no longer false-positive on clap's `#[command(...)]` derive or on real `std::fs::copy(...)` calls.
+
 ## Per-crate notes
 
 ### `trust-syntax` — STRICT (already)

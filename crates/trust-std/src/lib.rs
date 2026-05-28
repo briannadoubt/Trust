@@ -16,6 +16,9 @@
 //! parses), and `trust-lower/build.rs` reads that manifest. CI
 //! enforces freshness with `cargo xtask gen-std-signatures --check`.
 
+trust_attrs::strict! {}
+
+
 pub mod fs {
     use std::io;
     use std::path::Path;

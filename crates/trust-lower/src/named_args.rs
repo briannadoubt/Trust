@@ -233,9 +233,18 @@ fn rewrite_stream(
 ) -> TokenStream {
     let trees: Vec<TokenTree> = tokens.into_iter().collect();
     let param_groups = find_param_group_indices(&trees);
+    let attr_brackets = find_attribute_bracket_indices(&trees);
     let mut out: Vec<TokenTree> = Vec::with_capacity(trees.len());
     for (i, tree) in trees.into_iter().enumerate() {
         match tree {
+            // RT-48: attribute bracket groups (`#[...]` / `#![...]`) hold
+            // proc-macro input, NOT expressions. `clap`'s `#[command(sub)]`
+            // looks like a call but isn't one — recursing into it would
+            // strip param names from token-tree syntax that downstream
+            // macros need verbatim. Pass through untouched.
+            TokenTree::Group(g) if g.delimiter() == Delimiter::Bracket && attr_brackets.contains(&i) => {
+                out.push(TokenTree::Group(g));
+            }
             TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis => {
                 let recursed = rewrite_stream(g.stream(), registry, diagnostics, strict_mode);
                 if param_groups.contains(&i) {
@@ -270,6 +279,36 @@ fn rewrite_stream(
         }
     }
     from_vec(out)
+}
+
+/// RT-48: mark which `[...]` bracket groups in `trees` are attribute
+/// payloads. An attribute is `#[...]` or `#![...]` — a `#` punct, an
+/// optional `!` punct, then the bracket group. Inside an attribute, paren
+/// groups syntactically look like fn calls (e.g. `#[derive(Debug)]`,
+/// `#[command(subcommand)]`) but they are macro input, not expressions.
+fn find_attribute_bracket_indices(trees: &[TokenTree]) -> HashSet<usize> {
+    let mut attrs = HashSet::new();
+    for i in 0..trees.len() {
+        let TokenTree::Punct(p) = &trees[i] else {
+            continue;
+        };
+        if p.as_char() != '#' {
+            continue;
+        }
+        let mut j = i + 1;
+        // Optional `!` for inner attributes `#![...]`.
+        if let Some(TokenTree::Punct(bang)) = trees.get(j) {
+            if bang.as_char() == '!' {
+                j += 1;
+            }
+        }
+        if let Some(TokenTree::Group(g)) = trees.get(j) {
+            if g.delimiter() == Delimiter::Bracket {
+                attrs.insert(j);
+            }
+        }
+    }
+    attrs
 }
 
 /// Mark which paren groups in `trees` are function parameter lists
@@ -330,6 +369,13 @@ fn find_param_group_indices(trees: &[TokenTree]) -> HashSet<usize> {
 /// (or any local free fn named `insert`) would either fire a spurious
 /// R0042 or reorder by the wrong param list. Best to fall through to the
 /// "unknown callee" branch (strip names, keep order).
+///
+/// **RT-49:** Returns `None` for std-prefixed qualified calls
+/// (`std::fs::copy(...)`, `core::ptr::write(...)`, `alloc::vec::Vec::new(...)`).
+/// The trust-std signature index reuses std's simple names for shims
+/// (`copy`, `rename`, `set_var`); matching them against a real std call
+/// would fire a spurious R0042. A user who genuinely wants the shim has
+/// to call it via `trust_std::*` or bring it into scope with `use`.
 fn preceding_ident(out: &[TokenTree]) -> Option<String> {
     match out.last() {
         Some(TokenTree::Ident(id)) => {
@@ -342,10 +388,56 @@ fn preceding_ident(out: &[TokenTree]) -> Option<String> {
                     }
                 }
             }
+            // RT-49: if this ident is the tail of a `::`-qualified path,
+            // walk back and find the first segment. Skip lookup when the
+            // root segment is std/core/alloc — those are stdlib calls,
+            // never trust-std shims.
+            if path_root_segment(out)
+                .is_some_and(|root| matches!(root.as_str(), "std" | "core" | "alloc"))
+            {
+                return None;
+            }
             Some(id.to_string())
         }
         _ => None,
     }
+}
+
+/// Walk backwards through `out` looking for the first segment of a
+/// `::`-qualified path that ends at `out.last()`. Returns `None` if the
+/// last ident isn't preceded by `::` (i.e. it's a bare ident, not part
+/// of a path).
+fn path_root_segment(out: &[TokenTree]) -> Option<String> {
+    let mut i = out.len();
+    if i == 0 {
+        return None;
+    }
+    // Last token must be an ident (already checked by caller).
+    i -= 1;
+    let mut root: Option<String> = None;
+    loop {
+        // Need two colons before another ident.
+        if i < 2 {
+            break;
+        }
+        let c1 = &out[i - 1];
+        let c2 = &out[i - 2];
+        let (TokenTree::Punct(p1), TokenTree::Punct(p2)) = (c1, c2) else {
+            break;
+        };
+        if p1.as_char() != ':' || p2.as_char() != ':' {
+            break;
+        }
+        if i < 3 {
+            break;
+        }
+        let TokenTree::Ident(seg) = &out[i - 3] else {
+            break;
+        };
+        root = Some(seg.to_string());
+        i -= 3;
+    }
+    root
 }
 
 fn rewrite_call_args(
@@ -979,6 +1071,80 @@ mod tests {
         assert!(
             diags.iter().any(|d| d.rule == "R0042"),
             "identical-param re-declarations don't make the name ambiguous: {diags:?}"
+        );
+    }
+
+    // RT-48: attribute payloads (`#[command(sub)]`, `#[derive(Debug, Clone)]`)
+    // syntactically contain paren groups that look like fn calls. The lowering
+    // pass must NOT treat them as call sites — clap's `#[command(subcommand)]`
+    // matched the `command` shim from trust-std and fired a spurious R0042.
+    #[test]
+    fn r0042_silent_on_attribute_internal_call_syntax() {
+        let src = "fn command(program: u32) -> u32 { program }\n\
+                   #[command(subcommand)]\n\
+                   struct Cmd;\n\
+                   fn main() {}";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "attribute-internal `command(sub)` must not match free-fn `command`: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn rt48_inner_attribute_also_skipped() {
+        // `#![allow(rustricted::R0014)]` etc. — `allow(...)` would otherwise
+        // look like a fn call to an `allow` shim if one existed.
+        let src = "fn allow(rule: u32) -> u32 { rule }\n\
+                   #![allow(dead_code)]\n\
+                   fn main() {}";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "inner-attribute `allow(...)` must be exempt: {diags:?}"
+        );
+    }
+
+    // RT-49: qualified paths rooted at std/core/alloc must NOT match
+    // registry entries by simple name. `std::fs::copy(from, to)` should
+    // be left alone even though trust-std has a `copy` shim with the
+    // same simple name.
+    #[test]
+    fn r0042_silent_on_std_qualified_call_matching_shim_name() {
+        // Pretend trust-std's `copy(from, to)` shim is in the registry
+        // by defining a same-shape free fn locally. The call below uses
+        // `std::fs::copy` which must be exempt.
+        let src = "fn copy(from: u32, to: u32) -> u32 { from + to }\n\
+                   fn main() { let _ = std::fs::copy(1u32, 2u32); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "std::fs::copy must not match local `copy`: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn rt49_core_and_alloc_prefixes_also_exempt() {
+        let src = "fn write(a: u32, b: u32) -> u32 { a + b }\n\
+                   fn make() -> u32 { 0 }\n\
+                   fn main() { let _ = core::ptr::write(1u32, 2u32); let _ = alloc::vec::Vec::<u32>::new(); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "core::/alloc:: prefixed calls must be exempt: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn rt49_user_qualified_paths_still_matched() {
+        // A user-defined module path like `my::mod::area(...)` should still
+        // match the registry — only std/core/alloc are exempt.
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\n\
+                   fn main() { let _ = my::mod_path::area(4u32, 6u32); }";
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            diags.iter().any(|d| d.rule == "R0042"),
+            "user-namespaced qualified calls still match by simple name: {diags:?}"
         );
     }
 }
