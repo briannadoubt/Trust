@@ -256,6 +256,22 @@ loses or shifts spans somewhere between parsing and diagnostic emission.
 experience is "everything is wrong on line 1", which makes scanning
 errors useless.
 
+**Update (RT-42 fixed):** Root cause was that `rustricted-lower` did
+not enable the `span-locations` feature on `proc-macro2`, so every
+diagnostic emitted by the lower pass (R0042 and R3001) used
+`byte_range()` that returned `0..0` — which ariadne renders as line 1
+col 1, landing on the strict marker. RT-8 had previously fixed the
+same class of bug for the syn-AST-based lints (`rustricted-lints`) by
+enabling the feature on that crate; RT-42 mirrors the fix in the
+token-stream-based lower pass and threads the offending call paren
+group's span and each named arg's name span through
+`rewrite_call_args` and `extract_named`. R0042 now points at the
+opening paren of the call; R3001 points at the unknown name token.
+Regression tests live in `crates/rustricted-lower/src/named_args.rs`
+(`r0042_span_points_at_call_site_not_line_one`,
+`r3001_span_points_at_unknown_name_not_line_one`) and in
+`crates/rustricted-lints/src/lib.rs` for R0001/R0005/R0011.
+
 ---
 
 ### FP5: R0014 on `Slab`/`IndexMap` indexing (RT-43)

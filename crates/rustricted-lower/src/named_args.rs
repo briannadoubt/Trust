@@ -10,7 +10,7 @@
 //! Lowering target: every named call becomes a plain positional Rust call,
 //! so syn and rustc can take it from there.
 
-use proc_macro2::{Delimiter, Group, Punct, Spacing, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, Group, Punct, Spacing, Span, TokenStream, TokenTree};
 use rustricted_diag::Diagnostic;
 use std::collections::{HashMap, HashSet};
 
@@ -224,6 +224,7 @@ fn rewrite_stream(
                     let new_inner = rewrite_call_args(
                         recursed,
                         callee.as_deref(),
+                        g.span(),
                         registry,
                         diagnostics,
                         strict_mode,
@@ -307,6 +308,7 @@ fn preceding_ident(out: &[TokenTree]) -> Option<String> {
 fn rewrite_call_args(
     args: TokenStream,
     callee: Option<&str>,
+    call_span: Span,
     registry: &CalleeRegistry,
     diagnostics: &mut Vec<Diagnostic>,
     strict_mode: bool,
@@ -316,7 +318,7 @@ fn rewrite_call_args(
         return TokenStream::new();
     }
 
-    let parsed: Vec<(Option<String>, TokenStream)> =
+    let parsed: Vec<(Option<(String, Span)>, TokenStream)> =
         segments.into_iter().map(extract_named).collect();
     let any_named = parsed.iter().any(|(n, _)| n.is_some());
     let all_named = parsed.iter().all(|(n, _)| n.is_some());
@@ -324,6 +326,9 @@ fn rewrite_call_args(
     // R0042: in strict mode, calls to locally-defined functions with
     // arity > 1 must use named arguments. This is the dialect's main
     // bug-prevention rule — it's why named arguments exist.
+    //
+    // RT-42: the diagnostic's span is the call's opening paren — without
+    // this, every R0042 collapsed to line 1 col 1 (the strict marker).
     if strict_mode && parsed.len() > 1 && !all_named {
         if let Some(name) = callee {
             if let Some(declared) = registry.fns.get(name) {
@@ -339,7 +344,7 @@ fn rewrite_call_args(
                             "call to `{name}` must use named arguments (arity {})",
                             declared.len()
                         ),
-                        0..0,
+                        span_to_range(call_span),
                     )
                     .with_why(
                         "positional argument ordering is the largest LLM-authored bug class in Rust; named args eliminate it".to_string(),
@@ -359,7 +364,9 @@ fn rewrite_call_args(
         if let Some(declared) = registry.fns.get(name) {
             if all_named {
                 for (n, _) in &parsed {
-                    let supplied = n.as_deref().unwrap_or("");
+                    let Some((supplied, supplied_span)) = n else {
+                        continue;
+                    };
                     if !declared.iter().any(|d| d == supplied) {
                         diagnostics.push(
                             Diagnostic::error(
@@ -367,7 +374,7 @@ fn rewrite_call_args(
                                 format!(
                                     "`{name}` has no parameter named `{supplied}`"
                                 ),
-                                0..0,
+                                span_to_range(*supplied_span),
                             )
                             .with_why(
                                 "named arguments are validated against the callee's declared parameter list".to_string(),
@@ -382,11 +389,11 @@ fn rewrite_call_args(
 
                 let mut by_name: HashMap<String, TokenStream> = HashMap::new();
                 for (n, v) in parsed {
-                    if let Some(name) = n {
+                    if let Some((name, _span)) = n {
                         by_name.insert(name, v);
                     }
                 }
-                let reordered: Vec<(Option<String>, TokenStream)> = declared
+                let reordered: Vec<(Option<(String, Span)>, TokenStream)> = declared
                     .iter()
                     .filter_map(|d| by_name.remove(d).map(|v| (None, v)))
                     .collect();
@@ -399,21 +406,29 @@ fn rewrite_call_args(
     reconstruct(parsed)
 }
 
-fn extract_named(segment: TokenStream) -> (Option<String>, TokenStream) {
+fn extract_named(segment: TokenStream) -> (Option<(String, Span)>, TokenStream) {
     let trees: Vec<TokenTree> = segment.into_iter().collect();
     // Pattern: IDENT ':' (Alone spacing — distinguishes from `::`) <rest>
     if trees.len() >= 2 {
         if let (TokenTree::Ident(name), TokenTree::Punct(colon)) = (&trees[0], &trees[1]) {
             if colon.as_char() == ':' && colon.spacing() == Spacing::Alone {
                 let value: TokenStream = trees[2..].iter().cloned().collect();
-                return (Some(name.to_string()), value);
+                return (Some((name.to_string(), name.span())), value);
             }
         }
     }
     (None, from_vec(trees))
 }
 
-fn reconstruct(parsed: Vec<(Option<String>, TokenStream)>) -> TokenStream {
+/// Convert a `proc_macro2::Span` to a byte range into the original source.
+/// Requires the `span-locations` feature on `proc-macro2` — without it,
+/// `byte_range()` returns `0..0` for every span, collapsing diagnostics to
+/// line 1 col 1 (the regression RT-42 fixes).
+fn span_to_range(span: Span) -> std::ops::Range<usize> {
+    span.byte_range()
+}
+
+fn reconstruct(parsed: Vec<(Option<(String, Span)>, TokenStream)>) -> TokenStream {
     let mut out = TokenStream::new();
     for (i, (_, value)) in parsed.into_iter().enumerate() {
         if i > 0 {
@@ -773,6 +788,77 @@ mod tests {
         assert!(
             diags.iter().any(|d| d.rule == "R3001"),
             "expected R3001 for unknown std param: {diags:?}"
+        );
+    }
+
+    // RT-42 regression: R0042's span used to be `0..0` (proc-macro2's
+    // byte_range without span-locations), which ariadne renders as line 1
+    // col 1 — landing on the strict marker for every diagnostic. Verify
+    // the span now points at the actual call site.
+    #[test]
+    fn r0042_span_points_at_call_site_not_line_one() {
+        // First line is reserved for a hypothetical strict marker — the
+        // offending call is on line 4. Without RT-42 the span collapses
+        // to 0..0; with it, the span covers the opening paren of the call.
+        let src = "// strict marker would go here\n\
+                   fn make_rect(width: u32, height: u32) -> u32 { width + height }\n\
+                   fn main() {\n\
+                       let _r = make_rect(10, 5);\n\
+                   }\n";
+        let tokens: TokenStream = src.parse().unwrap();
+        let registry = CalleeRegistry::collect(&tokens);
+        let mut diags = Vec::new();
+        let _ = rewrite(tokens, &registry, &mut diags, true);
+        let diag = diags
+            .iter()
+            .find(|d| d.rule == "R0042")
+            .expect("expected R0042");
+        assert!(
+            diag.span.start > 0 || diag.span.end > 0,
+            "R0042 span must not be 0..0 (RT-42): {:?}",
+            diag.span
+        );
+        // The call sits after the first three lines (~104 bytes in), so
+        // the span must not be inside the first source line.
+        let line_one_end = src.find('\n').expect("first newline present");
+        assert!(
+            diag.span.start >= line_one_end,
+            "R0042 span must point past line 1 (RT-42): start={}, line1_end={}",
+            diag.span.start,
+            line_one_end
+        );
+    }
+
+    // RT-42 regression: R3001 (unknown named arg) had the same `0..0`
+    // span bug. The span should now point at the offending name token.
+    #[test]
+    fn r3001_span_points_at_unknown_name_not_line_one() {
+        let src = "// strict marker would go here\n\
+                   fn make_rect(width: u32, height: u32) -> u32 { width + height }\n\
+                   fn main() {\n\
+                       let _r = make_rect(wodth: 10, height: 5);\n\
+                   }\n";
+        let tokens: TokenStream = src.parse().unwrap();
+        let registry = CalleeRegistry::collect(&tokens);
+        let mut diags = Vec::new();
+        let _ = rewrite(tokens, &registry, &mut diags, true);
+        let diag = diags
+            .iter()
+            .find(|d| d.rule == "R3001")
+            .expect("expected R3001");
+        let line_one_end = src.find('\n').expect("first newline present");
+        assert!(
+            diag.span.start >= line_one_end,
+            "R3001 span must point past line 1 (RT-42): start={}, line1_end={}",
+            diag.span.start,
+            line_one_end
+        );
+        // The span should land on the literal text "wodth".
+        let wodth_pos = src.find("wodth").expect("wodth in source");
+        assert_eq!(
+            diag.span.start, wodth_pos,
+            "R3001 span should start at `wodth`: {:?}",
+            diag.span
         );
     }
 
