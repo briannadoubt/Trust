@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "scope",
+      "name": "scope-one",
       "runtimeExecutable": "scope",
-      "runtimeArgs": ["serve", "--no-open"],
-      "port": 4321,
+      "runtimeArgs": ["preview", "--port", "4327"],
+      "port": 4327,
       "autoPort": false
     }
   ]
