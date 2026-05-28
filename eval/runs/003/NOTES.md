@@ -2,7 +2,7 @@
 
 ## Headline
 
-Vanilla shipped 2/6 (33%) bugs. Rustricted shipped 0/6 (0%).
+Vanilla shipped 2/6 (33%) bugs. Trust shipped 0/6 (0%).
 
 Two new tasks designed to fill the gap from run 002 (where tasks 12 and 14 elicited no bugs):
 
@@ -14,9 +14,9 @@ Two new tasks designed to fill the gap from run 002 (where tasks 12 and 14 elici
 ### Task 22 — partial win
 
 - **Vanilla**: 2/3 trials shipped `.unwrap()` chained over `read_to_string`, `lines().next()`, and `parse()`. 1/3 trials used `unwrap_or_default()` / `if let Ok(...)` — graceful by accident.
-- **Rustricted**: 0/3 had `.unwrap()`. All three used `match` blocks with `eprintln!` + early `return`.
+- **Trust**: 0/3 had `.unwrap()`. All three used `match` blocks with `eprintln!` + early `return`.
 
-Interesting wrinkle: the redesigned task did elicit R0001 bugs in vanilla, but the blind rustricted prompt produced bug-free code without the dialect needing to catch anything. Different from run 002, where Haiku wrote byte-identical code in both conditions. Hypothesis: the rustricted prompt's mention of "additional set of static checks" nudges Haiku toward defensive patterns when the task explicitly involves error-prone steps.
+Interesting wrinkle: the redesigned task did elicit R0001 bugs in vanilla, but the blind trust prompt produced bug-free code without the dialect needing to catch anything. Different from run 002, where Haiku wrote byte-identical code in both conditions. Hypothesis: the trust prompt's mention of "additional set of static checks" nudges Haiku toward defensive patterns when the task explicitly involves error-prone steps.
 
 This is real signal but weaker than run 002's "100% catch" result. The dialect's value here is mixed: it doesn't have to catch anything because the agent doesn't write the bug, but the agent only declined to write the bug *because the prompt mentioned strict checks*. Whether that nudge generalizes outside the eval context is an open question.
 

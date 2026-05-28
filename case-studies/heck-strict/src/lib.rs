@@ -1,6 +1,6 @@
 //! **heck** is a case conversion library.
 //!
-//! Vendored for Rustricted strict-mode case study RT-12.
+//! Vendored for Trust strict-mode case study RT-12.
 //! Original: https://github.com/withoutboats/heck v0.5.0 (MIT OR Apache-2.0)
 //!
 //! This library exists to provide case conversion between common cases like
@@ -43,9 +43,9 @@
 #![no_std]
 
 extern crate alloc;
-extern crate rustricted_attrs;
+extern crate trust_attrs;
 
-rustricted_attrs::strict! {}
+trust_attrs::strict! {}
 
 use alloc::string::{String, ToString};
 use core::fmt;

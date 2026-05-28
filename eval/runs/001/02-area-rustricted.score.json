@@ -1,11 +1,11 @@
 {
-  "file": "02-area-rustricted.rs",
+  "file": "02-area-trust.rs",
   "task": "02-area",
-  "condition": "rustricted",
+  "condition": "trust",
   "bug_in_source": false,
   "good_in_source": true,
   "dialect_caught": false,
   "expected_rule": "R0042",
   "shipped": false,
-  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/001/02-area-rustricted.rs\n"
+  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/001/02-area-trust.rs\n"
 }

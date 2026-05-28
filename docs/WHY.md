@@ -1,6 +1,6 @@
-# Why Rustricted
+# Why Trust
 
-Audience: an engineer deciding whether to adopt Rustricted on an
+Audience: an engineer deciding whether to adopt Trust on an
 agent-driven codebase, or a designer building something similar. If you
 are looking to contribute to the toolchain itself, start with
 [AGENTS.md](AGENTS.md) and [SPEC.md](SPEC.md) instead.
@@ -49,10 +49,10 @@ with payloads. A borrow checker that, whatever its costs, makes a large
 class of bugs impossible to express. An agent writing Rust starts ahead.
 
 The delta from "Rust" to "Rust an agent writes correctly on the first
-try" is small. It is the list above. Rustricted is the toolchain that
+try" is small. It is the list above. Trust is the toolchain that
 closes that delta and nothing else. There is no new type system, no new
 runtime, no replacement standard library. The output is plain Rust
-source, handed to a stock `rustc`. If you stop using Rustricted
+source, handed to a stock `rustc`. If you stop using Trust
 tomorrow, the lowered Rust your codebase produced still builds.
 
 ## What you write
@@ -123,13 +123,13 @@ Honestly:
   day. The agent does not feel it at all.
 - **Activation per file or per crate.** Single-file inputs use
   `#![strict]` at the crate root. Crates built through cargo use the
-  `rustricted_attrs::strict!{}` marker macro instead, because stock
+  `trust_attrs::strict!{}` marker macro instead, because stock
   `rustc` does not recognise `#![strict]`. See
   [SPEC.md § Activation](SPEC.md#activation).
 - **Cargo needs a wrapper for the syntax extensions.** The named-arg
   rewrite has to run before `rustc` sees the file, and `cargo build`
   invokes `rustc` directly. You set
-  `RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc)` for the
+  `RUSTC_WRAPPER=$(realpath target/debug/trust-rustc)` for the
   build. The lints alone work without the wrapper; the syntax
   extensions do not.
 - **The wrapper is single-file at the moment.** Only the `.rs` file
@@ -137,20 +137,20 @@ Honestly:
   read by `rustc` from disk and not lowered. Multi-file crates either
   keep extension syntax in the crate root or pre-lower their sources.
   See the limitation note in
-  [SPEC.md § Cargo mode](SPEC.md#cargo-mode-rustricted_attrsstrict-lints-only-by-default).
-- **The LSP is a stub.** The `rustricted-lsp` binary prints a
-  placeholder. Diagnostics today come from `rustricted check` on the
+  [SPEC.md § Cargo mode](SPEC.md#cargo-mode-trust_attrsstrict-lints-only-by-default).
+- **The LSP is a stub.** The `trust-lsp` binary prints a
+  placeholder. Diagnostics today come from `trust check` on the
   command line.
 - **Cross-crate signature data is missing.** R0042 fires on in-crate
   callees only. Calls into upstream crates accept positional arguments
   unconditionally. The bug class the rule targets is not yet caught at
   the API boundary.
 
-If any of those is a blocker, Rustricted is not ready for you yet.
+If any of those is a blocker, Trust is not ready for you yet.
 
 ## Design priorities
 
-Rustricted is agent-first and human-second. When a design choice trades
+Trust is agent-first and human-second. When a design choice trades
 verbosity for explicitness, or rigidity for fewer authoring mistakes,
 the agent-friendly side wins and the doc does not apologise for it.
 Mandatory named arguments, exhaustive `// safety:` and `// reason:`
@@ -183,7 +183,7 @@ phase-by-phase rationale for each individual rule is in
 - **Performance-sensitive hot paths that audit every line.** Lowering
   is source-to-source with no runtime cost — the extra dispatch claim
   is not real. But if your team's bar is "every line is reviewed by a
-  human who knows the codebase cold," the bugs Rustricted catches were
+  human who knows the codebase cold," the bugs Trust catches were
   already going to be caught at review, and the verbosity tax is pure
   loss.
 - **Codebases that lean heavily on `macro_rules!` or proc-macros.**

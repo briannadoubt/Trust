@@ -1,4 +1,4 @@
-# Rustricted Language Reference
+# Trust Language Reference
 
 Status: Phase 0 driver shipped. Lints, syntax extensions, and effect tracking
 are stubbed in-tree and land in subsequent phases. Items marked _unimplemented_
@@ -6,14 +6,14 @@ or _Phase N_ are specified here but not yet enforced by the toolchain.
 
 ## Overview
 
-Rustricted is a strict dialect of Rust aimed at LLM-authored code. It bans a
+Trust is a strict dialect of Rust aimed at LLM-authored code. It bans a
 short list of patterns that agents misuse on first contact and adds three
 genuine grammar extensions: mandatory named arguments past arity 1, a pipe
 operator `|>`, and an `effect` keyword for tracking side effects in function
 signatures.
 
-Rustricted is not a fork of `rustc` and not a new language family. The
-toolchain is a frontend that lowers Rustricted source to plain Rust source and
+Trust is not a fork of `rustc` and not a new language family. The
+toolchain is a frontend that lowers Trust source to plain Rust source and
 hands the result to `rustc` via `cargo`. The pipeline is:
 
 ```
@@ -22,17 +22,17 @@ source → token stream → lowering passes → syn::File → prettyplease → r
 
 Lowering is token-level (`proc_macro2::TokenStream`) until the extensions have
 been desugared, at which point `syn` parses the result and `prettyplease` emits
-the final Rust. The driver lives in `crates/rustricted`; the orchestration is
-`rustricted_lower::lower`.
+the final Rust. The driver lives in `crates/trust`; the orchestration is
+`trust_lower::lower`.
 
 ## Activation
 
-Rustricted is opt-in per file. Two activation forms are accepted; pick the
+Trust is opt-in per file. Two activation forms are accepted; pick the
 one that matches your build setup.
 
 ### Single-file mode: `#![strict]`
 
-For files run through `rustricted check` directly (no cargo build of the
+For files run through `trust check` directly (no cargo build of the
 file is required), an inner attribute at the crate root activates strict
 mode:
 
@@ -44,24 +44,24 @@ fn main() { /* ... */ }
 
 This is the form used by `examples/01-lints/*.rs` and the eval tasks. Stock
 `rustc` rejects `#![strict]` because it is not a registered attribute —
-which is fine for single-file inputs the Rustricted toolchain handles
+which is fine for single-file inputs the Trust toolchain handles
 end-to-end, but unsuitable for files that need to compile under
 `cargo build`.
 
-### Cargo mode: `rustricted_attrs::strict!{}` (lints only by default)
+### Cargo mode: `trust_attrs::strict!{}` (lints only by default)
 
 For files that participate in a `cargo build` (e.g. crates written in
-Rustricted), use the marker macro from the `rustricted-attrs` crate
+Trust), use the marker macro from the `trust-attrs` crate
 instead:
 
 ```rust
-rustricted_attrs::strict! {}
+trust_attrs::strict! {}
 
 fn main() { /* ... */ }
 ```
 
-Add `rustricted-attrs = "0.1"` to `[dependencies]`. The macro expands to
-nothing for `rustc`, so cargo builds are unaffected; the Rustricted
+Add `trust-attrs = "0.1"` to `[dependencies]`. The macro expands to
+nothing for `rustc`, so cargo builds are unaffected; the Trust
 toolchain detects the invocation and activates the **lints** that work
 at the AST level (R0001 unwrap, R0003 as-cast, R0004 glob, R0007
 impl-trait, R0010 todo, R0011 panic, R0012 bool-param, R0014 bare-index,
@@ -71,13 +71,13 @@ R0005/R0006 justify-{unsafe,allow}, R0008 user-macros).
 not enable the syntax extensions (named arguments, pipe, `effect`). Those
 are token-level rewrites that must run *before* rustc sees the file, and
 `cargo build` invokes rustc directly. To make cargo crates accept the
-extensions, set `RUSTC_WRAPPER` to the `rustricted-rustc` binary
-(`crates/rustricted-rustc/`):
+extensions, set `RUSTC_WRAPPER` to the `trust-rustc` binary
+(`crates/trust-rustc/`):
 
 ```sh
-cargo build -p rustricted-rustc -p rustricted-rustdoc
-RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc) \
-RUSTDOC=$(realpath target/debug/rustricted-rustdoc) \
+cargo build -p trust-rustc -p trust-rustdoc
+RUSTC_WRAPPER=$(realpath target/debug/trust-rustc) \
+RUSTDOC=$(realpath target/debug/trust-rustdoc) \
   cargo build
 ```
 
@@ -90,9 +90,9 @@ syntax which stock rustc rejects).
 
 **Why both `RUSTC_WRAPPER` and `RUSTDOC`?** `rustdoc` does NOT honour
 `RUSTC_WRAPPER` — it invokes rustc directly when compiling each doc-test
-snippet. So any doc-test that uses Rustricted syntax (named-args, pipe)
+snippet. So any doc-test that uses Trust syntax (named-args, pipe)
 would fail with a plain rustc parse error during `cargo test --doc`. The
-sibling `rustricted-rustdoc` shim wraps rustdoc the same way: it lowers
+sibling `trust-rustdoc` shim wraps rustdoc the same way: it lowers
 the source file before rustdoc extracts doc-tests, and also rewrites the
 code inside `///` / `//!` fenced code blocks so the extracted snippets
 parse as plain Rust. Set it via the `RUSTDOC` env var (cargo replaces
@@ -111,8 +111,8 @@ tree is a Phase 1 item.
 
 ### Detection rules
 
-Both `rustricted_lower::detect_strict_mode` (token-level, runs before
-parsing) and `rustricted_lints::detect_strict` (AST-level, runs after
+Both `trust_lower::detect_strict_mode` (token-level, runs before
+parsing) and `trust_lints::detect_strict` (AST-level, runs after
 lowering) accept either form. The lints crate returns an empty report
 when neither is present; the lowering passes run unconditionally because
 they are pure rewrites, but in a file without an activation marker they
@@ -128,7 +128,7 @@ Lint codes are stable. Each lint is emitted as a `Diagnostic` carrying the rule
 code, a primary message, a `why:` note, and a `help:` suggestion. See the
 [Diagnostic format](#diagnostic-format) section for the rendered shape.
 
-The table below is auto-generated from `crates/rustricted-lints/src/rules.rs`
+The table below is auto-generated from `crates/trust-lints/src/rules.rs`
 by `cargo xtask gen-docs`. Do not edit by hand — modify the `Rule` enum and
 regenerate.
 
@@ -154,7 +154,7 @@ regenerate.
 
 <!-- END auto-generated: lints-table -->
 
-Rule metadata lives in `crates/rustricted-lints/src/rules.rs`. R0007
+Rule metadata lives in `crates/trust-lints/src/rules.rs`. R0007
 (`no-impl-trait-return`) is reserved but not yet implemented in the runner;
 the catalogue entry exists so the rule code is stable when implementation
 lands.
@@ -236,7 +236,7 @@ use std::collections::*;
 use std::collections::{BTreeMap, HashMap};
 ```
 
-No general escape hatch. Prelude re-exports inside `rustricted-std` count as
+No general escape hatch. Prelude re-exports inside `trust-std` count as
 glob imports and must be itemised the same way.
 
 ### R0005 — justify-unsafe
@@ -279,44 +279,44 @@ fn future_use() {}
 
 No escape hatch.
 
-### Per-callsite escape hatch: `#[allow(rustricted::Rxxxx, reason = "…")]`
+### Per-callsite escape hatch: `#[allow(trust::Rxxxx, reason = "…")]`
 
-Any item, statement, or expression can suppress one or more Rustricted
-rules for its own scope with an inline `#[allow(rustricted::Rxxxx, reason
+Any item, statement, or expression can suppress one or more Trust
+rules for its own scope with an inline `#[allow(trust::Rxxxx, reason
 = "…")]` attribute (RT-46). The `reason = "…"` argument is **mandatory**
-— a `#[allow(rustricted::R0014)]` without a reason emits R0015 and does
+— a `#[allow(trust::R0014)]` without a reason emits R0015 and does
 *not* suppress.
 
 ```rust
 // arena indexing — the index is a Key, not a usize
-#[allow(rustricted::R0014, reason = "Slab key, not usize")]
+#[allow(trust::R0014, reason = "Slab key, not usize")]
 fn get(arena: &Arena, key: NodeKey) -> &Node { &arena[key] }
 
 // per-statement suppression also works
 fn f(v: &[u32], i: usize) -> u32 {
-    #[allow(rustricted::R0014, reason = "bounds checked above")]
+    #[allow(trust::R0014, reason = "bounds checked above")]
     let x = v[i];
     x
 }
 
 // multiple rules in one attribute
-#[allow(rustricted::R0001, rustricted::R0014, reason = "test scaffold")]
+#[allow(trust::R0001, trust::R0014, reason = "test scaffold")]
 fn scratch() { /* … */ }
 
 // crate-level
-#![allow(rustricted::R0014, reason = "this crate is all arena access")]
+#![allow(trust::R0014, reason = "this crate is all arena access")]
 ```
 
 Two validation rules guard the mechanism:
 
-- **R0015 allow-missing-reason** — `#[allow(rustricted::…)]` without a
+- **R0015 allow-missing-reason** — `#[allow(trust::…)]` without a
   non-empty `reason = "…"` argument.
-- **R0016 allow-unknown-code** — `#[allow(rustricted::R9999, …)]`
+- **R0016 allow-unknown-code** — `#[allow(trust::R9999, …)]`
   referencing a rule code that isn't in the registry. The help text
   lists every valid code.
 
 R0015 and R0016 themselves cannot be suppressed — that would let a
-malformed allow silence its own validation diagnostic. Non-rustricted
+malformed allow silence its own validation diagnostic. Non-trust
 allows (`#[allow(dead_code)]`, `#[allow(clippy::xxx)]`) are ignored by
 this mechanism entirely; R0006 still governs them via its `// reason:`
 comment requirement.
@@ -478,7 +478,7 @@ fn get(arena: &Slab<Node>, node_key: NodeKey) -> &Node { &arena[node_key] }
 
 Escape hatch: use `.get(i)` and handle the `Option`, move the call
 under `#[cfg(test)]`, or attach
-`#[allow(rustricted::R0014, reason = "…")]` to the enclosing item or
+`#[allow(trust::R0014, reason = "…")]` to the enclosing item or
 statement (see the per-callsite escape hatch section above).
 
 ### R0042 — no-positional-args
@@ -499,7 +499,7 @@ let a = area(1920, 1080);
 let a = area(width: 1920, height: 1080);
 ```
 
-Emission lives in `rustricted-lower::named_args` rather than the lints
+Emission lives in `trust-lower::named_args` rather than the lints
 crate, because the check must run before names are stripped from call
 sites during lowering. The catalogue entry stays in `Rule` so the code
 is stable.
@@ -510,7 +510,7 @@ Scope:
   not all arguments are named.
 - Silent for calls of arity 0 or 1, fully-named calls, and calls to
   unregistered callees (cross-crate, method calls on external types).
-  Cross-crate enforcement requires `rustricted-std`-style annotated
+  Cross-crate enforcement requires `trust-std`-style annotated
   signatures; until then the cross-crate slot is the dialect's largest
   coverage gap.
 
@@ -523,15 +523,15 @@ analysis passes rather than the lint runner. They fire regardless of
 `#![strict]` when their pass produces an error.
 
 The table below is auto-generated from the `Rule` enum in
-`rustricted-lower` by `cargo xtask gen-docs`.
+`trust-lower` by `cargo xtask gen-docs`.
 Add new codes by extending the enum and regenerating.
 
 <!-- BEGIN auto-generated: lowering-diagnostics-table -->
 
 | Code  | Pass                | Crate                  | Message shape                                       |
 | ----- | ------------------- | ---------------------- | --------------------------------------------------- |
-| R2001 | pipe lowering       | `rustricted-lower`     | pipe `|>` requires a path-call on the right         |
-| R3001 | named-args lowering | `rustricted-lower`     | `{fn}` has no parameter named `{arg}`               |
+| R2001 | pipe lowering       | `trust-lower`     | pipe `|>` requires a path-call on the right         |
+| R3001 | named-args lowering | `trust-lower`     | `{fn}` has no parameter named `{arg}`               |
 
 <!-- END auto-generated: lowering-diagnostics-table -->
 
@@ -543,7 +543,7 @@ follow the convention.
 ## Syntax extensions
 
 The three extensions below are recognised by the lowering passes in
-`crates/rustricted-lower`. They are pure source-to-source rewrites with no
+`crates/trust-lower`. They are pure source-to-source rewrites with no
 runtime cost.
 
 ### Named arguments
@@ -592,12 +592,12 @@ calls to functions in unannotated upstream crates are exempt.
 Calls into crates that do not opt into `#![strict]` accept positional arguments
 unconditionally. This is the interop escape hatch — most of the ecosystem ships
 unannotated signatures, and you cannot retroactively force names onto them.
-`rustricted-std` ships a handful of named-arg-friendly wrappers for the worst
+`trust-std` ships a handful of named-arg-friendly wrappers for the worst
 offenders (see [Standard library shims](#standard-library-shims)).
 
 #### Lowering
 
-The lowering pass (`rustricted_lower::named_args`) walks the token stream,
+The lowering pass (`trust_lower::named_args`) walks the token stream,
 builds a `CalleeRegistry` from local `fn` declarations, and rewrites every
 named call to positional based on declared order. The rewritten Rust contains
 no trace of the name annotations.
@@ -646,15 +646,15 @@ bracketed, and braced groups count as atomic units. Statement boundaries
 
 ## Standard library shims
 
-`rustricted-std` ships named-arg-friendly wrappers over the slice of `std` that
+`trust-std` ships named-arg-friendly wrappers over the slice of `std` that
 the lints and named-arg checker hit most often. Live at
-`crates/rustricted-std/src/lib.rs`.
+`crates/trust-std/src/lib.rs`.
 
 | Shim                                | Wraps                  |
 | ----------------------------------- | ---------------------- |
-| `rustricted_std::fs::read_to_string(path: &Path)` | `std::fs::read_to_string` |
-| `rustricted_std::fs::write_text(path: &Path, contents: &str)` | `std::fs::write` |
-| `rustricted_std::time::duration(secs: u64, nanos: u32)` | `Duration::new` |
+| `trust_std::fs::read_to_string(path: &Path)` | `std::fs::read_to_string` |
+| `trust_std::fs::write_text(path: &Path, contents: &str)` | `std::fs::write` |
+| `trust_std::time::duration(secs: u64, nanos: u32)` | `Duration::new` |
 
 The wrappers exist primarily so the lowering pass has something to rewrite
 against during development. Phase 6 expands the coverage; for now, calling
@@ -681,16 +681,16 @@ error[R0001]: `.unwrap()` is banned outside #[cfg(test)]
 ```
 
 The `Diagnostic` struct that produces this is in
-`crates/rustricted-diag/src/lib.rs`. The renderer is `rustricted_diag::render`.
+`crates/trust-diag/src/lib.rs`. The renderer is `trust_diag::render`.
 
 ## Tooling
 
-### `rustricted` CLI
+### `trust` CLI
 
 ```
-rustricted build <input.rs> [--out <path>] [--edition <2021|2024>] [--no-lint]
-rustricted check <input.rs>
-rustricted lower <input.rs>
+trust build <input.rs> [--out <path>] [--edition <2021|2024>] [--no-lint]
+trust check <input.rs>
+trust lower <input.rs>
 ```
 
 - `build`: lower, lint, write the lowered source to a tempfile, shell out to
@@ -701,13 +701,13 @@ rustricted lower <input.rs>
 - `lower`: print the lowered Rust to stdout. Lints are skipped (useful for
   debugging the lowering passes).
 
-### `cargo rustricted`
+### `cargo trust`
 
-`cargo-rustricted` is a thin subcommand wrapper. When `cargo rustricted <args>`
-is invoked, cargo prepends the literal `rustricted` to argv; the wrapper strips
-it and execs `rustricted` with the remainder. The binary must be on `PATH`.
+`cargo-trust` is a thin subcommand wrapper. When `cargo trust <args>`
+is invoked, cargo prepends the literal `trust` to argv; the wrapper strips
+it and execs `trust` with the remainder. The binary must be on `PATH`.
 
-### `rustricted-lsp`
+### `trust-lsp`
 
 _Phase 5 — stubbed._ Currently the binary prints a placeholder message. The
 planned server is `tower-lsp`-based; it will run the lowering and lint passes

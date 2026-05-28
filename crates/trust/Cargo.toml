@@ -1,0 +1,25 @@
+[package]
+name = "trust"
+description = "CLI driver for the Trust dialect"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "trust"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+proc-macro2 = { workspace = true, features = ["span-locations"] }
+syn.workspace = true
+tempfile.workspace = true
+trust-attrs = { path = "../trust-attrs" }
+trust-diag = { path = "../trust-diag" }
+trust-lints = { path = "../trust-lints" }
+trust-lower = { path = "../trust-lower" }
+trust-syntax = { path = "../trust-syntax" }

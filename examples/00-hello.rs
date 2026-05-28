@@ -1,3 +1,3 @@
 fn main() {
-    println!("hello from rustricted");
+    println!("hello from trust");
 }

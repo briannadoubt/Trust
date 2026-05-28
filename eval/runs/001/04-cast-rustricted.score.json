@@ -1,11 +1,11 @@
 {
-  "file": "04-cast-rustricted.rs",
+  "file": "04-cast-trust.rs",
   "task": "04-cast",
-  "condition": "rustricted",
+  "condition": "trust",
   "bug_in_source": false,
   "good_in_source": true,
   "dialect_caught": false,
   "expected_rule": "R0003",
   "shipped": false,
-  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/001/04-cast-rustricted.rs\n"
+  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/001/04-cast-trust.rs\n"
 }

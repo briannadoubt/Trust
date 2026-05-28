@@ -2,13 +2,13 @@
 //!
 //! Lives in its own (intentionally NON-strict) file because the `syn`
 //! visitor below uses `BTreeMap<String, Vec<String>>` in function
-//! signatures. Rustricted's named-args lowering registry currently uses
+//! signatures. Trust's named-args lowering registry currently uses
 //! a token-level scan that conflates the inner-generic comma in
 //! `BTreeMap<K, V>` with a top-level parameter separator (RT-39 fixed
 //! the common case for `HashMap<K, V>` via angle-depth tracking, but
 //! nested types like `BTreeMap<String, Vec<String>>` still trip the
 //! `>>` joint-spacing edge case). Also, `BTreeMap::insert` shares a
-//! simple name with `rustricted_std::collections::insert`, which the
+//! simple name with `trust_std::collections::insert`, which the
 //! per-file callee registry can't distinguish from a free fn — so calls
 //! to `sigs.insert(...)` would falsely fire R0042 under strict mode.
 //!

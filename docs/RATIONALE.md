@@ -2,7 +2,7 @@
 
 Why each rule and extension exists, with the bug class it targets, the shape
 of the rule, the tradeoffs, and the escape hatch. This document is for the
-reader who would otherwise dismiss Rustricted as a kabuki suit of clippy
+reader who would otherwise dismiss Trust as a kabuki suit of clippy
 opinions. Where a rule costs something, this document says so.
 
 The audience is an experienced Rust programmer who has not been convinced yet.
@@ -401,7 +401,7 @@ complexity.
   builders) gets visibly longer.
 - _Interop friction._ Calls into unannotated crates use positional. A file
   that mixes a `#![strict]` crate's named-arg style with `std` positional
-  calls reads inconsistently. The shims in `rustricted-std` address the
+  calls reads inconsistently. The shims in `trust-std` address the
   worst offenders.
 - _Refactoring._ Renaming a parameter is now a breaking change. This is a
   feature (the name is part of the contract) but also a cost (you can't
@@ -541,7 +541,7 @@ When `f` calls into an unannotated upstream crate, the callee is assumed to
 have effect set `io + mut + panic`. This is the most permissive built-in
 non-async, non-unsafe set; it is conservative and will produce false
 positives (warnings on calls that are actually pure). The fix is to annotate
-the upstream function in `rustricted-std/effects.toml`.
+the upstream function in `trust-std/effects.toml`.
 
 The alternative — assume the empty set — is wrong because it would silently
 unsubscript I/O bugs. Better to over-declare and let the author tighten the
@@ -557,15 +557,15 @@ annotation, than to under-declare and miss the leak.
   author has to remember which functions are pure to omit the clause.
 - _The std-effect file is a maintenance burden._ Every `std` function the
   agent calls needs an entry. Coverage gaps produce noisy warnings. The
-  shims in `rustricted-std` are an attempt to localise this.
+  shims in `trust-std` are an attempt to localise this.
 - _Custom effects fragment._ If every crate invents its own effect names,
   the system devolves into a verbose form of doc comments. The discipline
-  is "keep the set small; pull common names up into `rustricted-std`."
+  is "keep the set small; pull common names up into `trust-std`."
 
 #### Escape hatch
 
 - _Bootstrap._ The check pass can be disabled crate-wide with
-  `#![allow(rustricted::effect_check)]` (planned).
+  `#![allow(trust::effect_check)]` (planned).
 - _Per-call._ `#[allow(effect_check)] // reason: ...` on the call's
   enclosing fn.
 - _Over-declare._ Declaring `effect io + mut + panic + async + unsafe`

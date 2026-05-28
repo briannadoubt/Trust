@@ -1,4 +1,4 @@
-"""Cross-provider eval runner for Rustricted.
+"""Cross-provider eval runner for Trust.
 
 Runs the same task suite (tasks.toml) through a non-Anthropic model and saves
 .rs files in eval/runs/<run-id>/ so the existing score.py + summarize.py
@@ -104,7 +104,7 @@ def extract_source(raw: str) -> str:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Cross-provider Rustricted eval runner")
+    parser = argparse.ArgumentParser(description="Cross-provider Trust eval runner")
     parser.add_argument("--provider", required=True, choices=list(PROVIDERS),
                         help="LLM provider to use")
     parser.add_argument("--model", help="Model name (defaults to provider default)")
@@ -113,7 +113,7 @@ def main() -> None:
                         help="Comma-separated task IDs to run")
     parser.add_argument("--trials", type=int, default=3,
                         help="Number of trials per task × condition")
-    parser.add_argument("--conditions", default="vanilla,rustricted",
+    parser.add_argument("--conditions", default="vanilla,trust",
                         help="Comma-separated conditions to run")
     args = parser.parse_args()
 

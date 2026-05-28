@@ -1,13 +1,13 @@
-# Rustricted eval
+# Trust eval
 
-Measures the project's central hypothesis: *agents ship fewer bugs in Rustricted than in vanilla Rust*.
+Measures the project's central hypothesis: *agents ship fewer bugs in Trust than in vanilla Rust*.
 
 ## Method
 
-Each task is run twice through a fresh Haiku subagent — once with a vanilla-Rust prompt, once with a Rustricted prompt. The agent's raw output is saved as a `.rs` file. We then score:
+Each task is run twice through a fresh Haiku subagent — once with a vanilla-Rust prompt, once with a Trust prompt. The agent's raw output is saved as a `.rs` file. We then score:
 
 1. **Bug in source** — regex match against a known-bad pattern (e.g. positional `make_duration(60, 500)`).
-2. **Dialect caught** (Rustricted condition only) — does `rustricted check` report the expected rule code?
+2. **Dialect caught** (Trust condition only) — does `trust check` report the expected rule code?
 3. **Shipped** — bug present *and* dialect didn't catch it. This is the headline metric: how often does a bug make it past the toolchain to production?
 
 Tasks are deliberately tiny and self-contained — single-file programs whose bug surface is one of R0001 (.unwrap), R0003 (as cast), R0004 (glob import), or R0042 (positional args).

@@ -1,4 +1,4 @@
-rustricted_attrs::strict!{}
+trust_attrs::strict!{}
 
 use clap::Parser;
 

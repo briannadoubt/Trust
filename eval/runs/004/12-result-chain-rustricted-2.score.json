@@ -1,12 +1,12 @@
 {
-  "file": "12-result-chain-rustricted-2.rs",
+  "file": "12-result-chain-trust-2.rs",
   "task": "12-result-chain",
-  "condition": "rustricted",
+  "condition": "trust",
   "trial": 2,
   "bug_in_source": false,
   "good_in_source": true,
   "dialect_caught": false,
   "expected_rule": "R0001",
   "shipped": false,
-  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/004/12-result-chain-rustricted-2.rs\n"
+  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/004/12-result-chain-trust-2.rs\n"
 }

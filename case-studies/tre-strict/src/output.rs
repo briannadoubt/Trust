@@ -1,4 +1,4 @@
-rustricted_attrs::strict!{}
+trust_attrs::strict!{}
 
 use super::diagram_formatting::FormattedEntry;
 use lscolors::{self, LsColors, Style};

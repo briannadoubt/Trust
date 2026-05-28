@@ -109,7 +109,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
-name = "cargo-rustricted"
+name = "cargo-trust"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -693,112 +693,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustricted"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "proc-macro2",
- "rustricted-attrs",
- "rustricted-diag",
- "rustricted-lints",
- "rustricted-lower",
- "rustricted-syntax",
- "syn",
- "tempfile",
-]
-
-[[package]]
-name = "rustricted-attrs"
-version = "0.1.0"
-
-[[package]]
-name = "rustricted-diag"
-version = "0.1.0"
-dependencies = [
- "ariadne",
- "rustricted-attrs",
-]
-
-[[package]]
-name = "rustricted-lints"
-version = "0.1.0"
-dependencies = [
- "insta",
- "proc-macro2",
- "rustricted-attrs",
- "rustricted-diag",
- "syn",
-]
-
-[[package]]
-name = "rustricted-lower"
-version = "0.1.0"
-dependencies = [
- "insta",
- "prettyplease",
- "proc-macro2",
- "quote",
- "rustricted-diag",
- "syn",
- "thiserror",
-]
-
-[[package]]
-name = "rustricted-lsp"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "proc-macro2",
- "rustricted-attrs",
- "rustricted-diag",
- "rustricted-lints",
- "rustricted-lower",
- "serde_json",
- "syn",
- "tokio",
- "tower-lsp",
-]
-
-[[package]]
-name = "rustricted-rustc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "rustricted-attrs",
- "rustricted-lower",
- "syn",
-]
-
-[[package]]
-name = "rustricted-rustdoc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "rustricted-lower",
- "rustricted-rustc",
-]
-
-[[package]]
-name = "rustricted-std"
-version = "0.1.0"
-dependencies = [
- "rustricted-attrs",
-]
-
-[[package]]
-name = "rustricted-syntax"
-version = "0.1.0"
-dependencies = [
- "prettyplease",
- "proc-macro2",
- "quote",
- "rustricted-attrs",
- "syn",
- "thiserror",
-]
-
-[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1085,6 +979,112 @@ dependencies = [
 ]
 
 [[package]]
+name = "trust"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "proc-macro2",
+ "syn",
+ "tempfile",
+ "trust-attrs",
+ "trust-diag",
+ "trust-lints",
+ "trust-lower",
+ "trust-syntax",
+]
+
+[[package]]
+name = "trust-attrs"
+version = "0.1.0"
+
+[[package]]
+name = "trust-diag"
+version = "0.1.0"
+dependencies = [
+ "ariadne",
+ "trust-attrs",
+]
+
+[[package]]
+name = "trust-lints"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "proc-macro2",
+ "syn",
+ "trust-attrs",
+ "trust-diag",
+]
+
+[[package]]
+name = "trust-lower"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "thiserror",
+ "trust-diag",
+]
+
+[[package]]
+name = "trust-lsp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "proc-macro2",
+ "serde_json",
+ "syn",
+ "tokio",
+ "tower-lsp",
+ "trust-attrs",
+ "trust-diag",
+ "trust-lints",
+ "trust-lower",
+]
+
+[[package]]
+name = "trust-rustc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "syn",
+ "trust-attrs",
+ "trust-lower",
+]
+
+[[package]]
+name = "trust-rustdoc"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "trust-lower",
+ "trust-rustc",
+]
+
+[[package]]
+name = "trust-std"
+version = "0.1.0"
+dependencies = [
+ "trust-attrs",
+]
+
+[[package]]
+name = "trust-syntax"
+version = "0.1.0"
+dependencies = [
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "thiserror",
+ "trust-attrs",
+]
+
+[[package]]
 name = "unicode-ident"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1299,10 +1299,10 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "rustricted-attrs",
- "rustricted-lints",
- "rustricted-lower",
  "syn",
+ "trust-attrs",
+ "trust-lints",
+ "trust-lower",
 ]
 
 [[package]]

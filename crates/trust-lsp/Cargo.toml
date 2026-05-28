@@ -1,0 +1,28 @@
+[package]
+name = "trust-lsp"
+description = "Language server for Trust"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "trust-lsp"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+anyhow.workspace = true
+syn.workspace = true
+proc-macro2.workspace = true
+trust-attrs = { path = "../trust-attrs" }
+trust-diag = { path = "../trust-diag" }
+trust-lower = { path = "../trust-lower" }
+trust-lints = { path = "../trust-lints" }
+tower-lsp = "0.20"
+tokio = { version = "1", features = ["rt-multi-thread", "io-std", "macros", "sync"] }
+serde_json = "1"

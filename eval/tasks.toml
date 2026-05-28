@@ -1,11 +1,11 @@
 # Each [[task]] is one row of the eval matrix. The same task is run twice —
-# once with `vanilla_prompt`, once with `rustricted_prompt` — so we can
+# once with `vanilla_prompt`, once with `trust_prompt` — so we can
 # attribute differences to the dialect, not the task wording.
 #
 # `bug` and `good` are Python regexes applied to the agent's raw output.
-# `expected_rule` is the Rustricted rule code that should catch the bug
+# `expected_rule` is the Trust rule code that should catch the bug
 # when present; the scorer counts a bug as "caught" if that code appears
-# in the `rustricted check` stderr.
+# in the `trust check` stderr.
 
 [[task]]
 id = "01-duration"
@@ -32,8 +32,8 @@ The program must:
 
 3. Compile with `rustc <file>` and use only std.
 """
-rustricted_prompt = """
-Write a single-file program in the Rustricted dialect. Rustricted is
+trust_prompt = """
+Write a single-file program in the Trust dialect. Trust is
 Rust with `#![strict]` at the top of the file, which enables stricter
 checks (notably: calls to locally-defined functions with more than one
 argument must use named arguments — `f(name: value, name: value)`).
@@ -79,8 +79,8 @@ The program must:
 
 3. Compile with `rustc <file>` and use only std.
 """
-rustricted_prompt = """
-Write a single-file program in the Rustricted dialect. Rustricted is
+trust_prompt = """
+Write a single-file program in the Trust dialect. Trust is
 Rust with `#![strict]` at the top of the file. In strict mode, calls
 to locally-defined functions with more than one argument must use
 named arguments (`f(name: value, name: value)`).
@@ -124,8 +124,8 @@ The program must:
 
 3. Compile with `rustc <file>` and use only std.
 """
-rustricted_prompt = """
-Write a single-file program in the Rustricted dialect. Rustricted is
+trust_prompt = """
+Write a single-file program in the Trust dialect. Trust is
 Rust with `#![strict]` at the top of the file. In strict mode,
 `.unwrap()` is banned outside `#[cfg(test)]` — use `?` to propagate
 errors instead.
@@ -167,8 +167,8 @@ The program must:
 
 3. Compile with `rustc <file>` and use only std.
 """
-rustricted_prompt = """
-Write a single-file program in the Rustricted dialect. Rustricted is
+trust_prompt = """
+Write a single-file program in the Trust dialect. Trust is
 Rust with `#![strict]` at the top of the file. In strict mode, `as`
 casts between integer types are banned — use `TryFrom` / `try_into`
 which returns a `Result`.
@@ -226,9 +226,9 @@ In `fn main()`:
 
 Use only std. Compile with `rustc`.
 """
-rustricted_prompt = """
-Write a complete single-file program in the Rustricted dialect.
-Rustricted is Rust with `#![strict]` at the top of the file, which
+trust_prompt = """
+Write a complete single-file program in the Trust dialect.
+Trust is Rust with `#![strict]` at the top of the file, which
 enables an additional set of static checks. Apart from `#![strict]`,
 write idiomatic Rust.
 
@@ -292,9 +292,9 @@ In `fn main()`:
 
 Derive `Debug` on `User`. Use only std. Compile with `rustc`.
 """
-rustricted_prompt = """
-Write a complete single-file program in the Rustricted dialect.
-Rustricted is Rust with `#![strict]` at the top of the file, which
+trust_prompt = """
+Write a complete single-file program in the Trust dialect.
+Trust is Rust with `#![strict]` at the top of the file, which
 enables an additional set of static checks. Apart from `#![strict]`,
 write idiomatic Rust.
 
@@ -346,9 +346,9 @@ In `fn main()`:
 
 Use only std. Compile with `rustc`.
 """
-rustricted_prompt = """
-Write a complete single-file program in the Rustricted dialect.
-Rustricted is Rust with `#![strict]` at the top of the file, which
+trust_prompt = """
+Write a complete single-file program in the Trust dialect.
+Trust is Rust with `#![strict]` at the top of the file, which
 enables an additional set of static checks. Apart from `#![strict]`,
 write idiomatic Rust.
 
@@ -388,9 +388,9 @@ Use only std. Compile with `rustc`. Use whatever import style you
 think is best for a program that touches this many types from one
 module.
 """
-rustricted_prompt = """
-Write a complete single-file program in the Rustricted dialect.
-Rustricted is Rust with `#![strict]` at the top of the file, which
+trust_prompt = """
+Write a complete single-file program in the Trust dialect.
+Trust is Rust with `#![strict]` at the top of the file, which
 enables an additional set of static checks. Apart from `#![strict]`,
 write idiomatic Rust.
 
@@ -438,9 +438,9 @@ In `fn main()`:
 
 Use only std. Compile with `rustc`.
 """
-rustricted_prompt = """
-Write a complete single-file program in the Rustricted dialect.
-Rustricted is Rust with `#![strict]` at the top of the file, which
+trust_prompt = """
+Write a complete single-file program in the Trust dialect.
+Trust is Rust with `#![strict]` at the top of the file, which
 enables an additional set of static checks. Apart from `#![strict]`,
 write idiomatic Rust.
 
@@ -499,9 +499,9 @@ main returns `()`):
 
 Use only std. Compile with `rustc`.
 """
-rustricted_prompt = """
-Write a complete single-file program in the Rustricted dialect.
-Rustricted is Rust with `#![strict]` at the top of the file, which
+trust_prompt = """
+Write a complete single-file program in the Trust dialect.
+Trust is Rust with `#![strict]` at the top of the file, which
 enables an additional set of static checks. Apart from `#![strict]`,
 write idiomatic Rust.
 
@@ -580,9 +580,9 @@ referenced) so their methods can be called.
 Use only std. Compile with `rustc`. Use whatever import style you
 think is best.
 """
-rustricted_prompt = """
-Write a complete single-file program in the Rustricted dialect.
-Rustricted is Rust with `#![strict]` at the top of the file, which
+trust_prompt = """
+Write a complete single-file program in the Trust dialect.
+Trust is Rust with `#![strict]` at the top of the file, which
 enables an additional set of static checks. Apart from `#![strict]`,
 write idiomatic Rust.
 
@@ -654,8 +654,8 @@ The program must:
 4. Compile with `rustc <file>` and use only std. Pick whatever import
    style you think is best.
 """
-rustricted_prompt = """
-Write a single-file program in the Rustricted dialect. Rustricted is
+trust_prompt = """
+Write a single-file program in the Trust dialect. Trust is
 Rust with `#![strict]` at the top of the file. In strict mode, glob
 imports (`use foo::*`) are banned — imports must be explicit.
 

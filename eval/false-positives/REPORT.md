@@ -1,4 +1,4 @@
-# False-positive evaluation: `rustricted check` on real code
+# False-positive evaluation: `trust check` on real code
 
 Date: 2026-05-25
 Driver: `eval/false-positives/run_eval.py`
@@ -7,19 +7,19 @@ Raw data: `raw_workspace.json`, `raw_anyhow.json`, `summary.json`
 ## Methodology
 
 For every `.rs` file in
-- the workspace (`crates/cargo-rustricted`, `crates/rustricted`, `crates/rustricted-diag`, `crates/rustricted-effects`, `crates/rustricted-lints`, `crates/rustricted-lower`, `crates/rustricted-lsp`, `crates/rustricted-std`, `crates/rustricted-syntax`, `crates/xtask`)
+- the workspace (`crates/cargo-trust`, `crates/trust`, `crates/trust-diag`, `crates/trust-effects`, `crates/trust-lints`, `crates/trust-lower`, `crates/trust-lsp`, `crates/trust-std`, `crates/trust-syntax`, `crates/xtask`)
 - and the external crate `anyhow-1.0.86` (downloaded fresh to `/tmp/anyhow-1.0.86`, excluding `tests/ui/` UI-test fixtures and `build.rs`)
 
 the driver:
 1. Reads source.
 2. Prepends `#![strict]` (in-memory only — nothing is written into the workspace or vendored).
 3. Writes a `mktemp` `.rs` file.
-4. Runs `rustricted check <tmp>` and parses the ANSI-stripped output for `[Rxxxx]` diagnostic headers and `╭─[<path>:<line>:<col>]` spans.
+4. Runs `trust check <tmp>` and parses the ANSI-stripped output for `[Rxxxx]` diagnostic headers and `╭─[<path>:<line>:<col>]` spans.
 5. Aggregates per rule, per file.
 
 Files scanned: 21 workspace + 27 anyhow = **48 files**.
 
-Note on captured snippets: many diagnostics emit with `Span::byte_range()` `0..0` (notably R0042 from `rustricted-lower::named_args`, plus a handful of macro/visitor emissions). For those the rendered location collapses to line 1 / column 1. The diagnostic is still real — the message body carries the function name — but the captured "snippet" is misleading. The TP/FP judgements below are based on inspecting the actual sources, not the captured snippets.
+Note on captured snippets: many diagnostics emit with `Span::byte_range()` `0..0` (notably R0042 from `trust-lower::named_args`, plus a handful of macro/visitor emissions). For those the rendered location collapses to line 1 / column 1. The diagnostic is still real — the message body carries the function name — but the captured "snippet" is misleading. The TP/FP judgements below are based on inspecting the actual sources, not the captured snippets.
 
 ## Headline numbers
 
@@ -34,7 +34,7 @@ Note on captured snippets: many diagnostics emit with `Span::byte_range()` `0..0
 | anyhow diagnostics           | 286   |
 | anyhow FP rate               | 3.5% (10 / 286) |
 
-"True positive" here means the rule fired on something the rule was designed to catch (as written in `crates/rustricted-lints/src/rules.rs` and `docs/SPEC.md`). "False positive" means the rule fired on code that does not contain the targeted footgun, or on a pattern the spec explicitly says should be exempt.
+"True positive" here means the rule fired on something the rule was designed to catch (as written in `crates/trust-lints/src/rules.rs` and `docs/SPEC.md`). "False positive" means the rule fired on code that does not contain the targeted footgun, or on a pattern the spec explicitly says should be exempt.
 
 ## Per-rule summary
 
@@ -46,7 +46,7 @@ Note on captured snippets: many diagnostics emit with `Span::byte_range()` `0..0
 | R0005 justify-unsafe     | 86  | 86  | 0  | 0%    | All real `unsafe { ... }` blocks / `unsafe fn` declarations without `// safety:` in the 200-byte window. anyhow's `error.rs` ships dense unsafe code with safety documented in a doc-comment style the lint's window misses. See "Top FP" #3. |
 | R0006 justify-allow      | 15  | 15  | 0  | 0%    | All real `#[allow(...)]` attributes lacking `// reason:`. |
 | R0008 no-user-macros     | 16  | 16  | 0  | 0%    | All real `macro_rules!` definitions. anyhow's `backtrace.rs`, `ensure.rs`, `macros.rs` are macro-heavy. |
-| R0012 no-bool-param      | 1   | 1   | 0  | 0%    | Visible function with `bool` parameter in `rustricted-lower::named_args`. |
+| R0012 no-bool-param      | 1   | 1   | 0  | 0%    | Visible function with `bool` parameter in `trust-lower::named_args`. |
 | R0014 no-bare-index      | 23  | 16  | 7  | 30.4% | Fires on slice expressions `v[a..b]` (a `RangeExpr` inside `ExprIndex`). Slicing returns a slice, not an element; `.get(a..b)` is awkward. See "Top FP" #4. |
 | R0042 no-positional-args | 172 | 162 | 10 | 5.8%  | 99 calls are `assert_err(closure, &'static str)` where the disjoint types prevent any silent swap. Strict TPs by SPEC, weak TPs in practice. See "Top FP" #5. |
 | **Total**                | **367** | **350** | **17** | **4.6%** | |
@@ -57,7 +57,7 @@ Note on captured snippets: many diagnostics emit with `Span::byte_range()` `0..0
 
 ### 1. R0001 ignores `#[test]` attribute (implementation gap vs SPEC)
 
-The SPEC says: "`.unwrap()` is banned outside `#[cfg(test)]` modules **and `#[test]` functions**." The implementation (`crates/rustricted-lints/src/strict.rs:84-87`) only checks `attrs_have_cfg_test`, missing the `#[test]` path. All other test-scoped lints (R0010, R0011, R0012, R0014) correctly check both:
+The SPEC says: "`.unwrap()` is banned outside `#[cfg(test)]` modules **and `#[test]` functions**." The implementation (`crates/trust-lints/src/strict.rs:84-87`) only checks `attrs_have_cfg_test`, missing the `#[test]` path. All other test-scoped lints (R0010, R0011, R0012, R0014) correctly check both:
 
 ```rust
 let is_test = attrs_have_cfg_test(&node.attrs)
@@ -117,7 +117,7 @@ The escape hatch already exists (`#[allow(no_positional_args)] // reason: ...`) 
 
 ## Per-target summary
 
-### Workspace (Rustricted's own crates)
+### Workspace (Trust's own crates)
 
 - 21 files, 81 diagnostics, 74 TP, 7 FP.
 - FP concentration: 7 R0014 hits on `expr[range]` slicing in `named_args.rs`, `pipe.rs`, `main.rs`. The rest of the workspace's own diagnostics are real footguns the project would want to clean up before shipping `#![strict]`:
@@ -125,7 +125,7 @@ The escape hatch already exists (`#[allow(no_positional_args)] // reason: ...`) 
   - 6 R0004 `use super::*;` in test mods (real glob imports, but the test-mod idiom).
   - 20 R0014 indexing hits (most real — `trees[i]`, `trees[j]`, etc. — these are legitimate "should use `.get`" candidates in the visitor scaffolding).
   - 1 R0012 visible-bool-param.
-  - 1 R0005 unsafe block in `rustricted-std/src/lib.rs::set_var` (real — `std::env::set_var` wrapper, missing `// safety:`).
+  - 1 R0005 unsafe block in `trust-std/src/lib.rs::set_var` (real — `std::env::set_var` wrapper, missing `// safety:`).
 
 ### anyhow-1.0.86
 

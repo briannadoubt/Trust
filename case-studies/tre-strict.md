@@ -1,10 +1,10 @@
-# Case Study: `tre` v0.4.0 under Rustricted strict mode
+# Case Study: `tre` v0.4.0 under Trust strict mode
 
 **Crate:** [tre](https://github.com/dduan/tre) v0.4.0 (commit `2caab28`)
 **License:** MIT
 **Original LOC:** 1,080 (8 source files)
-**Strict mode activated via:** `rustricted_attrs::strict!{}` in each `.rs` file
-**Build method:** `RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc) cargo build`
+**Strict mode activated via:** `trust_attrs::strict!{}` in each `.rs` file
+**Build method:** `RUSTC_WRAPPER=$(realpath target/debug/trust-rustc) cargo build`
 **Final build result:** ✅ Clean build + 4/4 unit tests passing
 **Case study path:** `case-studies/tre-strict/`
 
@@ -43,14 +43,14 @@ Criteria match:
    pipeline).
 2. Removed `build.rs` (shell-completion generator). It uses
    `include!("src/cli.rs")` to share types with the binary, which conflicts
-   with placing `rustricted_attrs::strict!{}` at the top of `cli.rs` — the
+   with placing `trust_attrs::strict!{}` at the top of `cli.rs` — the
    strict marker is fine for the binary but breaks the
    `include!`-as-uninterpreted-include used by the build script.
-3. Added `rustricted-attrs` as a dependency and `rustricted_attrs::strict!{}`
+3. Added `trust-attrs` as a dependency and `trust_attrs::strict!{}`
    to every `.rs` file under `src/`.
 4. Confirmed `cargo build` and `cargo test` worked pre-strict (1 pre-existing
    upstream warning about lifetime elision, no errors).
-5. Ran `rustricted check` on every source file to enumerate violations.
+5. Ran `trust check` on every source file to enumerate violations.
 6. Assessed each violation as **real** or **FP** and applied fixes.
 7. Re-ran `RUSTC_WRAPPER=… cargo build && cargo test` until clean.
 8. Smoke-tested the resulting binary against `src/`.
@@ -76,7 +76,7 @@ Criteria match:
 
 ## Violation inventory
 
-`rustricted check` reported the following per-file (initial pass, before
+`trust check` reported the following per-file (initial pass, before
 any fixes):
 
 | File | R0042 | R0001 | R0012 | R0014 | Total |
@@ -178,7 +178,7 @@ was reported as **arity 4** with the synthetic last param named `usize`:
 ```
 
 The signature has 3 params. The token-stream splitter in
-`rustricted-lower::named_args::split_by_top_comma` is splitting at the
+`trust-lower::named_args::split_by_top_comma` is splitting at the
 internal comma of `HashMap<usize, usize>` because it doesn't track
 generic-argument-list nesting (it tracks closure parens but not angle
 brackets).
@@ -205,7 +205,7 @@ breaks for any call that crosses a module boundary:
 
 The wrapper makes this worse, not better: even with RUSTC_WRAPPER doing
 the whole-crate mirror pass, each file is lowered independently
-(`rustricted_lower::lower(&source)` is called per file in
+(`trust_lower::lower(&source)` is called per file in
 `mirror_module_tree`). There is no whole-crate symbol pass.
 
 **Workaround:** Renamed `SerializableTreeNode::new` → `from_tree` (and
@@ -224,7 +224,7 @@ heck only escaped it because it was a single-file conversion.
 ### FP3: Method calls collide with free-fn shims of the same short name (RT-41)
 
 `children.insert(name.to_string(), id)` where `children: &mut IndexMap<…>`
-fires R0042 because `rustricted-std` declares a free function
+fires R0042 because `trust-std` declares a free function
 `pub fn insert<K, V>(map, key, value)` for `HashMap`. The local registry
 keys callees by short name only, so `xs.insert(…)` and `insert(…)` are
 indistinguishable.
@@ -245,7 +245,7 @@ functions) or skip the registry entirely for method-call sites.
 ### FP4: Span fidelity collapses to 1:1 on the strict-marker line (RT-42)
 
 Most R0042 diagnostics report their span as the literal text of line 1
-(`rustricted_attrs::strict!{}`). The R0014 diagnostics also report line
+(`trust_attrs::strict!{}`). The R0014 diagnostics also report line
 numbers off by 1–6 from the actual position in the source file.
 
 This is the same family as RT-8 (R3001/R0042 span fidelity) but it
@@ -256,21 +256,21 @@ loses or shifts spans somewhere between parsing and diagnostic emission.
 experience is "everything is wrong on line 1", which makes scanning
 errors useless.
 
-**Update (RT-42 fixed):** Root cause was that `rustricted-lower` did
+**Update (RT-42 fixed):** Root cause was that `trust-lower` did
 not enable the `span-locations` feature on `proc-macro2`, so every
 diagnostic emitted by the lower pass (R0042 and R3001) used
 `byte_range()` that returned `0..0` — which ariadne renders as line 1
 col 1, landing on the strict marker. RT-8 had previously fixed the
-same class of bug for the syn-AST-based lints (`rustricted-lints`) by
+same class of bug for the syn-AST-based lints (`trust-lints`) by
 enabling the feature on that crate; RT-42 mirrors the fix in the
 token-stream-based lower pass and threads the offending call paren
 group's span and each named arg's name span through
 `rewrite_call_args` and `extract_named`. R0042 now points at the
 opening paren of the call; R3001 points at the unknown name token.
-Regression tests live in `crates/rustricted-lower/src/named_args.rs`
+Regression tests live in `crates/trust-lower/src/named_args.rs`
 (`r0042_span_points_at_call_site_not_line_one`,
 `r3001_span_points_at_unknown_name_not_line_one`) and in
-`crates/rustricted-lints/src/lib.rs` for R0001/R0005/R0011.
+`crates/trust-lints/src/lib.rs` for R0001/R0005/R0011.
 
 ---
 
@@ -307,8 +307,8 @@ Beyond the FPs above, three things made this conversion painful:
 
 1. **No way to read what the local registry actually contains.** Several
    R0042 errors reported arities and param names I couldn't trace
-   without `grep`ing `rustricted-lower/src/named_args.rs` and
-   `rustricted-std/src/lib.rs`. A `rustricted explain <file>` that
+   without `grep`ing `trust-lower/src/named_args.rs` and
+   `trust-std/src/lib.rs`. A `trust explain <file>` that
    dumps the registry would have cut the conversion time roughly in
    half.
 
@@ -316,7 +316,7 @@ Beyond the FPs above, three things made this conversion painful:
    `include!("src/cli.rs")`. The strict marker at the top of `cli.rs`
    is valid Rust (it's a proc-macro call), but `include!`ing it into
    a build script means the build script also has to depend on
-   `rustricted-attrs`, which is brittle. I just dropped `build.rs` and
+   `trust-attrs`, which is brittle. I just dropped `build.rs` and
    the shell-completion output along with it. A real adoption story
    would need either a `#[cfg(not(build_script))]` skip on the marker
    or an explicit "strict mode for build scripts" recipe.
@@ -324,7 +324,7 @@ Beyond the FPs above, three things made this conversion painful:
 3. **`rustdoc` is still not wrapped (RT-22 / RT-28).** I had to leave
    the `[lib]` section out (the crate is `[[bin]]` only) — if `tre`
    had been a library, the doc-tests would have failed compilation
-   the same way heck's did. Real libraries cannot use rustricted
+   the same way heck's did. Real libraries cannot use trust
    end-to-end today.
 
 ---
@@ -333,8 +333,8 @@ Beyond the FPs above, three things made this conversion painful:
 
 | Change | LOC | Reason |
 |--------|----:|--------|
-| Added `rustricted_attrs::strict!{}` marker to 8 files | +16 | Strict mode activation |
-| Added `rustricted-attrs` to `[dependencies]` | +1 | Strict mode activation |
+| Added `trust_attrs::strict!{}` marker to 8 files | +16 | Strict mode activation |
+| Added `trust-attrs` to `[dependencies]` | +1 | Strict mode activation |
 | Removed `build.rs` and `[build-dependencies]` | −34 | Strict marker conflicts with `include!("src/cli.rs")` |
 | Introduced `EntryFilter` enum + threading | +12 | R0012 fix (3 fns) |
 | Introduced `PathStyle` enum + threading | +6 | R0012 fix |
@@ -353,7 +353,7 @@ Beyond the FPs above, three things made this conversion painful:
 ## Verdict
 
 For a small CLI of this type (1,080 LOC, real I/O, real error paths,
-multi-module), Rustricted caught:
+multi-module), Trust caught:
 
 - **5 real R0012 violations** (`bool` params on public path-finder /
   formatter / output functions). Three of them shared the exact same
@@ -379,7 +379,7 @@ cross-module call. RT-40 is now the most important toolchain followup
 for any non-trivial adoption.
 
 For a 500-2,000 LOC CLI with heavy module structure and real I/O,
-Rustricted in its current state can *ship*, but the false-positive
+Trust in its current state can *ship*, but the false-positive
 debugging budget is roughly equal to the real-violation-fixing budget.
 The signal-to-noise ratio gets meaningfully worse as soon as more than
 one file is involved.

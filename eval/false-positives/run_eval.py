@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Drive `rustricted check` against every .rs file in:
+Drive `trust check` against every .rs file in:
   1) workspace crates under /Users/bri/dev/One/crates
   2) external crate /tmp/anyhow-1.0.86
 
@@ -9,7 +9,7 @@ For each file we:
   * write a temp file with `#![strict]` prepended (preserving any
     shebang or doc-comment leading lines if needed -- syn handles inner
     attributes anywhere at the top, but we just prepend for simplicity)
-  * run `rustricted check` and capture stdout+stderr
+  * run `trust check` and capture stdout+stderr
   * parse diagnostics out of the ANSI-coloured output using a regex
 
 Output: writes a JSON file per target with per-file diagnostic records,
@@ -28,7 +28,7 @@ import tempfile
 from collections import defaultdict
 from pathlib import Path
 
-RUSTRICTED = "/Users/bri/dev/One/target/debug/rustricted"
+TRUST = "/Users/bri/dev/One/target/debug/trust"
 OUT_DIR = Path("/Users/bri/dev/One/eval/false-positives")
 
 # Strip ANSI escape sequences so the regex can find the rule code reliably.
@@ -66,7 +66,7 @@ def inject_strict(src: str) -> str:
 
 
 def run_check(src: str) -> tuple[str, int]:
-    """Write src to a tmp file and run rustricted check.  Returns (output, exit_code)."""
+    """Write src to a tmp file and run trust check.  Returns (output, exit_code)."""
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".rs", delete=False, dir="/tmp"
     ) as f:
@@ -74,7 +74,7 @@ def run_check(src: str) -> tuple[str, int]:
         tmp_path = f.name
     try:
         proc = subprocess.run(
-            [RUSTRICTED, "check", tmp_path],
+            [TRUST, "check", tmp_path],
             capture_output=True,
             text=True,
             timeout=60,
@@ -86,7 +86,7 @@ def run_check(src: str) -> tuple[str, int]:
 
 
 def parse_diagnostics(output: str, source: str) -> list[dict]:
-    """Parse rustricted check output into structured diagnostics.
+    """Parse trust check output into structured diagnostics.
 
     Each diagnostic block looks like:
         [R0001] Error: <message>
@@ -179,15 +179,15 @@ def process(label: str, files: list[Path]) -> dict:
 
 def main() -> None:
     workspace_roots = [
-        "/Users/bri/dev/One/crates/cargo-rustricted",
-        "/Users/bri/dev/One/crates/rustricted",
-        "/Users/bri/dev/One/crates/rustricted-diag",
-        "/Users/bri/dev/One/crates/rustricted-effects",
-        "/Users/bri/dev/One/crates/rustricted-lints",
-        "/Users/bri/dev/One/crates/rustricted-lower",
-        "/Users/bri/dev/One/crates/rustricted-lsp",
-        "/Users/bri/dev/One/crates/rustricted-std",
-        "/Users/bri/dev/One/crates/rustricted-syntax",
+        "/Users/bri/dev/One/crates/cargo-trust",
+        "/Users/bri/dev/One/crates/trust",
+        "/Users/bri/dev/One/crates/trust-diag",
+        "/Users/bri/dev/One/crates/trust-effects",
+        "/Users/bri/dev/One/crates/trust-lints",
+        "/Users/bri/dev/One/crates/trust-lower",
+        "/Users/bri/dev/One/crates/trust-lsp",
+        "/Users/bri/dev/One/crates/trust-std",
+        "/Users/bri/dev/One/crates/trust-syntax",
         "/Users/bri/dev/One/crates/xtask",
     ]
     workspace_files = collect_files(workspace_roots)

@@ -6,7 +6,7 @@ version = "0.5.0"
 edition = "2021"
 rust-version = "1.56"
 license = "MIT OR Apache-2.0"
-description = "heck vendored for Rustricted strict-mode case study (RT-12)"
+description = "heck vendored for Trust strict-mode case study (RT-12)"
 
 [lib]
 # Doc-tests are disabled: rustdoc does not use RUSTC_WRAPPER, so named-arg
@@ -14,4 +14,4 @@ description = "heck vendored for Rustricted strict-mode case study (RT-12)"
 doctest = false
 
 [dependencies]
-rustricted-attrs = { path = "../../crates/rustricted-attrs" }
+trust-attrs = { path = "../../crates/trust-attrs" }

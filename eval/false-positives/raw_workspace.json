@@ -2,25 +2,25 @@
   "label": "workspace",
   "files": [
     {
-      "path": "/Users/bri/dev/One/crates/cargo-rustricted/src/main.rs",
+      "path": "/Users/bri/dev/One/crates/cargo-trust/src/main.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted/src/main.rs",
+      "path": "/Users/bri/dev/One/crates/trust/src/main.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-diag/src/lib.rs",
+      "path": "/Users/bri/dev/One/crates/trust-diag/src/lib.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/check.rs",
+      "path": "/Users/bri/dev/One/crates/trust-effects/src/check.rs",
       "exit_code": 1,
       "diagnostic_count": 12,
       "diagnostics": [
@@ -111,13 +111,13 @@
       ]
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/lib.rs",
+      "path": "/Users/bri/dev/One/crates/trust-effects/src/lib.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/parser.rs",
+      "path": "/Users/bri/dev/One/crates/trust-effects/src/parser.rs",
       "exit_code": 1,
       "diagnostic_count": 8,
       "diagnostics": [
@@ -180,7 +180,7 @@
       ]
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/registry.rs",
+      "path": "/Users/bri/dev/One/crates/trust-effects/src/registry.rs",
       "exit_code": 1,
       "diagnostic_count": 1,
       "diagnostics": [
@@ -194,43 +194,43 @@
       ]
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-effects/src/rule.rs",
+      "path": "/Users/bri/dev/One/crates/trust-effects/src/rule.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lints/src/lib.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lints/src/lib.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lints/src/rules.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lints/src/rules.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lints/src/runner.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lints/src/runner.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lints/src/strict.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lints/src/strict.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/lib.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lower/src/lib.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/named_args.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lower/src/named_args.rs",
       "exit_code": 1,
       "diagnostic_count": 17,
       "diagnostics": [
@@ -356,7 +356,7 @@
       ]
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/pipe.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lower/src/pipe.rs",
       "exit_code": 1,
       "diagnostic_count": 14,
       "diagnostics": [
@@ -461,25 +461,25 @@
       ]
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/preprocess.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lower/src/preprocess.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lower/src/rule.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lower/src/rule.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-lsp/src/main.rs",
+      "path": "/Users/bri/dev/One/crates/trust-lsp/src/main.rs",
       "exit_code": 0,
       "diagnostic_count": 0,
       "diagnostics": []
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-std/src/lib.rs",
+      "path": "/Users/bri/dev/One/crates/trust-std/src/lib.rs",
       "exit_code": 1,
       "diagnostic_count": 7,
       "diagnostics": [
@@ -535,7 +535,7 @@
       ]
     },
     {
-      "path": "/Users/bri/dev/One/crates/rustricted-syntax/src/lib.rs",
+      "path": "/Users/bri/dev/One/crates/trust-syntax/src/lib.rs",
       "exit_code": 1,
       "diagnostic_count": 1,
       "diagnostics": [

@@ -1,7 +1,7 @@
-# Effects audit — what `rustricted-effects` actually does
+# Effects audit — what `trust-effects` actually does
 
 **Purpose.** Codex called the effect system "vestigial." This document
-inventories — precisely — what `crates/rustricted-effects/` implements
+inventories — precisely — what `crates/trust-effects/` implements
 today vs. what its name implies, so the RT-10 invest-or-kill decision
 has data instead of vibes.
 
@@ -131,7 +131,7 @@ Each bullet is its own engineering project, in rough size order:
    declared/inferred distinction. The lib essentially becomes a
    whole-program purity analyzer.
 7. **Cross-crate effect manifest.** Define a serialized format,
-   teach `cargo` (or `rustricted-rustc`) to read sibling crates' effect
+   teach `cargo` (or `trust-rustc`) to read sibling crates' effect
    tables, fall back to "unknown" for unannotated deps. Substantial.
 
 Total honest estimate to get to "actually useful, in the same league as
@@ -142,16 +142,16 @@ would be unsound without type info.
 
 About 30 minutes:
 
-1. Remove `crates/rustricted-effects/` from the workspace.
-2. Drop the dep from `crates/rustricted/Cargo.toml` and the call site
+1. Remove `crates/trust-effects/` from the workspace.
+2. Drop the dep from `crates/trust/Cargo.toml` and the call site
    in `run_pipeline`.
-3. Drop the `effect` keyword from `rustricted-lower::lib.rs` (remove
+3. Drop the `effect` keyword from `trust-lower::lib.rs` (remove
    the `strip_effect_annotations` call from `lower()`).
 4. Drop the R4001 entry from autogen tables (SPEC.md "Non-strict
    diagnostics" section).
 5. Drop the two `examples/04-effects/` files.
 6. Strike the "effect tracking" bullet from README's three extensions.
-7. Leave `rustricted-attrs::strict!{}` and `#![strict]` activation as-is
+7. Leave `trust-attrs::strict!{}` and `#![strict]` activation as-is
    (they don't depend on effects).
 
 The case study would say "we shipped a syntactic skeleton; building the

@@ -1,0 +1,18 @@
+[package]
+name = "trust-lints"
+description = "Strict-mode lint preset for the Trust dialect"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+proc-macro2 = { workspace = true, features = ["span-locations"] }
+syn.workspace = true
+trust-attrs = { path = "../trust-attrs" }
+trust-diag = { path = "../trust-diag" }
+
+[dev-dependencies]
+insta.workspace = true

@@ -36,11 +36,11 @@ def fmt_frac(num: int, den: int) -> str:
 
 
 lines: list[str] = []
-lines.append(f"# Rustricted eval — run {sys.argv[1]}")
+lines.append(f"# Trust eval — run {sys.argv[1]}")
 lines.append("")
 lines.append(
     "*Bug in source* — agent typed the known-bad pattern. "
-    "*Caught* — `rustricted check` flagged it (only meaningful in the rustricted condition). "
+    "*Caught* — `trust check` flagged it (only meaningful in the trust condition). "
     "*Shipped* — bug present **and** dialect did not catch it. "
     "Shipped is the headline column."
 )
@@ -49,13 +49,13 @@ lines.append("| Task | Condition | Trials | Bug in source | Caught | Shipped |")
 lines.append("|------|-----------|--------|---------------|--------|---------|")
 
 for tid in task_order:
-    for cond in ("vanilla", "rustricted"):
+    for cond in ("vanilla", "trust"):
         trials = grouped[tid][cond]
         n = len(trials)
         if n == 0:
             continue
         bug = sum(1 for t in trials if t["bug_in_source"])
-        if cond == "rustricted":
+        if cond == "trust":
             caught = sum(1 for t in trials if t["dialect_caught"])
             caught_str = fmt_frac(caught, n)
         else:
@@ -68,7 +68,7 @@ for tid in task_order:
 lines.append("")
 
 vanilla_all = [s for s in scores if s["condition"] == "vanilla"]
-rust_all = [s for s in scores if s["condition"] == "rustricted"]
+rust_all = [s for s in scores if s["condition"] == "trust"]
 v_ship = sum(1 for s in vanilla_all if s["shipped"])
 r_ship = sum(1 for s in rust_all if s["shipped"])
 v_bug = sum(1 for s in vanilla_all if s["bug_in_source"])
@@ -78,7 +78,7 @@ r_caught = sum(1 for s in rust_all if s["dialect_caught"])
 lines.append("## Totals")
 lines.append("")
 lines.append(f"- **Vanilla**: {fmt_frac(v_bug, len(vanilla_all))} had the bug in source; {fmt_frac(v_ship, len(vanilla_all))} shipped.")
-lines.append(f"- **Rustricted**: {fmt_frac(r_bug, len(rust_all))} had the bug in source; {fmt_frac(r_caught, len(rust_all))} caught; **{fmt_frac(r_ship, len(rust_all))} shipped**.")
+lines.append(f"- **Trust**: {fmt_frac(r_bug, len(rust_all))} had the bug in source; {fmt_frac(r_caught, len(rust_all))} caught; **{fmt_frac(r_ship, len(rust_all))} shipped**.")
 
 if vanilla_all and rust_all:
     v_rate = v_ship / len(vanilla_all)
@@ -88,7 +88,7 @@ if vanilla_all and rust_all:
         lines.append("")
         lines.append(
             f"- **Bug-ship reduction**: vanilla ships at {v_rate*100:.0f}%, "
-            f"rustricted at {r_rate*100:.0f}% — {reduction:.0f}% fewer bugs reach prod."
+            f"trust at {r_rate*100:.0f}% — {reduction:.0f}% fewer bugs reach prod."
         )
 
 out_path = run_dir / "summary.md"

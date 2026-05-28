@@ -1,0 +1,18 @@
+[package]
+name = "trust-rustdoc"
+description = "RUSTDOC shim: lowers Trust source before invoking rustdoc (doc-tests etc.)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "trust-rustdoc"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+trust-lower = { path = "../trust-lower" }
+trust-rustc = { path = "../trust-rustc" }

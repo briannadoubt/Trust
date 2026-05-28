@@ -16,6 +16,6 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 syn.workspace = true
-rustricted-attrs = { path = "../rustricted-attrs" }
-rustricted-lints = { path = "../rustricted-lints" }
-rustricted-lower = { path = "../rustricted-lower" }
+trust-attrs = { path = "../trust-attrs" }
+trust-lints = { path = "../trust-lints" }
+trust-lower = { path = "../trust-lower" }

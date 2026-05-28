@@ -33,48 +33,48 @@ jobs:
 
       - name: example — Phase 0 hello
         run: |
-          cargo run -p rustricted -- build examples/00-hello.rs --out /tmp/p0
-          test "$(/tmp/p0)" = "hello from rustricted"
+          cargo run -p trust -- build examples/00-hello.rs --out /tmp/p0
+          test "$(/tmp/p0)" = "hello from trust"
 
       - name: example — Phase 1 strict-clean
         run: |
-          cargo run -p rustricted -- build examples/01-lints/strict-clean.rs --out /tmp/p1c
+          cargo run -p trust -- build examples/01-lints/strict-clean.rs --out /tmp/p1c
           test "$(/tmp/p1c)" = "1"
 
       - name: example — Phase 1 unwrap-fail (must fail with R0001)
         run: |
-          ! cargo run -p rustricted -- check examples/01-lints/unwrap-fail.rs 2>&1 | tee /tmp/p1u.log
+          ! cargo run -p trust -- check examples/01-lints/unwrap-fail.rs 2>&1 | tee /tmp/p1u.log
           grep -q R0001 /tmp/p1u.log
 
       - name: example — R0042 positional-fail (must fail with R0042)
         run: |
-          ! cargo run -p rustricted -- check examples/01-lints/positional-fail.rs 2>&1 | tee /tmp/p1p.log
+          ! cargo run -p trust -- check examples/01-lints/positional-fail.rs 2>&1 | tee /tmp/p1p.log
           grep -q R0042 /tmp/p1p.log
 
       - name: example — R0007 impl-trait-return-fail (must fail with R0007)
         run: |
-          ! cargo run -p rustricted -- check examples/01-lints/impl-trait-return-fail.rs 2>&1 | tee /tmp/p1i.log
+          ! cargo run -p trust -- check examples/01-lints/impl-trait-return-fail.rs 2>&1 | tee /tmp/p1i.log
           grep -q R0007 /tmp/p1i.log
       - name: example — R0010 todo-fail (must fail with R0010)
         run: |
-          ! cargo run -p rustricted -- check examples/01-lints/todo-fail.rs 2>&1 | tee /tmp/p1t.log
+          ! cargo run -p trust -- check examples/01-lints/todo-fail.rs 2>&1 | tee /tmp/p1t.log
           grep -q R0010 /tmp/p1t.log
       - name: example — R0011 panic-fail (must fail with R0011)
         run: |
-          ! cargo run -p rustricted -- check examples/01-lints/panic-fail.rs 2>&1 | tee /tmp/p1pa.log
+          ! cargo run -p trust -- check examples/01-lints/panic-fail.rs 2>&1 | tee /tmp/p1pa.log
           grep -q R0011 /tmp/p1pa.log
       - name: example — R0012 bool-param-fail (must fail with R0012)
         run: |
-          ! cargo run -p rustricted -- check examples/01-lints/bool-param-fail.rs 2>&1 | tee /tmp/p1b.log
+          ! cargo run -p trust -- check examples/01-lints/bool-param-fail.rs 2>&1 | tee /tmp/p1b.log
           grep -q R0012 /tmp/p1b.log
       - name: example — R0014 bare-index-fail (must fail with R0014)
         run: |
-          ! cargo run -p rustricted -- check examples/01-lints/bare-index-fail.rs 2>&1 | tee /tmp/p1x.log
+          ! cargo run -p trust -- check examples/01-lints/bare-index-fail.rs 2>&1 | tee /tmp/p1x.log
           grep -q R0014 /tmp/p1x.log
 
       - name: example — cargo-style activation (must fail with R0001)
         run: |
-          ! cargo run -p rustricted -- check examples/01-lints/cargo-strict-unwrap-fail.rs 2>&1 | tee /tmp/p1cs.log
+          ! cargo run -p trust -- check examples/01-lints/cargo-strict-unwrap-fail.rs 2>&1 | tee /tmp/p1cs.log
           grep -q R0001 /tmp/p1cs.log
 
       - name: rustc wrapper — named args via cargo build
@@ -87,21 +87,21 @@ jobs:
           fi
           # Positive: with the wrapper, the lowering pass runs and rustc gets
           # the desugared positional source.
-          cargo build -p rustricted-rustc
-          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          cargo build -p trust-rustc
+          WRAPPER=$(realpath target/debug/trust-rustc)
           (cd examples/cargo-strict-fixture && RUSTC_WRAPPER="$WRAPPER" cargo build)
           out=$(examples/cargo-strict-fixture/target/debug/cargo-strict-fixture)
           test "$out" = "(1, 2, 3)"
 
       - name: example — Phase 2 pipe
         run: |
-          cargo run -p rustricted -- build examples/02-pipe/chain.rs --out /tmp/p2
+          cargo run -p trust -- build examples/02-pipe/chain.rs --out /tmp/p2
           test "$(/tmp/p2)" = "11"
 
       - name: rustc wrapper — multi-module crate
         run: |
-          cargo build -p rustricted-rustc
-          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          cargo build -p trust-rustc
+          WRAPPER=$(realpath target/debug/trust-rustc)
           (cd examples/cargo-strict-fixture-multimod && RUSTC_WRAPPER="$WRAPPER" cargo run) \
             | grep -qx "50"
 
@@ -113,8 +113,8 @@ jobs:
           # The fixture's call site uses reversed-from-declared arg order
           # to prove reordering kicks in — `make_rect(height: 5, width: 10)`
           # must produce `(10, 5)`, so `rect.0` prints `10`.
-          cargo build -p rustricted-rustc
-          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          cargo build -p trust-rustc
+          WRAPPER=$(realpath target/debug/trust-rustc)
           (cd examples/cargo-strict-fixture-cross-file && RUSTC_WRAPPER="$WRAPPER" cargo run) \
             | grep -qx "10"
 
@@ -123,9 +123,9 @@ jobs:
           # rustdoc bypasses RUSTC_WRAPPER and invokes rustc directly on
           # each doc-test snippet. A RUSTDOC shim that lowers code blocks
           # inside `///` doc comments fixes this.
-          cargo build -p rustricted-rustc -p rustricted-rustdoc
-          WRAPPER=$(realpath target/debug/rustricted-rustc)
-          RUSTDOC_SHIM=$(realpath target/debug/rustricted-rustdoc)
+          cargo build -p trust-rustc -p trust-rustdoc
+          WRAPPER=$(realpath target/debug/trust-rustc)
+          RUSTDOC_SHIM=$(realpath target/debug/trust-rustdoc)
           # Negative: without RUSTDOC, named-arg doctests fail.
           (cd examples/cargo-strict-fixture-multimod && cargo clean >/dev/null)
           if (cd examples/cargo-strict-fixture-multimod \
@@ -140,7 +140,7 @@ jobs:
             | tee /tmp/rt28.log
           grep -q "2 passed" /tmp/rt28.log
 
-      - name: rustc wrapper — cross-crate named args (rustricted-std)
+      - name: rustc wrapper — cross-crate named args (trust-std)
         run: |
           # Negative: without the wrapper, rustc must reject the named-arg
           # call to a fn declared in another crate.
@@ -149,47 +149,47 @@ jobs:
             exit 1
           fi
           # Positive: with the wrapper, lowering seeds the CalleeRegistry
-          # from rustricted-std's bundled signature index and rewrites the
+          # from trust-std's bundled signature index and rewrites the
           # call to positional (reordered against the real signature).
-          cargo build -p rustricted-rustc
-          WRAPPER=$(realpath target/debug/rustricted-rustc)
+          cargo build -p trust-rustc
+          WRAPPER=$(realpath target/debug/trust-rustc)
           (cd examples/cargo-strict-cross-crate && RUSTC_WRAPPER="$WRAPPER" cargo run) \
             | grep -qx "ok"
 
       - name: example — Phase 3 named args
         run: |
-          cargo run -p rustricted -- build examples/03-named-args/area.rs --out /tmp/p3
+          cargo run -p trust -- build examples/03-named-args/area.rs --out /tmp/p3
           test "$(/tmp/p3)" = "24 24"
 
       - name: dogfood — build strict crates under wrapper
         run: |
-          # Several rustricted-* crates have been dogfooded with
-          # `rustricted_attrs::strict!{}` (RT-31, RT-44). They use named-arg
+          # Several trust-* crates have been dogfooded with
+          # `trust_attrs::strict!{}` (RT-31, RT-44). They use named-arg
           # syntax internally, so they ONLY build under RUSTC_WRAPPER.
           # See case-studies/dogfooding.md for the per-crate status.
-          cargo build -p rustricted-rustc --release
-          WRAPPER=$(realpath target/release/rustricted-rustc)
+          cargo build -p trust-rustc --release
+          WRAPPER=$(realpath target/release/trust-rustc)
           RUSTC_WRAPPER="$WRAPPER" cargo build \
-            -p rustricted \
-            -p rustricted-diag \
-            -p rustricted-lsp \
-            -p rustricted-rustc \
-            -p rustricted-std \
-            -p rustricted-syntax \
+            -p trust \
+            -p trust-diag \
+            -p trust-lsp \
+            -p trust-rustc \
+            -p trust-std \
+            -p trust-syntax \
             -p xtask
 
       - name: std-signatures manifest up-to-date (RT-44)
         run: |
-          # The `STD_SIGNATURES` index baked into `rustricted-lower` is
+          # The `STD_SIGNATURES` index baked into `trust-lower` is
           # generated from the checked-in
-          # `crates/rustricted-std/std-signatures.txt` manifest, which is
-          # itself regenerated from `crates/rustricted-std/src/lib.rs` by
+          # `crates/trust-std/std-signatures.txt` manifest, which is
+          # itself regenerated from `crates/trust-std/src/lib.rs` by
           # `cargo xtask gen-std-signatures`. CI verifies the checked-in
           # manifest is fresh — stale manifests would silently break
           # cross-crate named-arg lowering.
           #
           # xtask is strict-marked (RT-31), so this step runs under the
           # wrapper built by the dogfood step above.
-          WRAPPER=$(realpath target/release/rustricted-rustc)
+          WRAPPER=$(realpath target/release/trust-rustc)
           RUSTC_WRAPPER="$WRAPPER" cargo xtask gen-std-signatures --check
 

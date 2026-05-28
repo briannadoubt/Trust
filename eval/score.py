@@ -3,7 +3,7 @@
 Usage: python3 eval/score.py <run-id>
 
 Reads .rs files from eval/runs/<run-id>/, applies the bug/good regex
-from tasks.toml, runs `rustricted check` for the rustricted condition,
+from tasks.toml, runs `trust check` for the trust condition,
 and writes a .score.json next to each .rs file.
 """
 
@@ -51,7 +51,7 @@ def score_file(rs_path: Path) -> dict:
 
     dialect_caught = None
     lint_stderr = None
-    if condition == "rustricted":
+    if condition == "trust":
         proc = subprocess.run(
             [
                 "cargo",
@@ -59,7 +59,7 @@ def score_file(rs_path: Path) -> dict:
                 "-q",
                 "--release",
                 "-p",
-                "rustricted",
+                "trust",
                 "--",
                 "check",
                 str(rs_path),

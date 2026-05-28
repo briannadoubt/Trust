@@ -1,4 +1,4 @@
-rustricted_attrs::strict!{}
+trust_attrs::strict!{}
 
 use super::file_tree::{File, FileTree, FileType};
 use std::collections::HashMap;

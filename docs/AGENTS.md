@@ -1,4 +1,4 @@
-# AGENTS.md — Working on Rustricted as an LLM
+# AGENTS.md — Working on Trust as an LLM
 
 Audience: a future-you agent walking into this codebase cold, asked to add a
 lint or extend the lowering pipeline. The goal of this document is to make
@@ -16,14 +16,14 @@ rust-toolchain.toml        # pinned stable
 README.md
 .github/workflows/ci.yml   # fmt + clippy + test + round-trip example
 crates/
-  rustricted/              # CLI driver: `rustricted build|check|lower`
-  rustricted-syntax/       # parse + roundtrip; identity round-trip in Phase 0
-  rustricted-lower/        # named-args and pipe token passes
-  rustricted-lints/        # the `#![strict]` lint preset (R0001–R0008)
-  rustricted-diag/         # Diagnostic shape + ariadne renderer
-  rustricted-lsp/          # tower-lsp stub (Phase 5)
-  rustricted-std/          # named-arg-friendly std shims
-  cargo-rustricted/        # `cargo rustricted` subcommand wrapper
+  trust/              # CLI driver: `trust build|check|lower`
+  trust-syntax/       # parse + roundtrip; identity round-trip in Phase 0
+  trust-lower/        # named-args and pipe token passes
+  trust-lints/        # the `#![strict]` lint preset (R0001–R0008)
+  trust-diag/         # Diagnostic shape + ariadne renderer
+  trust-lsp/          # tower-lsp stub (Phase 5)
+  trust-std/          # named-arg-friendly std shims
+  cargo-trust/        # `cargo trust` subcommand wrapper
 examples/
   00-hello.rs              # the round-trip smoke test
 tests/                     # (planned: ui/, snapshots/, golden/)
@@ -33,14 +33,14 @@ docs/
   AGENTS.md                # this file
 ```
 
-`cargo-rustricted` is a one-file binary that strips the `rustricted` argv
-prefix cargo prepends and execs the `rustricted` binary on `PATH`. You will
+`cargo-trust` is a one-file binary that strips the `trust` argv
+prefix cargo prepends and execs the `trust` binary on `PATH`. You will
 rarely need to touch it.
 
 Examples and tests live at the workspace root, not per-crate, on purpose:
 they exercise the full pipeline.
 
-## The Rustricted way
+## The Trust way
 
 When you write Rust _inside_ this workspace, you eat the dialect. The crate
 roots will grow `#![strict]` as Phase 1 lands. Until then, the lints are
@@ -62,7 +62,7 @@ informational. Write as if they were enforced anyway:
 - **No user macros without opt-in.** R0008. The allowlist covers everything
   you actually want.
 
-Rule codes are stable. When in doubt, grep `crates/rustricted-lints/src/rules.rs`.
+Rule codes are stable. When in doubt, grep `crates/trust-lints/src/rules.rs`.
 
 ## The teaching-error contract
 
@@ -72,9 +72,9 @@ Every `Diagnostic` this codebase emits **must** include three things:
 2. A `why:` note — one sentence on why the rule exists.
 3. A `help:` line carrying a literal replacement when one is available.
 
-The shape is enforced by `rustricted_diag::Diagnostic` and its `.with_why()`
-/ `.with_help()` builders (see `crates/rustricted-diag/src/lib.rs`). The
-renderer is `rustricted_diag::render`, which formats via `ariadne`.
+The shape is enforced by `trust_diag::Diagnostic` and its `.with_why()`
+/ `.with_help()` builders (see `crates/trust-diag/src/lib.rs`). The
+renderer is `trust_diag::render`, which formats via `ariadne`.
 
 When you add a new lint, copy the pattern from an existing one. Do not skip
 `why` or `help`. The agent reading your diagnostic in production has no
@@ -85,7 +85,7 @@ other context; the diagnostic _is_ the documentation.
 Phase 1 work. Step-by-step:
 
 1. **Pick a code.** Find the next free `R00NN` in
-   `crates/rustricted-lints/src/rules.rs`. Add a new `Rule` variant, extend
+   `crates/trust-lints/src/rules.rs`. Add a new `Rule` variant, extend
    the `code()`, `name()`, and `rationale()` match arms, and add the variant
    to `ALL`.
 2. **Document the rule in `SPEC.md`.** Append a `### R00NN — name` subsection
@@ -94,7 +94,7 @@ Phase 1 work. Step-by-step:
 3. **Write the rationale in `RATIONALE.md`.** Bug class, why this shape,
    tradeoffs, escape hatch. Don't be defensive about the tradeoffs; concede
    them.
-4. **Implement the visitor in `crates/rustricted-lints/src/strict.rs`.**
+4. **Implement the visitor in `crates/trust-lints/src/strict.rs`.**
    `run_rule` currently dispatches a no-op. Add a match arm that delegates
    to a per-rule function. The function takes `(&syn::File, &str,
    &mut Vec<Diagnostic>)` and walks the AST with `syn::visit::Visit`.
@@ -117,10 +117,10 @@ rules: imperative verb, no jargon, explain the fix in concrete code.
 ```sh
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
-cargo run -p rustricted -- build examples/00-hello.rs --out /tmp/hello && /tmp/hello
-cargo run -p rustricted -- build examples/02-pipe/chain.rs   # (Phase 2)
-cargo run -p rustricted -- check examples/01-lints/unwrap.rs # (Phase 1)
-cargo run -p rustricted -- lower examples/03-named-args/swap.rs # (Phase 3)
+cargo run -p trust -- build examples/00-hello.rs --out /tmp/hello && /tmp/hello
+cargo run -p trust -- build examples/02-pipe/chain.rs   # (Phase 2)
+cargo run -p trust -- check examples/01-lints/unwrap.rs # (Phase 1)
+cargo run -p trust -- lower examples/03-named-args/swap.rs # (Phase 3)
 ```
 
 CI runs the first two plus a round-trip of `examples/00-hello.rs`. See

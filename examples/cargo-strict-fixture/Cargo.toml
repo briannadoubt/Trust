@@ -1,7 +1,7 @@
 [workspace]
 # Standalone workspace — keep out of the main /Users/bri/dev/One workspace
 # so the RUSTC_WRAPPER end-to-end test doesn't trigger rebuilds of every
-# rustricted-* crate every time it runs.
+# trust-* crate every time it runs.
 
 [package]
 name = "cargo-strict-fixture"
@@ -14,4 +14,4 @@ name = "cargo-strict-fixture"
 path = "src/main.rs"
 
 [dependencies]
-rustricted-attrs = { path = "../../crates/rustricted-attrs" }
+trust-attrs = { path = "../../crates/trust-attrs" }

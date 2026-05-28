@@ -1,4 +1,4 @@
-rustricted_attrs::strict! {}
+trust_attrs::strict! {}
 
 /// Build a `(width, height)` tuple using named-arg syntax.
 ///

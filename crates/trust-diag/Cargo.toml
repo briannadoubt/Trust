@@ -1,0 +1,13 @@
+[package]
+name = "trust-diag"
+description = "Teaching diagnostics for the Trust dialect"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+ariadne.workspace = true
+trust-attrs = { path = "../trust-attrs" }

@@ -8,7 +8,7 @@ edition = "2021"
 rust-version = "1.95"
 license = "MIT OR Apache-2.0"
 authors = ["Bri <bri@briannadoubt.com>"]
-repository = "https://github.com/briannadoubt/rustricted"
+repository = "https://github.com/briannadoubt/trust"
 
 [workspace.dependencies]
 anyhow = "1"

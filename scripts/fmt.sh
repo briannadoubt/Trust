@@ -31,9 +31,9 @@ while IFS=$'\t' read -r pkg src_dir; do
     echo "fmt: skip $pkg (pipe |> syntax)"
     continue
   fi
-  # Skip crates that activate strict mode via `rustricted_attrs::strict!{}`
+  # Skip crates that activate strict mode via `trust_attrs::strict!{}`
   # or `#![strict]` — those files use named-arg syntax that rustfmt rejects.
-  if [[ -d "$src_dir" ]] && grep -r --include="*.rs" -qE '^(rustricted_attrs::strict\s*!|#!\[strict\])' "$src_dir" 2>/dev/null; then
+  if [[ -d "$src_dir" ]] && grep -r --include="*.rs" -qE '^(trust_attrs::strict\s*!|#!\[strict\])' "$src_dir" 2>/dev/null; then
     echo "fmt: skip $pkg (strict-mode dialect syntax)"
     continue
   fi

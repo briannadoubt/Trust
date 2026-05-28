@@ -6,9 +6,9 @@ version = 4
 name = "cargo-strict-fixture-multimod"
 version = "0.1.0"
 dependencies = [
- "rustricted-attrs",
+ "trust-attrs",
 ]
 
 [[package]]
-name = "rustricted-attrs"
+name = "trust-attrs"
 version = "0.1.0"

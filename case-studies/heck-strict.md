@@ -1,10 +1,10 @@
-# Case Study: `heck` v0.5.0 under Rustricted strict mode
+# Case Study: `heck` v0.5.0 under Trust strict mode
 
 **Crate:** [heck](https://github.com/withoutboats/heck) v0.5.0  
 **License:** MIT OR Apache-2.0  
 **Original LOC:** 866 (9 source files)  
-**Strict mode activated via:** `rustricted_attrs::strict!{}` in `lib.rs`  
-**Build method:** `RUSTC_WRAPPER=$(realpath target/debug/rustricted-rustc) cargo build`  
+**Strict mode activated via:** `trust_attrs::strict!{}` in `lib.rs`  
+**Build method:** `RUSTC_WRAPPER=$(realpath target/debug/trust-rustc) cargo build`  
 **Final build result:** ✅ Clean build + 6/6 unit tests passing  
 **Case study path:** `case-studies/heck-strict/`
 
@@ -29,10 +29,10 @@ It was chosen because it is:
 
 1. Cloned `heck` v0.5.0 into `case-studies/heck-strict/` as a standalone crate
    (not added to workspace members)
-2. Added `rustricted_attrs::strict!{}` to `lib.rs` (crate root)
-3. Activated `#![strict]` in all 8 module files for per-file `rustricted check`
+2. Added `trust_attrs::strict!{}` to `lib.rs` (crate root)
+3. Activated `#![strict]` in all 8 module files for per-file `trust check`
    analysis
-4. Ran `rustricted check` on every `.rs` file to enumerate violations
+4. Ran `trust check` on every `.rs` file to enumerate violations
 5. Assessed each violation as **real** or **FP**
 6. Applied fixes
 7. Built the crate via `RUSTC_WRAPPER`
@@ -140,7 +140,7 @@ R0008 fires because `macro_rules! t` appears inside a strict-mode file. The
 intended fix is `#[strict::macros_ok]` on the module — but this doesn't work.
 
 **Root cause of FP:** The `strip_strict_attrs` preprocessor in
-`rustricted-lower/src/preprocess.rs` removes ALL `#[strict::*]` attributes
+`trust-lower/src/preprocess.rs` removes ALL `#[strict::*]` attributes
 BEFORE the linting pass runs. By the time `NoUserMacrosVisitor` inspects the
 code, `#[strict::macros_ok]` has been stripped and the suppression has no
 effect.
@@ -208,10 +208,10 @@ Despite the comment being present, R0006 fired. Investigation revealed that:
   markers
 
 **Assessment: False positive (toolchain bug, RT-20).** R0006 is **effectively
-unusable** for any code processed via `rustricted check` or `RUSTC_WRAPPER`
+unusable** for any code processed via `trust check` or `RUSTC_WRAPPER`
 because all justification comments are stripped before linting runs. The only
 context where R0006 works correctly is the unit-test harness in
-`rustricted-lints/src/lib.rs`, which calls `lint(parsed, original_source)`
+`trust-lints/src/lib.rs`, which calls `lint(parsed, original_source)`
 directly.
 
 **Fix applied:** Removed the crate-level `#![allow(missing_docs)]` and
@@ -242,7 +242,7 @@ single file or use inline modules) is impractical at scale.
 | Change | LOC | Reason |
 |--------|-----|--------|
 | Merged 8 module files into single `lib.rs` | −725, +580 | RUSTC_WRAPPER multi-file limitation (RT-21) |
-| Added `rustricted_attrs::strict!{}` marker | +3 | Strict mode activation |
+| Added `trust_attrs::strict!{}` marker | +3 | Strict mode activation |
 | Added named args to 9 `transform(...)` call sites | +9 | R0042 fix (real violation) |
 | Added named arg to `lowercase(...)` in `capitalize` | +1 | R0042 fix (real violation) |
 | Removed `#[allow(non_snake_case)]` from `TO_SHOUTY_SNEK_CASE` | −1 | R0006 fix (real violation) |
@@ -257,7 +257,7 @@ single file or use inline modules) is impractical at scale.
 
 ## Verdict
 
-For a crate of this type (pure, no_std, no unsafe, no deps), Rustricted caught:
+For a crate of this type (pure, no_std, no unsafe, no deps), Trust caught:
 
 - **9 real violations** (R0042): All `transform`, `lowercase`, `capitalize`, and
   `uppercase` call sites used positional arguments. In the `transform` function

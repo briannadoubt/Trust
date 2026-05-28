@@ -1,4 +1,4 @@
-rustricted_attrs::strict!{}
+trust_attrs::strict!{}
 
 use super::file_tree::{File, FileTree, FileType, TypeSpecficData};
 use serde::Serialize;
@@ -34,7 +34,7 @@ enum SerializableTreeNode<'a> {
 
 impl SerializableTreeNode<'_> {
     // Renamed from `new` to avoid a per-file registry collision with
-    // `FileTree::new(root_path, children)` (arity 2) below: the rustricted
+    // `FileTree::new(root_path, children)` (arity 2) below: the trust
     // lower pass keys callees by short name only, so both methods register
     // as `new` and R3001/R0042 fire on either call form. See RT-29 followups.
     pub fn from_tree(tree: &FileTree) -> SerializableTreeNode {

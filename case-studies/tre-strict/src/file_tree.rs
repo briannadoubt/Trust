@@ -1,4 +1,4 @@
-rustricted_attrs::strict!{}
+trust_attrs::strict!{}
 
 use slab::Slab;
 use indexmap::IndexMap;
@@ -82,7 +82,7 @@ impl File {
     fn add_child(&mut self, name: &str, id: usize) {
         if let TypeSpecficData::Directory(children) = &mut self.data {
             // Named args used to satisfy R0042 — the registry sees
-            // `rustricted_std::insert(map, key, value)` because the std shim
+            // `trust_std::insert(map, key, value)` because the std shim
             // claims the short name `insert`. Friction: a method call like
             // `children.insert(k, v)` can't really be validated against a free
             // fn signature, but the lowering pass treats them as the same name.
