@@ -525,4 +525,56 @@ mod tests {
         let d = diags_for(Rule::NoBareIndex, src);
         assert!(d.is_empty(), "crate-level allow must suppress, got {d:?}");
     }
+
+    // RT-42 regression: confirm key rules' spans land past line 1 (the
+    // strict-marker line). RT-8 fixed this for the lints pipeline once
+    // already; the tre case study showed R0042/R3001 regressed because
+    // `rustricted-lower` lacked the `span-locations` feature on
+    // proc-macro2. These assertions guard against re-collapse.
+
+    fn first_diag(rule: Rule, src: &str) -> Diagnostic {
+        diags_for(rule, src)
+            .into_iter()
+            .find(|d| d.rule == rule.code())
+            .unwrap_or_else(|| panic!("expected {} diag", rule.code()))
+    }
+
+    #[test]
+    fn r0001_span_points_past_line_one() {
+        // Strict marker on line 1; offending `.unwrap()` is on line 2.
+        let src = "#![strict]\nfn f() { let x: Option<u32> = None; x.unwrap(); }";
+        let d = first_diag(Rule::NoUnwrap, src);
+        let line_one_end = src.find('\n').expect("first newline");
+        assert!(
+            d.span.start >= line_one_end,
+            "R0001 must not collapse to line 1 (RT-42): {:?}",
+            d.span
+        );
+    }
+
+    #[test]
+    fn r0005_span_points_past_line_one() {
+        // `unsafe` block on line 2 without an `// SAFETY:` comment.
+        let src = "#![strict]\nfn f() { unsafe { } }";
+        let d = first_diag(Rule::JustifyUnsafe, src);
+        let line_one_end = src.find('\n').expect("first newline");
+        assert!(
+            d.span.start >= line_one_end,
+            "R0005 must not collapse to line 1 (RT-42): {:?}",
+            d.span
+        );
+    }
+
+    #[test]
+    fn r0011_span_points_past_line_one() {
+        // `panic!` on line 2.
+        let src = "#![strict]\nfn f() { panic!(\"x\"); }";
+        let d = first_diag(Rule::NoPanic, src);
+        let line_one_end = src.find('\n').expect("first newline");
+        assert!(
+            d.span.start >= line_one_end,
+            "R0011 must not collapse to line 1 (RT-42): {:?}",
+            d.span
+        );
+    }
 }

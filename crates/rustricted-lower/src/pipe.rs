@@ -206,10 +206,12 @@ fn comma(span: Span) -> Punct {
     p
 }
 
-/// proc-macro2 spans don't expose byte offsets on stable, so we collapse to
-/// an empty range. Callers tag the originating file separately.
-fn span_to_range(_span: Span) -> std::ops::Range<usize> {
-    0..0
+/// Convert a `proc_macro2::Span` to a byte range into the original source.
+/// Requires the `span-locations` feature on `proc-macro2` (enabled in this
+/// crate's Cargo.toml) — without it, `byte_range()` returns `0..0` for
+/// every span, which collapses every diagnostic to line 1 col 1 (RT-42).
+fn span_to_range(span: Span) -> std::ops::Range<usize> {
+    span.byte_range()
 }
 
 #[cfg(test)]
