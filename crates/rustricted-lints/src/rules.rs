@@ -29,6 +29,10 @@ pub enum Rule {
     NoBoolParam,
     /// `expr[idx]` indexing where `idx` is not a literal integer.
     NoBareIndex,
+    /// `#[allow(rustricted::Rxxxx)]` missing `reason = "..."` argument.
+    AllowMissingReason,
+    /// `#[allow(rustricted::Rxxxx)]` with an unknown rule code.
+    AllowUnknownCode,
     /// Positional argument to a locally-defined function with arity > 1.
     /// Emission lives in `rustricted-lower::named_args` because the lint
     /// must fire before lowering strips argument names; this catalogue
@@ -51,8 +55,16 @@ impl Rule {
             Rule::NoPanic => "R0011",
             Rule::NoBoolParam => "R0012",
             Rule::NoBareIndex => "R0014",
+            Rule::AllowMissingReason => "R0015",
+            Rule::AllowUnknownCode => "R0016",
             Rule::NoPositionalArgs => "R0042",
         }
+    }
+
+    /// Parse a rule code like `R0014` back to a `Rule`. Returns `None` for
+    /// unknown codes — `#[allow(rustricted::Rxxxx)]` callers must validate.
+    pub fn from_code(code: &str) -> Option<Self> {
+        ALL.iter().copied().find(|r| r.code() == code)
     }
 
     pub fn name(self) -> &'static str {
@@ -69,6 +81,8 @@ impl Rule {
             Rule::NoPanic => "no-panic",
             Rule::NoBoolParam => "no-bool-param",
             Rule::NoBareIndex => "no-bare-index",
+            Rule::AllowMissingReason => "allow-missing-reason",
+            Rule::AllowUnknownCode => "allow-unknown-code",
             Rule::NoPositionalArgs => "no-positional-args",
         }
     }
@@ -114,6 +128,8 @@ impl Rule {
             Rule::NoPanic => "explicit panics drop typed errors on the floor; return `Err` and let the caller decide",
             Rule::NoBoolParam => "raw `bool` parameters are positional footguns; named enums make intent self-documenting",
             Rule::NoBareIndex => "`v[i]` panics on out-of-bounds; `.get(i)` makes the failure path explicit",
+            Rule::AllowMissingReason => "every `#[allow(rustricted::Rxxxx)]` must include a `reason = \"...\"` justification",
+            Rule::AllowUnknownCode => "`#[allow(rustricted::Rxxxx)]` references a rule code that is not in the registry",
             Rule::NoPositionalArgs => "positional argument ordering is the largest LLM-authored bug class in Rust; named args eliminate it",
         }
     }
@@ -132,5 +148,7 @@ pub const ALL: &[Rule] = &[
     Rule::NoPanic,
     Rule::NoBoolParam,
     Rule::NoBareIndex,
+    Rule::AllowMissingReason,
+    Rule::AllowUnknownCode,
     Rule::NoPositionalArgs,
 ];

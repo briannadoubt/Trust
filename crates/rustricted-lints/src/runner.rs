@@ -59,9 +59,27 @@ fn run(file: &syn::File, source: &str, rules: Vec<Rule>, strict_mode: bool) -> L
         return report;
     }
 
-    for rule in rules {
-        crate::strict::run_rule(rule, file, source, &mut report.diagnostics);
+    // First pass: collect every `#[allow(rustricted::...)]` scope, and emit
+    // R0015 / R0016 diagnostics for malformed allow attributes. A malformed
+    // allow does NOT suppress, so the rules it lists keep firing below.
+    let allow_map = crate::allow::collect_allow_map(file, source, &mut report.diagnostics);
+
+    for rule in &rules {
+        crate::strict::run_rule(*rule, file, source, &mut report.diagnostics);
     }
+
+    // Drop diagnostics suppressed by an enclosing `#[allow(rustricted::Rxxxx,
+    // reason = "...")]`. R0015 / R0016 themselves cannot be suppressed —
+    // that would let a malformed allow silence its own validation diag.
+    report.diagnostics.retain(|d| {
+        if d.rule == Rule::AllowMissingReason.code() || d.rule == Rule::AllowUnknownCode.code() {
+            return true;
+        }
+        let Some(rule) = Rule::from_code(d.rule) else {
+            return true;
+        };
+        !allow_map.is_suppressed(rule, &d.span)
+    });
 
     report
 }

@@ -10,6 +10,7 @@
 //! that R0042 correctly flags but mass-rewriting hits >100-LOC stop cond
 //! for RT-31. `runner.rs` / `rules.rs` are strict-marked.
 
+mod allow;
 mod rules;
 mod runner;
 mod strict;
@@ -391,5 +392,137 @@ mod tests {
         let src = "#![strict]\nfn f(v: &[u32]) -> &[u32] { &v[..] }";
         let d = diags_for(Rule::NoBareIndex, src);
         assert!(d.is_empty(), "expected no R0014 diag, got {d:?}");
+    }
+
+    // RT-43: heuristic — only fire when the index "looks usize".
+    #[test]
+    fn r0014_fires_on_idx_suffixed_ident() {
+        let src = "#![strict]\nfn f(v: &[u32], child_idx: usize) -> u32 { v[child_idx] }";
+        assert!(fires(Rule::NoBareIndex, src));
+    }
+
+    #[test]
+    fn r0014_fires_on_len_arithmetic() {
+        let src = "#![strict]\nfn f(v: &[u32]) -> u32 { v[v.len() - 1] }";
+        assert!(fires(Rule::NoBareIndex, src));
+    }
+
+    #[test]
+    fn r0014_silent_on_key_shaped_ident() {
+        // Slab/IndexMap style: `key` is a newtype, not a usize.
+        let src = "#![strict]\nfn f<K, V>(map: &std::collections::HashMap<K, V>, key: K) -> &V where K: std::hash::Hash + Eq { &map[&key] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(
+            d.is_empty(),
+            "expected no R0014 on key-shaped ident, got {d:?}"
+        );
+    }
+
+    #[test]
+    fn r0014_silent_on_node_key() {
+        let src = "#![strict]\nstruct Arena; struct Key; impl std::ops::Index<Key> for Arena { type Output = u32; fn index(&self, _k: Key) -> &u32 { &0 } } fn f(arena: &Arena, node_key: Key) -> u32 { arena[node_key] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(d.is_empty(), "expected no R0014 on node_key, got {d:?}");
+    }
+
+    // RT-46: per-callsite #[allow(rustricted::Rxxxx, reason = "…")] hatch.
+    #[test]
+    fn rt46_allow_suppresses_rule_on_item() {
+        let src = "#![strict]\n#[allow(rustricted::R0014, reason = \"arena access\")]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(
+            d.is_empty(),
+            "expected R0014 suppressed by item-level allow, got {d:?}"
+        );
+    }
+
+    #[test]
+    fn rt46_allow_suppresses_rule_on_stmt() {
+        let src = "#![strict]\nfn f(v: &[u32], i: usize) -> u32 {\n    #[allow(rustricted::R0014, reason = \"arena\")]\n    let x = v[i];\n    x\n}";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(
+            d.is_empty(),
+            "expected R0014 suppressed by stmt-level allow, got {d:?}"
+        );
+    }
+
+    #[test]
+    fn rt46_allow_does_not_leak_outside_scope() {
+        // Allow on `g` must NOT silence R0014 inside `f`.
+        let src = "#![strict]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }\n#[allow(rustricted::R0014, reason = \"ok\")]\nfn g(v: &[u32], i: usize) -> u32 { v[i] }";
+        assert!(
+            fires(Rule::NoBareIndex, src),
+            "R0014 must still fire on the un-allowed sibling fn"
+        );
+    }
+
+    #[test]
+    fn rt46_missing_reason_rejected() {
+        let src =
+            "#![strict]\n#[allow(rustricted::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        assert!(
+            fires(Rule::AllowMissingReason, src),
+            "missing reason must emit R0015"
+        );
+    }
+
+    #[test]
+    fn rt46_empty_reason_rejected() {
+        let src = "#![strict]\n#[allow(rustricted::R0014, reason = \"\")]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        assert!(
+            fires(Rule::AllowMissingReason, src),
+            "empty reason must emit R0015"
+        );
+    }
+
+    #[test]
+    fn rt46_unknown_code_rejected() {
+        let src = "#![strict]\n#[allow(rustricted::R9999, reason = \"…\")]\nfn f() {}";
+        assert!(
+            fires(Rule::AllowUnknownCode, src),
+            "unknown rule code must emit R0016"
+        );
+    }
+
+    #[test]
+    fn rt46_malformed_allow_does_not_suppress() {
+        // No reason → the malformed allow MUST NOT silence R0014; user has
+        // to fix the attribute before the lint shuts up.
+        let src =
+            "#![strict]\n#[allow(rustricted::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        assert!(
+            fires(Rule::NoBareIndex, src),
+            "R0014 must keep firing when the allow is malformed"
+        );
+    }
+
+    #[test]
+    fn rt46_non_rustricted_allow_ignored() {
+        // `#[allow(dead_code)]` should be entirely ignored by RT-46 — R0006
+        // still owns it via its own `// reason:` comment mechanism.
+        let src = "#![strict]\n// reason: scaffold for next PR.\n#[allow(dead_code)]\nfn f() {}";
+        let d = diags(src);
+        assert!(
+            d.iter().all(|x| x.rule != "R0015" && x.rule != "R0016"),
+            "non-rustricted allow must not trigger R0015/R0016, got {d:?}"
+        );
+    }
+
+    #[test]
+    fn rt46_multiple_rules_in_one_allow() {
+        let src = "#![strict]\n#[allow(rustricted::R0001, rustricted::R0014, reason = \"test scaffold\")]\nfn f(v: &[u32], i: usize) -> u32 { let x: Option<u32> = None; x.unwrap(); v[i] }";
+        let unwrap_d = diags_for(Rule::NoUnwrap, src);
+        let idx_d = diags_for(Rule::NoBareIndex, src);
+        assert!(
+            unwrap_d.is_empty() && idx_d.is_empty(),
+            "both R0001 and R0014 should be suppressed; got unwrap={unwrap_d:?} idx={idx_d:?}"
+        );
+    }
+
+    #[test]
+    fn rt46_crate_level_allow_suppresses_everywhere() {
+        let src = "#![strict]\n#![allow(rustricted::R0014, reason = \"crate-wide arena access\")]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        let d = diags_for(Rule::NoBareIndex, src);
+        assert!(d.is_empty(), "crate-level allow must suppress, got {d:?}");
     }
 }

@@ -148,6 +148,8 @@ regenerate.
 | R0011 | no-panic              | 1     | error    |
 | R0012 | no-bool-param         | 1     | error    |
 | R0014 | no-bare-index         | 1     | error    |
+| R0015 | allow-missing-reason  | 1     | error    |
+| R0016 | allow-unknown-code    | 1     | error    |
 | R0042 | no-positional-args    | 1     | error    |
 
 <!-- END auto-generated: lints-table -->
@@ -277,6 +279,48 @@ fn future_use() {}
 
 No escape hatch.
 
+### Per-callsite escape hatch: `#[allow(rustricted::Rxxxx, reason = "…")]`
+
+Any item, statement, or expression can suppress one or more Rustricted
+rules for its own scope with an inline `#[allow(rustricted::Rxxxx, reason
+= "…")]` attribute (RT-46). The `reason = "…"` argument is **mandatory**
+— a `#[allow(rustricted::R0014)]` without a reason emits R0015 and does
+*not* suppress.
+
+```rust
+// arena indexing — the index is a Key, not a usize
+#[allow(rustricted::R0014, reason = "Slab key, not usize")]
+fn get(arena: &Arena, key: NodeKey) -> &Node { &arena[key] }
+
+// per-statement suppression also works
+fn f(v: &[u32], i: usize) -> u32 {
+    #[allow(rustricted::R0014, reason = "bounds checked above")]
+    let x = v[i];
+    x
+}
+
+// multiple rules in one attribute
+#[allow(rustricted::R0001, rustricted::R0014, reason = "test scaffold")]
+fn scratch() { /* … */ }
+
+// crate-level
+#![allow(rustricted::R0014, reason = "this crate is all arena access")]
+```
+
+Two validation rules guard the mechanism:
+
+- **R0015 allow-missing-reason** — `#[allow(rustricted::…)]` without a
+  non-empty `reason = "…"` argument.
+- **R0016 allow-unknown-code** — `#[allow(rustricted::R9999, …)]`
+  referencing a rule code that isn't in the registry. The help text
+  lists every valid code.
+
+R0015 and R0016 themselves cannot be suppressed — that would let a
+malformed allow silence its own validation diagnostic. Non-rustricted
+allows (`#[allow(dead_code)]`, `#[allow(clippy::xxx)]`) are ignored by
+this mechanism entirely; R0006 still governs them via its `// reason:`
+comment requirement.
+
 ### R0007 — no-impl-trait-return
 
 `impl Trait` in return position is rejected. Name the type with a `type`
@@ -396,30 +440,46 @@ about boolean API surface.
 
 ### R0014 — no-bare-index
 
-`expr[idx]` indexing is rejected when `idx` is not a literal integer.
-Literal indices (`v[0]`, `arr[7]`) are still allowed because they
-typically encode intentional access to a known position.
+`expr[idx]` indexing is rejected when `idx` syntactically looks like a
+`usize` position. Literal indices (`v[0]`, `arr[7]`) and range slices
+(`v[..n]`, `v[a..b]`) are exempt because they typically encode
+intentional access to a known position or window.
 
 Rationale: `v[i]` panics on out-of-bounds; `.get(i)` returns `Option<&T>`
 and forces the call site to handle the missing case. Const indices are
 mostly used for tuple-like array access where bounds are known
-statically; non-const indices are where the bugs live.
+statically; non-const integer indices are where the bugs live.
+
+**Heuristic (RT-43):** the lint has no type information, so it fires
+only when the index *looks* `usize`-typed:
+
+- bare identifiers commonly used as numeric indices: `i`, `j`, `k`,
+  `n`, `idx`, `index`
+- identifiers ending in `_idx`, `_index`, `_i` (e.g. `child_idx`)
+- arithmetic on `.len()`: `xs[xs.len() - 1]`
+
+Anything else — `arena[key]`, `map[&node_key]`, `slab[entity_id]` — is
+treated as key-style indexing into a `Slab`/`IndexMap`-shaped type and
+is *not* flagged. Users who want the lint to fire on a key-style
+callsite anyway can re-introduce it; users who want to silence a true
+positive can use the per-callsite escape hatch.
 
 ```rust
-// rejected
+// rejected (looks usize)
 fn first_or_zero(v: &[u32], i: usize) -> u32 { v[i] }
+fn last(v: &[u32]) -> u32 { v[v.len() - 1] }
 
-// accepted
-fn first_or_zero(v: &[u32], i: usize) -> u32 {
-    v.get(i).copied().unwrap_or(0)
-}
-
-// also accepted (literal index)
+// accepted (literal index)
 fn first(v: &[u32]) -> u32 { v[0] }
+
+// accepted (key-shaped, not flagged by heuristic)
+fn get(arena: &Slab<Node>, node_key: NodeKey) -> &Node { &arena[node_key] }
 ```
 
-Escape hatch: use `.get(i)` and handle the `Option`, or move the call
-under `#[cfg(test)]`.
+Escape hatch: use `.get(i)` and handle the `Option`, move the call
+under `#[cfg(test)]`, or attach
+`#[allow(rustricted::R0014, reason = "…")]` to the enclosing item or
+statement (see the per-callsite escape hatch section above).
 
 ### R0042 — no-positional-args
 

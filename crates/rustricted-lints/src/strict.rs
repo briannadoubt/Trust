@@ -53,6 +53,10 @@ pub fn run_rule(rule: Rule, file: &syn::File, source: &str, diagnostics: &mut Ve
         Rule::NoPanic => run_no_panic(file, diagnostics),
         Rule::NoBoolParam => run_no_bool_param(file, diagnostics),
         Rule::NoBareIndex => run_no_bare_index(file, diagnostics),
+        // R0015 / R0016 emission lives in `crate::allow::collect_allow_map`,
+        // which the runner invokes before per-rule dispatch. The catalogue
+        // entries stay here so SPEC.md and tooling can refer to the codes.
+        Rule::AllowMissingReason | Rule::AllowUnknownCode => {}
         // R0042 emission lives in `rustricted_lower::named_args`, where the
         // pass can still see name-prefixed call args before they're stripped.
         // The catalogue entry stays here so SPEC.md and the docs can refer
@@ -849,6 +853,42 @@ fn index_is_int_literal(expr: &syn::Expr) -> bool {
     )
 }
 
+/// RT-43: heuristic — does this index expression *look* like a `usize` /
+/// integer position, as opposed to a key into a `Slab`/`IndexMap`?
+///
+/// We don't have type information at lint time, so this is purely
+/// syntactic. The heuristic fires on:
+/// - bare identifiers commonly used as numeric indices: `i`, `j`, `k`,
+///   `n`, `idx`, `index`
+/// - identifiers ending in `_idx`, `_index`, `_i` (e.g. `child_idx`)
+/// - `.len()`-derived arithmetic: `xs.len() - 1`, `xs.len() / 2`
+///
+/// Everything else (key-shaped identifiers like `key`, `node_key`,
+/// `entity_id`, or method calls returning unknown types) is treated as
+/// a key-style access and is not flagged. Users who want the lint to
+/// fire on those callsites can — but the inverse case (R0014 false
+/// positive on arena types) is the more common failure mode and the
+/// one this heuristic targets. Per-callsite suppression remains
+/// available via `#[allow(rustricted::R0014, reason = "...")]` (RT-46).
+fn index_looks_usize(expr: &syn::Expr) -> bool {
+    match expr {
+        syn::Expr::Path(p) if p.qself.is_none() => {
+            let Some(ident) = p.path.get_ident() else {
+                return false;
+            };
+            let name = ident.to_string();
+            matches!(name.as_str(), "i" | "j" | "k" | "n" | "idx" | "index")
+                || name.ends_with("_idx")
+                || name.ends_with("_index")
+                || name.ends_with("_i")
+        }
+        syn::Expr::Binary(b) => index_looks_usize(&b.left) || index_looks_usize(&b.right),
+        syn::Expr::Paren(p) => index_looks_usize(&p.expr),
+        syn::Expr::MethodCall(m) => m.method == "len",
+        _ => false,
+    }
+}
+
 struct NoBareIndexVisitor<'a> {
     diagnostics: &'a mut Vec<Diagnostic>,
     in_test_depth: usize,
@@ -889,14 +929,24 @@ impl<'ast, 'a> Visit<'ast> for NoBareIndexVisitor<'a> {
     }
 
     fn visit_expr_index(&mut self, node: &'ast syn::ExprIndex) {
-        if self.in_test_depth == 0 && !index_is_int_literal(&node.index) {
+        // RT-43: only fire when the index expression *looks like* a usize
+        // position. Bare-key indexing into `Slab`/`IndexMap`-style arena
+        // types (where the index type is a `Key` newtype) no longer trips
+        // R0014. Users wanting to ban every `expr[idx]` can still do so
+        // via `#[deny]` or by tightening this heuristic locally.
+        if self.in_test_depth == 0
+            && !index_is_int_literal(&node.index)
+            && index_looks_usize(&node.index)
+        {
             let diag = Diagnostic::error(
                 Rule::NoBareIndex.code(),
-                "bare indexing `v[idx]` with a non-literal index is banned in strict mode",
+                "bare indexing `v[i]` with a usize-typed index is banned in strict mode",
                 span_range(node.index.span()),
             )
             .with_why(Rule::NoBareIndex.rationale().to_string())
-            .with_help("use `.get(idx)` and handle the `Option`");
+            .with_help(
+                "use `.get(idx)` and handle the `Option`, or `#[allow(rustricted::R0014, reason = \"…\")]` if this is a key-style index",
+            );
             self.diagnostics.push(diag);
         }
         visit::visit_expr_index(self, node);
