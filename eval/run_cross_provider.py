@@ -14,9 +14,9 @@ Usage:
 
     python3 eval/run_cross_provider.py \\
         --provider gemini \\
-        --model gemini-1.5-pro \\
+        --model gemini-2.5-flash \\
         --run 006 \\
-        --tasks 11,12,13,14,15 \\
+        --tasks 11-pipeline,12-result-chain,13-numeric,14-imports,15-many-points \\
         --trials 3
 
 After running:
@@ -25,8 +25,8 @@ After running:
     cat eval/runs/005/summary.md
 
 Requirements:
-    - openai provider:  pip install openai; OPENAI_API_KEY set
-    - gemini provider:  pip install google-generativeai; GOOGLE_API_KEY set
+    - openai provider:  pip install openai;     OPENAI_API_KEY set
+    - gemini provider:  pip install google-genai; GOOGLE_API_KEY set
 """
 
 from __future__ import annotations
@@ -56,15 +56,61 @@ def call_openai(model: str, prompt: str) -> str:
     return response.choices[0].message.content or ""
 
 
+def _parse_gemini_retry_delay(err: Exception) -> float | None:
+    """Pull `retryDelay` (e.g. "40s") out of a Gemini 429 error payload.
+
+    Handles single-quoted dict repr ('retryDelay': '40s'), JSON ("retryDelay": "40s"),
+    and the natural-language "Please retry in 40.620046432s." in the message.
+    """
+    import re
+    blob = f"{getattr(err, 'message', '')} {err}"
+    # Structured: 'retryDelay': '40s' or "retryDelay":"40s"
+    m = re.search(r'retry[_-]?[Dd]elay[\'"\s:]+[\'"]?(\d+(?:\.\d+)?)s', blob)
+    if m:
+        return float(m.group(1))
+    # Natural language: "Please retry in 40.620046432s."
+    m = re.search(r'retry in\s+(\d+(?:\.\d+)?)s', blob, re.IGNORECASE)
+    if m:
+        return float(m.group(1))
+    return None
+
+
+class DailyQuotaExceeded(RuntimeError):
+    """Raised when Gemini reports a per-day quota — retrying won't help today."""
+
+
 def call_gemini(model: str, prompt: str) -> str:
-    import google.generativeai as genai  # type: ignore
-    genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-    m = genai.GenerativeModel(model)
-    response = m.generate_content(
-        prompt,
-        generation_config=genai.types.GenerationConfig(temperature=0.0),
-    )
-    return response.text or ""
+    from google import genai  # type: ignore
+    from google.genai import errors, types  # type: ignore
+    client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+
+    max_attempts = 6
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.0),
+            )
+            return response.text or ""
+        except errors.ClientError as exc:
+            if getattr(exc, "code", None) != 429 or attempt == max_attempts:
+                raise
+            # Per-day quotas don't reset by sleeping — bail fast so the operator can react.
+            if "PerDay" in str(exc):
+                raise DailyQuotaExceeded(
+                    "Gemini per-day quota exhausted; retrying will not help today. "
+                    "Wait for the daily reset, upgrade your tier, or switch model."
+                ) from exc
+            delay = _parse_gemini_retry_delay(exc)
+            if delay is None:
+                delay = min(2 ** attempt, 60)
+            delay += 1  # small cushion so we don't hit the same window again
+            print(f" rate-limited, sleeping {delay:.0f}s (attempt {attempt}/{max_attempts - 1}) ...",
+                  end="", flush=True, file=sys.stderr)
+            time.sleep(delay)
+
+    raise RuntimeError("call_gemini: exhausted retries without returning")
 
 
 PROVIDERS: dict[str, dict] = {
@@ -75,7 +121,7 @@ PROVIDERS: dict[str, dict] = {
     },
     "gemini": {
         "call": call_gemini,
-        "default_model": "gemini-1.5-pro",
+        "default_model": "gemini-2.5-flash",
         "env_key": "GOOGLE_API_KEY",
     },
 }

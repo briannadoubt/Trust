@@ -1,0 +1,12 @@
+{
+  "file": "15-many-points-vanilla-2.rs",
+  "task": "15-many-points",
+  "condition": "vanilla",
+  "trial": 2,
+  "bug_in_source": true,
+  "good_in_source": true,
+  "dialect_caught": null,
+  "expected_rule": "R0042",
+  "shipped": true,
+  "lint_stderr": null
+}
