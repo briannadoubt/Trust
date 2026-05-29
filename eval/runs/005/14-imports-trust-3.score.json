@@ -1,0 +1,12 @@
+{
+  "file": "14-imports-trust-3.rs",
+  "task": "14-imports",
+  "condition": "trust",
+  "trial": 3,
+  "bug_in_source": false,
+  "good_in_source": true,
+  "dialect_caught": false,
+  "expected_rule": "R0004",
+  "shipped": false,
+  "lint_stderr": "ok: /Users/bri/dev/One/eval/runs/005/14-imports-trust-3.rs\n"
+}

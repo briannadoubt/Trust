@@ -53,17 +53,7 @@ def score_file(rs_path: Path) -> dict:
     lint_stderr = None
     if condition == "trust":
         proc = subprocess.run(
-            [
-                "cargo",
-                "run",
-                "-q",
-                "--release",
-                "-p",
-                "trust",
-                "--",
-                "check",
-                str(rs_path),
-            ],
+            [str(REPO / "target" / "release" / "trust"), "check", str(rs_path)],
             cwd=REPO,
             capture_output=True,
             text=True,
