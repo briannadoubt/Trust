@@ -7,12 +7,14 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+keywords = ["trust", "strict", "rust", "lint", "clippy"]
+categories = ["development-tools"]
 
 [dependencies]
 proc-macro2 = { workspace = true, features = ["span-locations"] }
 syn.workspace = true
-trust-attrs = { path = "../trust-attrs" }
-trust-diag = { path = "../trust-diag" }
+trust-attrs.workspace = true
+trust-diag.workspace = true
 
 [dev-dependencies]
 insta.workspace = true

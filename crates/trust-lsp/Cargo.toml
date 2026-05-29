@@ -7,6 +7,8 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+keywords = ["trust", "strict", "rust", "lsp", "language-server"]
+categories = ["development-tools", "command-line-utilities"]
 
 [[bin]]
 name = "trust-lsp"
@@ -19,10 +21,10 @@ path = "src/lib.rs"
 anyhow.workspace = true
 syn.workspace = true
 proc-macro2.workspace = true
-trust-attrs = { path = "../trust-attrs" }
-trust-diag = { path = "../trust-diag" }
-trust-lower = { path = "../trust-lower" }
-trust-lints = { path = "../trust-lints" }
+trust-attrs.workspace = true
+trust-diag.workspace = true
+trust-lower.workspace = true
+trust-lints.workspace = true
 tower-lsp = "0.20"
 tokio = { version = "1", features = ["rt-multi-thread", "io-std", "macros", "sync"] }
 serde_json = "1"

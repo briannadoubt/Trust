@@ -7,7 +7,9 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+keywords = ["trust", "strict", "rust", "diagnostic", "lint"]
+categories = ["development-tools"]
 
 [dependencies]
 ariadne.workspace = true
-trust-attrs = { path = "../trust-attrs" }
+trust-attrs.workspace = true

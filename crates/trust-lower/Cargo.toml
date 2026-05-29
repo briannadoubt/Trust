@@ -7,6 +7,8 @@ rust-version.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+keywords = ["trust", "strict", "rust", "syntax", "ast"]
+categories = ["parser-implementations", "development-tools"]
 build = "build.rs"
 
 [dependencies]
@@ -15,7 +17,7 @@ proc-macro2 = { workspace = true, features = ["span-locations"] }
 quote.workspace = true
 syn.workspace = true
 thiserror.workspace = true
-trust-diag = { path = "../trust-diag" }
+trust-diag.workspace = true
 
 [dev-dependencies]
 insta.workspace = true
