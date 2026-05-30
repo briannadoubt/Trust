@@ -11,7 +11,7 @@
 //! so syn and rustc can take it from there.
 
 use proc_macro2::{Delimiter, Group, Punct, Spacing, Span, TokenStream, TokenTree};
-use trust_diag::Diagnostic;
+use trust_diag::{Applicability, Diagnostic, Fix};
 use std::collections::{HashMap, HashSet};
 
 use crate::preprocess::from_vec;
@@ -484,7 +484,16 @@ fn rewrite_call_args(
                     .with_why(
                         "positional argument ordering is the largest LLM-authored bug class in Rust; named args eliminate it".to_string(),
                     )
-                    .with_help(format!("rewrite as `{name}({suggestion})`")),
+                    .with_help(format!("rewrite as `{name}({suggestion})`"))
+                    // RT-70: structured fix. The call's paren group is
+                    // replaced with the named template; `...` placeholders
+                    // mean the agent must drop the real argument expressions
+                    // in, so this is HasPlaceholders, not Automatic.
+                    .with_fix(Fix::new(
+                        span_to_range(call_span),
+                        format!("({suggestion})"),
+                        Applicability::HasPlaceholders,
+                    )),
                 );
             }
         }

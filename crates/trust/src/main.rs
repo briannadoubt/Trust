@@ -29,6 +29,17 @@ struct Cli {
     command: Cmd,
 }
 
+/// Diagnostic output format (RT-70).
+#[derive(Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
+enum OutputFormat {
+    /// Human-readable, source-annotated diagnostics (ariadne).
+    #[default]
+    Human,
+    /// Machine-readable JSON for agent consumers: rule, span, line/col,
+    /// why, help, and a structured fix with an applicability/confidence.
+    Json,
+}
+
 #[derive(Subcommand)]
 enum Cmd {
     /// Parse, lower, lint, and compile a Trust source file.
@@ -54,6 +65,9 @@ enum Cmd {
     Check {
         /// Input .rs file, or `-` to read from stdin
         input: PathBuf,
+        /// Diagnostic output format (RT-70)
+        #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+        format: OutputFormat,
     },
     /// Lower a file and print the resulting plain Rust to stdout.
     ///
@@ -109,7 +123,7 @@ fn main() -> Result<()> {
             edition,
             no_lint,
         } => build(input: &input, out: out.as_deref(), edition: &edition, no_lint: no_lint),
-        Cmd::Check { input } => check(&input),
+        Cmd::Check { input, format } => check(input: &input, format: format),
         Cmd::Lower { input } => lower_to_stdout(&input),
         Cmd::Index { input, out } => index(input: &input, out: out.as_deref()),
     }
@@ -118,7 +132,7 @@ fn main() -> Result<()> {
 fn build(input: &Path, out: Option<&Path>, edition: &str, no_lint: bool) -> Result<()> {
     let (source, label) = read_source(input)?;
 
-    let pipeline = run_pipeline(label: &label, source: &source, skip_lints: no_lint)?;
+    let pipeline = run_pipeline(label: &label, source: &source, skip_lints: no_lint, format: OutputFormat::Human)?;
 
     let tmp = tempfile::Builder::new()
         .prefix("trust-")
@@ -156,16 +170,20 @@ fn build(input: &Path, out: Option<&Path>, edition: &str, no_lint: bool) -> Resu
     Ok(())
 }
 
-fn check(input: &Path) -> Result<()> {
+fn check(input: &Path, format: OutputFormat) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let _ = run_pipeline(label: &label, source: &source, skip_lints: false)?;
-    eprintln!("ok: {label}");
+    let _ = run_pipeline(label: &label, source: &source, skip_lints: false, format: format)?;
+    // In JSON mode the document on stdout is the whole result; don't add a
+    // human "ok" line that would corrupt it.
+    if format == OutputFormat::Human {
+        eprintln!("ok: {label}");
+    }
     Ok(())
 }
 
 fn lower_to_stdout(input: &Path) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let pipeline = run_pipeline(label: &label, source: &source, skip_lints: true)?;
+    let pipeline = run_pipeline(label: &label, source: &source, skip_lints: true, format: OutputFormat::Human)?;
     print!("{}", pipeline.lowered);
     Ok(())
 }
@@ -207,7 +225,12 @@ struct PipelineOutput {
     lowered: String,
 }
 
-fn run_pipeline(label: &str, source: &str, skip_lints: bool) -> Result<PipelineOutput> {
+fn run_pipeline(
+    label: &str,
+    source: &str,
+    skip_lints: bool,
+    format: OutputFormat,
+) -> Result<PipelineOutput> {
     let mut all_diagnostics: Vec<Diagnostic> = Vec::new();
 
     // Lower: rewrite Trust extensions to plain Rust. RT-66: seed the
@@ -239,9 +262,19 @@ fn run_pipeline(label: &str, source: &str, skip_lints: bool) -> Result<PipelineO
 
     let any_errors = all_diagnostics.iter().any(Diagnostic::is_error);
 
-    if !all_diagnostics.is_empty() {
-        let mut stderr = std::io::stderr();
-        let _ = trust_diag::render(&all_diagnostics, label, source, &mut stderr);
+    // RT-70: emit either human-readable (ariadne) or machine-readable JSON.
+    // JSON goes to stdout (the document is the whole result); human
+    // diagnostics go to stderr so stdout stays clean for `lower`/`build`.
+    match format {
+        OutputFormat::Human => {
+            if !all_diagnostics.is_empty() {
+                let mut stderr = std::io::stderr();
+                let _ = trust_diag::render(&all_diagnostics, label, source, &mut stderr);
+            }
+        }
+        OutputFormat::Json => {
+            print!("{}", trust_diag::to_json(&all_diagnostics, label, source));
+        }
     }
 
     if any_errors {

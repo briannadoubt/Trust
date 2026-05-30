@@ -77,6 +77,15 @@ The shape is enforced by `trust_diag::Diagnostic` and its `.with_why()`
 / `.with_help()` builders (see `crates/trust-diag/src/lib.rs`). The
 renderer is `trust_diag::render`, which formats via `ariadne`.
 
+**Optionally** attach a structured, machine-applicable fix with
+`.with_fix(Fix::new(span, replacement, applicability))` (RT-70). Prefer one
+whenever the replacement is deterministic — it is what an agent loop applies
+without re-parsing the prose `help`. Be honest with `Applicability`:
+`Automatic` only for semantics-preserving rewrites, `MaybeIncorrect` when it
+depends on context the lint can't see (e.g. `.unwrap()` → `?` assumes the fn
+returns `Result`), `HasPlaceholders` when the replacement contains `...`.
+Fixes surface in `trust check --format json` (`trust_diag::to_json`).
+
 When you add a new lint, copy the pattern from an existing one. Do not skip
 `why` or `help`. The agent reading your diagnostic in production has no
 other context; the diagnostic _is_ the documentation.

@@ -184,6 +184,21 @@ jobs:
             && RUSTC_WRAPPER="$WRAPPER" TRUST_SIGNATURE_PATH="$SIGS" cargo run) \
             | grep -qx "2073600"
 
+      - name: trust check --format json — agent-native diagnostics (RT-70)
+        run: |
+          # RT-70: machine-readable diagnostics carrying a structured fix
+          # (span + replacement + applicability) an agent loop can apply.
+          cargo build -p trust
+          TRUST=$(realpath target/debug/trust)
+          printf '#![strict]\nfn make_rect(width: u32, height: u32) -> u32 { width + height }\nfn main() { let _ = make_rect(1, 2); }\n' \
+            > /tmp/rt70.rs
+          # JSON to stdout; the process still exits non-zero on an error diag.
+          if "$TRUST" check --format json /tmp/rt70.rs > /tmp/rt70.json 2>/dev/null; then
+            echo "FAIL: expected non-zero exit on R0042"
+            exit 1
+          fi
+          python3 -c "import json; d=json.load(open('/tmp/rt70.json')); f=d['diagnostics'][0]; assert f['rule']=='R0042', f; assert f['fix']['applicability']=='hasPlaceholders', f; assert f['span']['startLine']==3, f; print('RT-70 json ok')"
+
       - name: example — Phase 3 named args
         run: |
           cargo run -p trust -- build examples/03-named-args/area.rs --out /tmp/p3

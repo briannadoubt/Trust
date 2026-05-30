@@ -705,13 +705,50 @@ error[R0001]: `.unwrap()` is banned outside #[cfg(test)]
 The `Diagnostic` struct that produces this is in
 `crates/trust-diag/src/lib.rs`. The renderer is `trust_diag::render`.
 
+### Machine-readable output (RT-70)
+
+`trust check --format json` emits the same diagnostics as a stable JSON
+document for agent consumers (`trust_diag::to_json`). Each entry carries the
+rule code, severity, message, the byte span **and** 1-based line/column, the
+`why` rationale, the prose `help`, and — when the toolchain can produce one — a
+structured `fix`:
+
+```json
+{
+  "version": "0.1",
+  "file": "src/main.rs",
+  "diagnostics": [
+    {
+      "rule": "R0042",
+      "severity": "error",
+      "message": "call to `make_rect` must use named arguments (arity 2)",
+      "span": {"start": 50, "end": 62, "startLine": 2, "startColumn": 40,
+               "endLine": 2, "endColumn": 52},
+      "why": "positional argument ordering is the largest LLM-authored bug class…",
+      "help": "rewrite as `make_rect(width: ..., height: ...)`",
+      "fix": {"span": {"start": 50, "end": 62, …},
+              "replacement": "(width: ..., height: ...)",
+              "applicability": "hasPlaceholders"}
+    }
+  ]
+}
+```
+
+A `fix` is a span + exact `replacement` + an `applicability` confidence —
+`automatic` (semantics-preserving, apply unattended), `maybeIncorrect` (review
+first; may depend on unseen context), or `hasPlaceholders` (`...` markers must
+be filled before it compiles). An agent loop applies `automatic` fixes
+directly and treats the rest as guided suggestions. `why`, `help`, and `fix`
+are `null` when absent; the document is emitted on stdout and the process still
+exits non-zero when any diagnostic is an error.
+
 ## Tooling
 
 ### `trust` CLI
 
 ```
 trust build <input.rs> [--out <path>] [--edition <2021|2024>] [--no-lint]
-trust check <input.rs>
+trust check <input.rs> [--format <human|json>]
 trust lower <input.rs>
 trust index <src-dir|input.rs> [--out <path>]
 ```
@@ -720,7 +757,9 @@ trust index <src-dir|input.rs> [--out <path>]
   `rustc` to produce a binary at `--out` (default: input with extension
   stripped).
 - `check`: lower and lint without invoking `rustc`. Exits non-zero if any
-  diagnostic has error severity.
+  diagnostic has error severity. `--format json` emits machine-readable
+  diagnostics with structured fixes (RT-70; see
+  [Machine-readable output](#machine-readable-output-rt-70)).
 - `lower`: print the lowered Rust to stdout. Lints are skipped (useful for
   debugging the lowering passes).
 - `index`: extract a crate's public-fn signature index to a `name:p1,p2`
