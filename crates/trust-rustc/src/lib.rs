@@ -339,10 +339,15 @@ pub fn mirror_module_tree_with_extras(
                 ));
                 fs::write(&tmp, &rewritten)?;
                 fs::rename(&tmp, &dest)?;
-            } else if fs::hard_link(&path, &dest).is_err() {
+            } else {
+                // RT-75: COPY, never hard-link. A hard link shares the inode
+                // with the source file, so any later write/truncate of the
+                // cached copy would destroy the user's original `.rs`.
                 fs::copy(&path, &dest).with_context(|| format!("copying {}", path.display()))?;
             }
-        } else if fs::hard_link(&path, &dest).is_err() {
+        } else {
+            // RT-75: non-`.rs` sibling files — copy (best-effort), never
+            // hard-link, for the same inode-sharing reason as above.
             let _ = fs::copy(&path, &dest);
         }
     }
@@ -587,4 +592,38 @@ fn unwrap_doctest_fn(source: &str) -> Option<String> {
 /// already drops `#`-prefixed lines silently if they aren't syntax).
 fn strip_hidden_doctest_prefix(s: String) -> String {
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// RT-75 regression: the cache mirror must COPY non-strict files, not
+    /// hard-link them. A hard link shares the inode, so clobbering the cached
+    /// copy would truncate the user's original source. This test mirrors a
+    /// plain file, clobbers the cached copy, and asserts the source survives.
+    #[test]
+    fn mirror_copies_rather_than_hardlinks_source() {
+        let base = std::env::temp_dir().join(format!("trust-rt75-{}", std::process::id()));
+        let src = base.join("src");
+        let dest = base.join("cache");
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&src).expect("create src");
+        let src_file = src.join("plain.rs");
+        fs::write(&src_file, "pub fn keep() {}\n").expect("write src");
+
+        let mut visited = std::collections::HashSet::new();
+        mirror_module_tree(&src, &dest, &mut visited).expect("mirror");
+
+        // Clobber the cached copy to zero length.
+        fs::write(dest.join("plain.rs"), "").expect("clobber cache");
+
+        // The original must be untouched — proving a copy, not a hard link.
+        let after = fs::read_to_string(&src_file).expect("read src after");
+        assert_eq!(
+            after, "pub fn keep() {}\n",
+            "source file was corrupted — cache shares an inode with it"
+        );
+        let _ = fs::remove_dir_all(&base);
+    }
 }
