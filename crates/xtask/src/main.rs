@@ -9,7 +9,9 @@
 //!   `crates/trust-std/src/lib.rs` (lowered, then parsed with `syn`).
 //!   With `--check`, fail if the checked-in manifest is stale. See RT-44.
 
-trust_attrs::strict! {}
+// Stage-0 bootstrap crate (RT-76): plain Rust, built by stock `cargo`.
+// xtask is dev tooling that runs *before* / *around* the toolchain build,
+// so it stays free of the `#![strict]` syntax extensions.
 
 mod std_signatures;
 
@@ -56,7 +58,7 @@ fn gen_std_signatures(check_only: bool) -> Result<()> {
 
     // Lower first: strips strict markers and rewrites any named-arg call
     // sites to positional form so `syn` can parse the result.
-    let lowered = trust_lower::lower(source: &raw)
+    let lowered = trust_lower::lower(&raw)
         .with_context(|| format!("lowering {}", lib_path.display()))?;
 
     let file: syn::File = syn::parse_file(&lowered.source)
@@ -64,9 +66,9 @@ fn gen_std_signatures(check_only: bool) -> Result<()> {
 
     let mut sigs: std_signatures::SigMap = std::collections::BTreeMap::new();
     let mut ambiguous: std_signatures::NameSet = std::collections::BTreeSet::new();
-    std_signatures::walk_items(items: &file.items, sigs: &mut sigs, ambiguous: &mut ambiguous);
+    std_signatures::walk_items(&file.items, &mut sigs, &mut ambiguous);
 
-    let out = std_signatures::render_manifest(sigs: &sigs, header: MANIFEST_HEADER);
+    let out = std_signatures::render_manifest(&sigs, MANIFEST_HEADER);
     let entry_count = sigs.len();
 
     if check_only {
@@ -142,21 +144,21 @@ fn check_emissions() -> Result<()> {
             continue;
         }
         check_one(
-            code: r.code(),
-            variant: &format!("{r:?}"),
-            catalogue_suffix: "trust-lints/src/rules.rs",
-            texts: &texts,
-            failures: &mut failures,
+            r.code(),
+            &format!("{r:?}"),
+            "trust-lints/src/rules.rs",
+            &texts,
+            &mut failures,
         );
         checked += 1;
     }
     for r in trust_lower::rule::ALL {
         check_one(
-            code: r.code(),
-            variant: &format!("{r:?}"),
-            catalogue_suffix: "trust-lower/src/rule.rs",
-            texts: &texts,
-            failures: &mut failures,
+            r.code(),
+            &format!("{r:?}"),
+            "trust-lower/src/rule.rs",
+            &texts,
+            &mut failures,
         );
         checked += 1;
     }
@@ -199,7 +201,7 @@ fn check_one(
 
 fn collect_rust_files(dir: &Path) -> Result<Vec<PathBuf>> {
     let mut out = Vec::new();
-    walk_rs(dir: dir, out: &mut out)?;
+    walk_rs(dir, &mut out)?;
     Ok(out)
 }
 
@@ -208,7 +210,7 @@ fn walk_rs(dir: &Path, out: &mut Vec<PathBuf>) -> Result<()> {
         let entry = entry?;
         let p = entry.path();
         if p.is_dir() {
-            walk_rs(dir: &p, out: out)?;
+            walk_rs(&p, out)?;
         } else if p.extension().and_then(|e| e.to_str()) == Some("rs") {
             out.push(p);
         }
@@ -235,8 +237,8 @@ fn gen_docs(check_only: bool) -> Result<()> {
 
     let lints_table = build_lints_table();
     let lowering_table = build_lowering_diags_table();
-    let updated = replace_section(input: &original, begin: LINTS_BEGIN, end: LINTS_END, content: &lints_table)?;
-    let updated = replace_section(input: &updated, begin: LOWER_BEGIN, end: LOWER_END, content: &lowering_table)?;
+    let updated = replace_section(&original, LINTS_BEGIN, LINTS_END, &lints_table)?;
+    let updated = replace_section(&updated, LOWER_BEGIN, LOWER_END, &lowering_table)?;
 
     if check_only {
         if updated != original {

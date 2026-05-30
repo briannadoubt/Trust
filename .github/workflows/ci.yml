@@ -204,22 +204,20 @@ jobs:
           cargo run -p trust -- build examples/03-named-args/area.rs --out /tmp/p3
           test "$(/tmp/p3)" = "24 24"
 
-      - name: dogfood — build strict crates under wrapper
+      - name: dogfood — build strict library crates under wrapper
         run: |
-          # Several trust-* crates have been dogfooded with
-          # `trust_attrs::strict!{}` (RT-31, RT-44). They use named-arg
-          # syntax internally, so they ONLY build under RUSTC_WRAPPER.
-          # See case-studies/dogfooding.md for the per-crate status.
+          # The strict LIBRARY crates use `#![strict]` for lint dogfooding and
+          # build cleanly under RUSTC_WRAPPER. The binary crates trust /
+          # trust-rustc / xtask are stage-0 plain Rust (RT-76): they build
+          # under stock cargo and are NOT routed through the wrapper — a
+          # wrapper cannot self-host. See case-studies/dogfooding.md.
           cargo build -p trust-rustc --release
           WRAPPER=$(realpath target/release/trust-rustc)
           RUSTC_WRAPPER="$WRAPPER" cargo build \
-            -p trust \
             -p trust-diag \
             -p trust-lsp \
-            -p trust-rustc \
             -p trust-std \
-            -p trust-syntax \
-            -p xtask
+            -p trust-syntax
 
       - name: std-signatures manifest up-to-date (RT-44)
         run: |

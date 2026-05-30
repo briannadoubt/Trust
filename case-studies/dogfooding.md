@@ -34,6 +34,20 @@ was a real bug, and what was a language/tooling gap.
 
 **Update (RT-50):** All three bin crates (`trust`, `trust-rustc`, `xtask`) and `trust-std` are now strict-marked after RT-48 (skip attribute-internal call-like syntax) and RT-49 (skip std/core/alloc-prefixed qualified calls) landed. The trust-std signature index has been restored to its full set including `command`, `copy`, `rename`, `set_var` — these no longer false-positive on clap's `#[command(...)]` derive or on real `std::fs::copy(...)` calls.
 
+**Update (RT-76) — bin crates reverted to stage-0 plain Rust.** Marking
+`trust`, `trust-rustc`, and `xtask` `#![strict]` created an unbuildable
+bootstrap cycle: their named-arg syntax only compiles *through* the
+`trust-rustc` wrapper, but `trust-rustc` **is** that wrapper — so a clean
+checkout (and CI, before a prebuilt binary exists) could not build them at
+all. A toolchain cannot self-host its own frontend before it is built. These
+three are now **stage-0 plain Rust** (no `#![strict]`, positional calls),
+built by stock `cargo`. The dialect is still dogfooded: **lints** on the
+strict library crates (`trust-diag`, `trust-lsp`, `trust-std`,
+`trust-syntax`, `trust-lints/rules.rs`), and the **named-arg / pipe syntax**
+on the `examples/` fixtures built through the wrapper in CI. This is the
+standard staged-bootstrap pattern (a compiler's stage-0 is built in the base
+language). Net fully-strict: 5 library crates; 3 bin crates are stage-0.
+
 ## Per-crate notes
 
 ### `trust-syntax` — STRICT (already)

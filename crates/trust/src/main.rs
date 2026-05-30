@@ -1,4 +1,8 @@
-trust_attrs::strict! {}
+// Stage-0 bootstrap crate (RT-76): plain Rust, built by stock `cargo`.
+// The `trust` CLI is part of the toolchain that *implements* the dialect,
+// so it cannot be lowered/linted by itself before it exists — it does not
+// use the `#![strict]` syntax extensions. The lints are dogfooded on the
+// library crates; the named-arg/pipe syntax on the `examples/` fixtures.
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
@@ -122,17 +126,17 @@ fn main() -> Result<()> {
             out,
             edition,
             no_lint,
-        } => build(input: &input, out: out.as_deref(), edition: &edition, no_lint: no_lint),
-        Cmd::Check { input, format } => check(input: &input, format: format),
+        } => build(&input, out.as_deref(), &edition, no_lint),
+        Cmd::Check { input, format } => check(&input, format),
         Cmd::Lower { input } => lower_to_stdout(&input),
-        Cmd::Index { input, out } => index(input: &input, out: out.as_deref()),
+        Cmd::Index { input, out } => index(&input, out.as_deref()),
     }
 }
 
 fn build(input: &Path, out: Option<&Path>, edition: &str, no_lint: bool) -> Result<()> {
     let (source, label) = read_source(input)?;
 
-    let pipeline = run_pipeline(label: &label, source: &source, skip_lints: no_lint, format: OutputFormat::Human)?;
+    let pipeline = run_pipeline(&label, &source, no_lint, OutputFormat::Human)?;
 
     let tmp = tempfile::Builder::new()
         .prefix("trust-")
@@ -172,7 +176,7 @@ fn build(input: &Path, out: Option<&Path>, edition: &str, no_lint: bool) -> Resu
 
 fn check(input: &Path, format: OutputFormat) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let _ = run_pipeline(label: &label, source: &source, skip_lints: false, format: format)?;
+    let _ = run_pipeline(&label, &source, false, format)?;
     // In JSON mode the document on stdout is the whole result; don't add a
     // human "ok" line that would corrupt it.
     if format == OutputFormat::Human {
@@ -183,7 +187,7 @@ fn check(input: &Path, format: OutputFormat) -> Result<()> {
 
 fn lower_to_stdout(input: &Path) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let pipeline = run_pipeline(label: &label, source: &source, skip_lints: true, format: OutputFormat::Human)?;
+    let pipeline = run_pipeline(&label, &source, true, OutputFormat::Human)?;
     print!("{}", pipeline.lowered);
     Ok(())
 }

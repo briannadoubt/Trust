@@ -530,8 +530,8 @@ Add new codes by extending the enum and regenerating.
 
 | Code  | Pass                | Crate                  | Message shape                                       |
 | ----- | ------------------- | ---------------------- | --------------------------------------------------- |
-| R2001 | pipe lowering       | `trust-lower`     | pipe `|>` requires a path-call on the right         |
-| R3001 | named-args lowering | `trust-lower`     | `{fn}` has no parameter named `{arg}`               |
+| R2001 | pipe lowering       | `trust-lower`          | pipe `|>` requires a path-call on the right         |
+| R3001 | named-args lowering | `trust-lower`          | `{fn}` has no parameter named `{arg}`               |
 
 <!-- END auto-generated: lowering-diagnostics-table -->
 
