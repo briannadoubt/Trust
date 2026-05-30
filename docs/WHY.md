@@ -41,6 +41,40 @@ looked at. See [`eval/runs/`](../eval/runs/) for the run logs and
 the lints catch on real third-party crates (a pure library and a small
 CLI with real I/O respectively).
 
+## The numbers
+
+We ran five single-file tasks twice per model — once in plain Rust, once
+with `#![strict]` — and measured the *ship rate*: the known-bad pattern
+present in the output **and** not caught before it would reach a compile.
+Lower is better.
+
+| Model | Vendor | Vanilla shipped | Trust shipped |
+|-------|--------|-----------------|---------------|
+| Claude Haiku | Anthropic | 9/15 (60%) | **0/15 (0%)** |
+| Claude Sonnet | Anthropic | 9/15 (60%) | **0/15 (0%)** |
+| GPT-4o | OpenAI | 9/15 (60%) | **0/15 (0%)** |
+| Gemini 2.5 Flash | Google | 9/15 (60%) | **0/14 (0%)** |
+
+Four models, three vendors, the same result: about 60% of files shipped
+one of the audited bugs in plain Rust, and none shipped under Trust. The
+run logs are in [`eval/runs/`](../eval/runs/) — [002](../eval/runs/002/summary.md)
+(Haiku), [004](../eval/runs/004/summary.md) (Sonnet),
+[005](../eval/runs/005/summary.md) (GPT-4o),
+[006](../eval/runs/006/summary.md) (Gemini).
+
+Read the result narrowly, because that is how it is true. Of the five
+tasks, three reliably elicited bugs — positional argument order (R0042)
+and `as`-cast truncation (R0003) — and the dialect caught **every
+instance**. The other two — `.unwrap()` reach (R0001) and glob imports
+(R0004) — produced **zero** bugs from these models at this scale, so
+their rules were not tested by this suite, not vindicated by it. The
+stronger-model-ships-fewer-bugs effect we expected did **not** appear:
+Haiku, Sonnet, and GPT-4o all bugged at the same 60% rate. The claim the
+data licenses is precise: *on the bug classes that fire, agents ship them
+~60% of the time and Trust catches 100%.* It is not "Trust makes agent
+Rust bug-free," and the eval directory says so in more detail than this
+paragraph does.
+
 ## The thesis
 
 Rust is already excellent at the parts of language design that are hard
@@ -132,21 +166,19 @@ Honestly:
   `RUSTC_WRAPPER=$(realpath target/debug/trust-rustc)` for the
   build. The lints alone work without the wrapper; the syntax
   extensions do not.
-- **The wrapper is single-file at the moment.** Only the `.rs` file
-  passed to `rustc` is lowered. Submodules referenced by `mod foo;` are
-  read by `rustc` from disk and not lowered. Multi-file crates either
-  keep extension syntax in the crate root or pre-lower their sources.
-  See the limitation note in
-  [SPEC.md § Cargo mode](SPEC.md#cargo-mode-trust_attrsstrict-lints-only-by-default).
-- **The LSP is a stub.** The `trust-lsp` binary prints a
-  placeholder. Diagnostics today come from `trust check` on the
-  command line.
-- **Cross-crate signature data is missing.** R0042 fires on in-crate
-  callees only. Calls into upstream crates accept positional arguments
-  unconditionally. The bug class the rule targets is not yet caught at
-  the API boundary.
+- **Cross-crate enforcement needs a generated index.** In-crate callees
+  are automatic. For calls into a dependency, run `trust index <dep-src>
+  -o <file>` to extract that crate's public-fn signatures, then point the
+  build at them with `TRUST_SIGNATURE_PATH` (RT-66). R0042 and named-arg
+  reordering then apply across the boundary — against an index extracted
+  from *any* crate, not just the bundled `trust-std` shim. What is still
+  manual is discovery: you generate the indices and name them, rather than
+  Trust reading them automatically from cargo's dependency graph. That
+  last step is the remaining gap; the extraction and enforcement
+  themselves are done. See
+  [`examples/cross-crate-index`](../examples/cross-crate-index/).
 
-If any of those is a blocker, Trust is not ready for you yet.
+If that is a blocker, Trust is not ready for you yet.
 
 ## Design priorities
 
@@ -190,9 +222,11 @@ phase-by-phase rationale for each individual rule is in
   R0008 bans user macros without explicit opt-in. The opt-in exists
   (`#[strict::macros_ok]`), but if every other file needs it, the rule
   is fighting the codebase instead of helping it.
-- **Multi-crate workspaces today, if you need named arguments enforced
-  across crate boundaries.** The cross-crate registry is the dialect's
-  largest open gap. See the
+- **Multi-crate workspaces, if you need *zero-config* cross-crate
+  enforcement.** Cross-crate named arguments work today, but you must
+  generate each dependency's signature index (`trust index`) and point
+  the build at it via `TRUST_SIGNATURE_PATH` — Trust does not yet read
+  those indices automatically from cargo's dependency graph. See the
   [`heck` case study](../case-studies/heck-strict.md) for what a
   single-crate adoption looks like end to end, including the
   workarounds, and the

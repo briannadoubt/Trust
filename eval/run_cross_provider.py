@@ -9,7 +9,7 @@ Usage:
         --provider openai \\
         --model gpt-4o \\
         --run 005 \\
-        --tasks 11,12,13,14,15 \\
+        --tasks 11-pipeline,12-result-chain,13-numeric,14-imports,15-many-points \\
         --trials 3
 
     python3 eval/run_cross_provider.py \\
@@ -18,6 +18,10 @@ Usage:
         --run 006 \\
         --tasks 11-pipeline,12-result-chain,13-numeric,14-imports,15-many-points \\
         --trials 3
+
+Task ids are the full string ids from tasks.toml (e.g. `11-pipeline`),
+not bare numbers. An unknown id is a hard error — the runner refuses to
+start rather than silently skipping it.
 
 After running:
     python3 eval/score.py 005
@@ -155,8 +159,10 @@ def main() -> None:
                         help="LLM provider to use")
     parser.add_argument("--model", help="Model name (defaults to provider default)")
     parser.add_argument("--run", required=True, help="Run ID, e.g. 005")
-    parser.add_argument("--tasks", default="11,12,13,14,15",
-                        help="Comma-separated task IDs to run")
+    parser.add_argument(
+        "--tasks",
+        default="11-pipeline,12-result-chain,13-numeric,14-imports,15-many-points",
+        help="Comma-separated task IDs (full ids from tasks.toml, e.g. 11-pipeline)")
     parser.add_argument("--trials", type=int, default=3,
                         help="Number of trials per task × condition")
     parser.add_argument("--conditions", default="vanilla,trust",
@@ -178,9 +184,14 @@ def main() -> None:
     tasks_raw = tomllib.loads((ROOT / "tasks.toml").read_text())["task"]
     tasks = {t["id"]: t for t in tasks_raw}
 
-    for tid in task_ids:
-        if tid not in tasks:
-            print(f"warning: unknown task id '{tid}', skipping", file=sys.stderr)
+    unknown = [tid for tid in task_ids if tid not in tasks]
+    if unknown:
+        print(
+            f"error: unknown task id(s): {', '.join(unknown)}\n"
+            f"  valid ids: {', '.join(t['id'] for t in tasks_raw)}",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     run_dir = ROOT / "runs" / args.run
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -197,11 +208,12 @@ def main() -> None:
 
     total = len(task_ids) * len(conditions) * args.trials
     done = 0
+    succeeded = 0  # new files written this run
+    skipped = 0    # files that already existed
+    failed = 0     # calls that raised
 
     for tid in task_ids:
-        task = tasks.get(tid)
-        if task is None:
-            continue
+        task = tasks[tid]
 
         for condition in conditions:
             prompt_key = f"{condition}_prompt"
@@ -214,6 +226,7 @@ def main() -> None:
                 out_path = run_dir / f"{tid}-{condition}-{trial}.rs"
                 if out_path.exists():
                     print(f"  skip {out_path.name} (exists)")
+                    skipped += 1
                     done += 1
                     continue
 
@@ -223,15 +236,32 @@ def main() -> None:
                     source = extract_source(raw)
                     out_path.write_text(source)
                     print("ok")
+                    succeeded += 1
                 except Exception as exc:
                     print(f"ERROR: {exc}", file=sys.stderr)
+                    failed += 1
                 done += 1
 
                 # Gentle rate limiting between calls.
                 if done < total:
                     time.sleep(0.5)
 
-    print(f"\nRun {args.run} complete. To score:")
+    # Summary line first — always printed, so an all-errored run can never
+    # masquerade as success (RT-52).
+    print(
+        f"\nRun {args.run}: {succeeded} succeeded, {failed} failed"
+        f"{f', {skipped} already existed' if skipped else ''}"
+        f" (of {total} planned)."
+    )
+    if failed:
+        print(
+            f"error: {failed} call(s) failed — see ERROR lines above. "
+            "Not emitting the scoring instructions for a partial run.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    print("To score:")
     print(f"  python3 eval/score.py {args.run}")
     print(f"  python3 eval/summarize.py {args.run}")
     print(f"  cat eval/runs/{args.run}/summary.md")

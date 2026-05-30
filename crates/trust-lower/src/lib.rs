@@ -15,6 +15,7 @@ pub mod named_args;
 pub mod pipe;
 pub mod preprocess;
 pub mod rule;
+pub mod sig_index;
 mod std_signatures;
 
 pub use rule::Rule;

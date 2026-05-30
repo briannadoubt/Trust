@@ -1,0 +1,6 @@
+[workspace]
+# Standalone workspace — keep out of the main /Users/bri/dev/One workspace
+# (matches the other example fixtures) so the RUSTC_WRAPPER end-to-end test
+# doesn't trigger rebuilds of every trust-* crate every time it runs.
+resolver = "2"
+members = ["producer", "consumer"]

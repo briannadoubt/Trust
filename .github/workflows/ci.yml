@@ -156,6 +156,34 @@ jobs:
           (cd examples/cargo-strict-cross-crate && RUSTC_WRAPPER="$WRAPPER" cargo run) \
             | grep -qx "ok"
 
+      - name: rustc wrapper — cross-crate named args via generated index (RT-66)
+        run: |
+          # RT-66: enforce / reorder named args on calls into an ARBITRARY
+          # dependency (not the bundled trust-std), resolved against an index
+          # extracted automatically with `trust index` — no hand-written shim.
+          cargo build -p trust -p trust-rustc
+          TRUST=$(realpath target/debug/trust)
+          WRAPPER=$(realpath target/debug/trust-rustc)
+          # 1. Auto-extract the producer crate's public-fn signature index.
+          "$TRUST" index examples/cross-crate-index/producer/src \
+            -o examples/cross-crate-index/producer/trust-signatures.txt
+          SIGS=$(realpath examples/cross-crate-index/producer/trust-signatures.txt)
+          # 2. Enforcement gap, demonstrated: a positional swap into the
+          #    dependency is silently accepted WITHOUT the index ...
+          printf '#![strict]\nfn main() { let _ = producer::make_rect(1080, 1920); }\n' \
+            > /tmp/rt66-swap.rs
+          "$TRUST" check /tmp/rt66-swap.rs
+          # ... and rejected WITH it.
+          if TRUST_SIGNATURE_PATH="$SIGS" "$TRUST" check /tmp/rt66-swap.rs 2>/tmp/rt66.log; then
+            echo "FAIL: expected R0042 on cross-crate positional swap with index"
+            exit 1
+          fi
+          grep -q R0042 /tmp/rt66.log
+          # 3. Reorder + compile: the named consumer builds and runs.
+          (cd examples/cross-crate-index/consumer \
+            && RUSTC_WRAPPER="$WRAPPER" TRUST_SIGNATURE_PATH="$SIGS" cargo run) \
+            | grep -qx "2073600"
+
       - name: example — Phase 3 named args
         run: |
           cargo run -p trust -- build examples/03-named-args/area.rs --out /tmp/p3

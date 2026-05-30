@@ -220,7 +220,18 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
         // cross-file named-arg call sites resolve. The wrapper is the
         // first place that has a crate-wide view; individual `lower()`
         // calls only see one file at a time.
-        let extras = collect_crate_callees(&src_dir);
+        let crate_extras = collect_crate_callees(&src_dir);
+
+        // RT-66: seed the registry with the public-fn signatures of
+        // dependencies, discovered from the `TRUST_SIGNATURE_PATH`
+        // manifests (`trust index <dep> -o …` produces them). This is what
+        // lets R0042 fire — and named args reorder — on a positional swap
+        // into a *third-party* crate, the dialect's last coverage gap.
+        // `merge` drops any name that conflicts between the crate and a
+        // dependency, so a shadowed name degrades to the positional
+        // fallback rather than a wrong reorder.
+        let dep_extras = trust_lower::sig_index::load_from_env();
+        let extras = trust_lower::sig_index::merge(&[crate_extras, dep_extras]);
 
         let mut visited = std::collections::HashSet::new();
         mirror_module_tree_with_extras(&src_dir, &cache_dir, &mut visited, &extras)

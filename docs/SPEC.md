@@ -589,11 +589,33 @@ calls to functions in unannotated upstream crates are exempt.
 
 #### Cross-crate positional fallback
 
-Calls into crates that do not opt into `#![strict]` accept positional arguments
-unconditionally. This is the interop escape hatch — most of the ecosystem ships
-unannotated signatures, and you cannot retroactively force names onto them.
-`trust-std` ships a handful of named-arg-friendly wrappers for the worst
-offenders (see [Standard library shims](#standard-library-shims)).
+Calls into a crate Trust has no signature index for accept positional
+arguments unconditionally. This is the interop escape hatch — most of the
+ecosystem ships unannotated signatures, and you cannot retroactively force
+names onto them. `trust-std` ships a bundled index for the worst offenders
+(see [Standard library shims](#standard-library-shims)).
+
+#### Cross-crate signature indices (RT-66)
+
+To enforce named arguments on calls into a *specific* dependency, extract its
+public-fn signature index and make it visible to the build:
+
+```sh
+trust index <dep-src-dir> -o <dep>.txt        # extract; works on any crate
+TRUST_SIGNATURE_PATH=<dep>.txt cargo build     # (with the trust-rustc wrapper)
+```
+
+`trust index` walks a crate's `src/` (or a single `.rs` file, or stdin) and
+emits one `name:p1,p2` line per public `fn`, in the same manifest format as
+`trust-std/std-signatures.txt`. The `trust-rustc` / `trust-rustdoc` wrappers and
+the `trust` CLI read the `TRUST_SIGNATURE_PATH` environment variable — a
+platform-separated list of manifest files and/or directories of `*.txt`
+manifests — and seed the [`CalleeRegistry`](#named-arguments) from them. A name
+that resolves to conflicting parameter lists across the loaded indices (or
+between an index and the crate being built) is dropped, degrading to the
+positional fallback rather than a wrong reorder. What is not yet automatic:
+discovering those indices from cargo's dependency graph without naming them
+explicitly. See [`examples/cross-crate-index`](../examples/cross-crate-index/).
 
 #### Lowering
 
@@ -691,6 +713,7 @@ The `Diagnostic` struct that produces this is in
 trust build <input.rs> [--out <path>] [--edition <2021|2024>] [--no-lint]
 trust check <input.rs>
 trust lower <input.rs>
+trust index <src-dir|input.rs> [--out <path>]
 ```
 
 - `build`: lower, lint, write the lowered source to a tempfile, shell out to
@@ -700,6 +723,14 @@ trust lower <input.rs>
   diagnostic has error severity.
 - `lower`: print the lowered Rust to stdout. Lints are skipped (useful for
   debugging the lowering passes).
+- `index`: extract a crate's public-fn signature index to a `name:p1,p2`
+  manifest (RT-66), for a dependent build to enforce named args against via
+  `TRUST_SIGNATURE_PATH`. Writes to `--out` or stdout. See
+  [Cross-crate signature indices](#cross-crate-signature-indices-rt-66).
+
+`build`, `check`, and `lower` honour `TRUST_SIGNATURE_PATH` — they seed the
+callee registry from the named dependency manifests before lowering, so
+cross-crate calls get the same R0042 / named-arg treatment as in-crate ones.
 
 ### `cargo trust`
 

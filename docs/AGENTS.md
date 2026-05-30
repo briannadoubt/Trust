@@ -49,9 +49,10 @@ informational. Write as if they were enforced anyway:
 - **Every fn declares its effects.** Even if the parser doesn't accept the
   clause yet, leave a doc comment naming the effect set. Effects coming in
   Phase 4 — see `SPEC.md#effect-keyword`.
-- **Named args past arity 1.** When the lowering pass is live, this is
-  enforced for in-crate callees. Until then, prefer one-line builders or
-  structs-of-arguments when the call would be unreadable.
+- **Named args past arity 1.** Enforced for in-crate callees, and for
+  cross-crate callees whose signature index is loaded via
+  `TRUST_SIGNATURE_PATH` (generate one with `trust index`; RT-66). Calls
+  into an unindexed dependency stay positional.
 - **No `.unwrap()` outside tests.** Use `?`, `.expect("…")` with a real
   message, or restructure to return `Result`. See R0001.
 - **`// safety:` for `unsafe`.** Every block, every `unsafe fn`. R0005.
