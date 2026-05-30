@@ -793,6 +793,7 @@ trust build <input.rs> [--out <path>] [--edition <2021|2024>] [--no-lint]
 trust check <input.rs> [--format <human|json>]
 trust lower <input.rs>
 trust index <src-dir|input.rs> [--out <path>]
+trust fix <input.rs> [--write]
 ```
 
 - `build`: lower, lint, write the lowered source to a tempfile, shell out to
@@ -808,6 +809,13 @@ trust index <src-dir|input.rs> [--out <path>]
   manifest (RT-66), for a dependent build to enforce named args against via
   `TRUST_SIGNATURE_PATH`. Writes to `--out` or stdout. See
   [Cross-crate signature indices](#cross-crate-signature-indices-rt-66).
+- `fix`: the source-level inverse of lowering (RT-71) — inserts `name:` before
+  each positional argument of a call to a function Trust can see (in-crate
+  `fn`s plus `TRUST_SIGNATURE_PATH` dependency indices), turning vanilla Rust
+  into strict named-arg form. Only the names are spliced in; all other
+  formatting is preserved. Prints to stdout, or rewrites in place with
+  `--write`. Idempotent, and `trust fix | trust lower` round-trips back to the
+  original positional source.
 
 `build`, `check`, and `lower` honour `TRUST_SIGNATURE_PATH` — they seed the
 callee registry from the named dependency manifests before lowering, so

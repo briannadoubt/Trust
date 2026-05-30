@@ -208,6 +208,14 @@ jobs:
           cargo run -p trust -- build examples/03-named-args/area.rs --out /tmp/p3
           test "$(/tmp/p3)" = "24 24"
 
+      - name: trust fix — vanilla→strict round-trips (RT-71)
+        run: |
+          # `trust fix` inserts named args at positional calls; `trust lower`
+          # strips them back. The round-trip must reproduce the positional call.
+          printf 'fn make_rect(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = make_rect(1920, 1080); }\n' > /tmp/rt71.rs
+          cargo run -q -p trust -- fix /tmp/rt71.rs | tee /tmp/rt71-fixed.rs | grep -q 'make_rect(width: 1920, height: 1080)'
+          cargo run -q -p trust -- lower /tmp/rt71-fixed.rs | tr -d ' \n' | grep -q 'make_rect(1920,1080)'
+
       - name: dogfood — build strict library crates under wrapper
         run: |
           # The strict LIBRARY crates use `#![strict]` for lint dogfooding and

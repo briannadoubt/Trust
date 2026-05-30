@@ -84,6 +84,31 @@ pub fn lower_with_extra_callees(
     })
 }
 
+/// RT-71: insert named arguments at positional call sites — the source-level
+/// inverse of lowering. Turns vanilla Rust into strict named-arg form by
+/// splicing `name: ` before each positional argument of a call to a callee
+/// Trust can see (local `fn`s plus any `extras` dependency indices). Only the
+/// names are inserted; every other byte of the original source — comments,
+/// spacing, layout — is preserved. Used by `trust fix`.
+///
+/// Names are inserted exactly where R0042 would require them, so the result
+/// passes `trust check` (modulo other lints) and round-trips back to the
+/// original positional form under the lowering pass.
+pub fn promote_named_args(source: &str, extras: &[(String, Vec<String>)]) -> Result<String, Error> {
+    let tokens: TokenStream = source.parse()?;
+    let registry = named_args::CalleeRegistry::collect_with_extras(&tokens, extras);
+    let mut insertions = named_args::collect_name_insertions(&tokens, &registry);
+    // Apply right-to-left so each insertion's byte offset stays valid as we go.
+    insertions.sort_by_key(|(offset, _)| std::cmp::Reverse(*offset));
+    let mut out = source.to_string();
+    for (offset, text) in insertions {
+        if offset <= out.len() && out.is_char_boundary(offset) {
+            out.insert_str(offset, &text);
+        }
+    }
+    Ok(out)
+}
+
 /// Scan a token stream for Trust activation. Two forms are recognised:
 ///
 /// 1. `#![strict]` inner attribute — used by single-file inputs sent through

@@ -94,6 +94,19 @@ enum Cmd {
         #[arg(short, long)]
         out: Option<PathBuf>,
     },
+    /// Insert named arguments at positional call sites (vanilla → strict).
+    ///
+    /// Splices `name:` before each positional argument of a call to a
+    /// function Trust can see — in-crate `fn`s plus any dependency indices
+    /// from `TRUST_SIGNATURE_PATH` (RT-71). Only the names are inserted;
+    /// all other formatting is preserved. Pass `-` to read from stdin.
+    Fix {
+        /// Input .rs file, or `-` to read from stdin
+        input: PathBuf,
+        /// Rewrite the file in place instead of printing to stdout
+        #[arg(short, long)]
+        write: bool,
+    },
 }
 
 /// Returns true when the CLI input path is the stdin sentinel `-`.
@@ -130,6 +143,7 @@ fn main() -> Result<()> {
         Cmd::Check { input, format } => check(&input, format),
         Cmd::Lower { input } => lower_to_stdout(&input),
         Cmd::Index { input, out } => index(&input, out.as_deref()),
+        Cmd::Fix { input, write } => fix(&input, write),
     }
 }
 
@@ -221,6 +235,27 @@ fn index(input: &Path, out: Option<&Path>) -> Result<()> {
             eprintln!("wrote {} signatures to {}", entries.len(), path.display());
         }
         None => print!("{manifest}"),
+    }
+    Ok(())
+}
+
+/// Insert named arguments at positional call sites — vanilla → strict (RT-71).
+/// Reads `TRUST_SIGNATURE_PATH` so calls into indexed dependencies are named
+/// too. Prints to stdout, or rewrites the file in place with `--write`.
+fn fix(input: &Path, write: bool) -> Result<()> {
+    let (source, label) = read_source(input)?;
+    let extras = trust_lower::sig_index::load_from_env();
+    let promoted = trust_lower::promote_named_args(&source, &extras)
+        .with_context(|| format!("promoting named arguments in {label}"))?;
+    if write {
+        if is_stdin(input) {
+            bail!("`fix --write` needs a file path to rewrite, not stdin");
+        }
+        std::fs::write(input, &promoted)
+            .with_context(|| format!("writing {}", input.display()))?;
+        eprintln!("rewrote {}", input.display());
+    } else {
+        print!("{promoted}");
     }
     Ok(())
 }

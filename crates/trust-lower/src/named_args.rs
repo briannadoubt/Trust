@@ -586,6 +586,95 @@ fn reconstruct(parsed: Vec<(Option<(String, Span)>, TokenStream)>) -> TokenStrea
     out
 }
 
+// ----------------------------------------------------------------------------
+// RT-71: vanilla → strict name insertion (`trust fix`)
+// ----------------------------------------------------------------------------
+
+/// Collect the byte-offset insertions that would turn positional calls into
+/// named ones — the inverse of [`rewrite`]. Each returned `(offset, text)`
+/// means "insert `text` (e.g. `\"width: \"`) at byte `offset` in the source
+/// the tokens were parsed from".
+///
+/// Insertions fire EXACTLY where R0042 requires names — a call to a callee in
+/// `registry` with arity > 1 whose arguments are all positional and whose
+/// count matches the declared parameter list. Method calls, std-qualified
+/// calls, attribute payloads, function parameter lists, already-named calls,
+/// and arity-mismatched calls are left untouched (mirroring the lowering's
+/// own exclusions).
+///
+/// Returning offsets rather than a rebuilt token stream lets the caller splice
+/// names into the *original* source, preserving every byte of formatting.
+pub fn collect_name_insertions(
+    tokens: &TokenStream,
+    registry: &CalleeRegistry,
+) -> Vec<(usize, String)> {
+    let mut out = Vec::new();
+    collect_insertions(tokens, registry, &mut out);
+    out
+}
+
+fn collect_insertions(
+    tokens: &TokenStream,
+    registry: &CalleeRegistry,
+    out: &mut Vec<(usize, String)>,
+) {
+    let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
+    let param_groups = find_param_group_indices(&trees);
+    let attr_brackets = find_attribute_bracket_indices(&trees);
+    for (i, tree) in trees.iter().enumerate() {
+        let TokenTree::Group(g) = tree else {
+            continue;
+        };
+        // Attribute payloads (`#[derive(..)]`) are macro input, not calls —
+        // don't recurse into them or treat them as call sites.
+        if g.delimiter() == Delimiter::Bracket && attr_brackets.contains(&i) {
+            continue;
+        }
+        // Recurse first so nested calls (`f(g(1, 2), 3)`) get names too.
+        collect_insertions(&g.stream(), registry, out);
+        // A paren group that isn't a `fn` parameter list is a candidate call.
+        if g.delimiter() == Delimiter::Parenthesis && !param_groups.contains(&i) {
+            let callee = preceding_ident(&trees[..i]);
+            record_call_insertions(&g.stream(), callee.as_deref(), registry, out);
+        }
+    }
+}
+
+fn record_call_insertions(
+    args: &TokenStream,
+    callee: Option<&str>,
+    registry: &CalleeRegistry,
+    out: &mut Vec<(usize, String)>,
+) {
+    let segments = split_by_top_comma(args.clone());
+    if segments.len() <= 1 {
+        return; // arity 0/1 never needs names
+    }
+    // Bail if any argument is already named (`name: value`).
+    let already_named = segments
+        .iter()
+        .any(|seg| extract_named(seg.clone()).0.is_some());
+    if already_named {
+        return;
+    }
+    let Some(name) = callee else {
+        return;
+    };
+    let Some(declared) = registry.fns.get(name) else {
+        return;
+    };
+    if declared.len() != segments.len() {
+        return; // arity mismatch — can't safely map names
+    }
+    for (seg, param) in segments.iter().zip(declared.iter()) {
+        let Some(first) = seg.clone().into_iter().next() else {
+            continue;
+        };
+        let start = first.span().byte_range().start;
+        out.push((start, format!("{param}: ")));
+    }
+}
+
 /// Split a token stream at top-level commas, excluding commas inside
 /// closure-parameter lists (`|x, y|`).
 ///
@@ -1154,6 +1243,105 @@ mod tests {
         assert!(
             diags.iter().any(|d| d.rule == "R0042"),
             "user-namespaced qualified calls still match by simple name: {diags:?}"
+        );
+    }
+
+    // ---- RT-71: promote_named_args (vanilla → strict) -------------------
+
+    fn promote(src: &str) -> String {
+        crate::promote_named_args(src, &[]).expect("promote should parse")
+    }
+
+    #[test]
+    fn promote_inserts_names_at_positional_call() {
+        let src = "fn make_rect(width: u32, height: u32) -> u32 { width * height }\n\
+                   fn main() { let _ = make_rect(1920, 1080); }";
+        let out = promote(src);
+        assert!(
+            out.contains("make_rect(width: 1920, height: 1080)"),
+            "expected names inserted: {out}"
+        );
+        // The fn definition's own signature must be untouched.
+        assert!(out.contains("fn make_rect(width: u32, height: u32)"));
+    }
+
+    #[test]
+    fn promote_preserves_surrounding_formatting() {
+        // Only `name: ` is spliced in; comments + layout are byte-preserved.
+        let src = "fn add(a: u32, b: u32) -> u32 { a + b }\n\
+                   fn main() {\n    // keep me\n    let _ = add(1, 2);\n}";
+        let out = promote(src);
+        assert!(out.contains("// keep me"), "comment preserved: {out}");
+        assert!(out.contains("add(a: 1, b: 2)"), "names inserted: {out}");
+        assert!(out.starts_with("fn add(a: u32, b: u32)"), "prefix preserved: {out}");
+    }
+
+    #[test]
+    fn promote_is_idempotent_on_named_calls() {
+        let src = "fn area(width: u32, height: u32) -> u32 { width * height }\n\
+                   fn main() { let _ = area(width: 4, height: 6); }";
+        let out = promote(src);
+        // Already named — must not double-insert.
+        assert!(!out.contains("width: width:"), "no double names: {out}");
+        assert!(out.contains("area(width: 4, height: 6)"), "{out}");
+    }
+
+    #[test]
+    fn promote_skips_arity_one_and_unregistered() {
+        let src = "fn double(x: u32) -> u32 { x * 2 }\n\
+                   fn main() { let _ = double(5); let _ = upstream::f(1, 2); }";
+        let out = promote(src);
+        assert!(out.contains("double(5)"), "arity-1 untouched: {out}");
+        assert!(out.contains("upstream::f(1, 2)"), "unregistered untouched: {out}");
+    }
+
+    #[test]
+    fn promote_skips_method_calls() {
+        let src = "fn insert(a: u32, b: u32) -> u32 { a + b }\n\
+                   fn main() { let mut m = std::collections::HashMap::new(); m.insert(1, 2); }";
+        let out = promote(src);
+        // Method call must NOT be matched against the free fn `insert`.
+        assert!(out.contains("m.insert(1, 2)"), "method call untouched: {out}");
+    }
+
+    #[test]
+    fn promote_handles_nested_calls() {
+        let src = "fn add(a: u32, b: u32) -> u32 { a + b }\n\
+                   fn main() { let _ = add(add(1, 2), 3); }";
+        let out = promote(src);
+        assert!(
+            out.contains("add(a: add(a: 1, b: 2), b: 3)"),
+            "both nested calls named: {out}"
+        );
+    }
+
+    #[test]
+    fn promote_then_lower_round_trips_to_positional() {
+        // promote (insert names) then lower (strip names) must reproduce a
+        // semantically identical positional call.
+        let src = "fn make_rect(width: u32, height: u32) -> u32 { width * height }\n\
+                   fn main() { let _ = make_rect(1920, 1080); }";
+        let promoted = promote(src);
+        let lowered = crate::lower(&promoted).expect("lowered").source;
+        assert!(
+            lowered.contains("make_rect(1920, 1080)") || lowered.contains("make_rect (1920 , 1080)"),
+            "round-trip back to positional failed: {lowered}"
+        );
+    }
+
+    #[test]
+    fn promote_uses_dependency_index() {
+        // Cross-crate: a positional call into `geo::make_rect` gets names from
+        // the supplied dependency index.
+        let src = "fn main() { let _ = geo::make_rect(1920, 1080); }";
+        let dep = vec![(
+            "make_rect".to_string(),
+            vec!["width".to_string(), "height".to_string()],
+        )];
+        let out = crate::promote_named_args(src, &dep).expect("promote");
+        assert!(
+            out.contains("geo::make_rect(width: 1920, height: 1080)"),
+            "cross-crate names inserted: {out}"
         );
     }
 }
