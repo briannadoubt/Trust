@@ -148,6 +148,7 @@ regenerate.
 | R0011 | no-panic              | 1     | error    |
 | R0012 | no-bool-param         | 1     | error    |
 | R0014 | no-bare-index         | 1     | error    |
+| R0017 | no-same-type-params   | 1     | error    |
 | R0015 | allow-missing-reason  | 1     | error    |
 | R0016 | allow-unknown-code    | 1     | error    |
 | R0042 | no-positional-args    | 1     | error    |
@@ -480,6 +481,47 @@ Escape hatch: use `.get(i)` and handle the `Option`, move the call
 under `#[cfg(test)]`, or attach
 `#[allow(trust::R0014, reason = "…")]` to the enclosing item or
 statement (see the per-callsite escape hatch section above).
+
+### R0017 — no-same-type-params
+
+A visible (`pub`, `pub(crate)`, …) function or trait method with two
+**adjacent** parameters of the same concrete type is rejected. Wrap each in a
+distinct newtype so the values can't be swapped.
+
+Rationale: this is the bug class named arguments (R0042) *can't* reach. R0042
+fixes the call **site** — `make_rect(width: w, height: h)` makes the order
+explicit. But it still accepts two raw `u32`s, so if an agent computed the
+values into the wrong variables upstream (`let w = compute_height();`), the
+swap ships with correct-looking names. Distinct newtypes make the swap a type
+error: `compute_height()` returns `Height`, and `make_rect(width: Width, …)`
+won't accept it.
+
+```rust
+// rejected: two adjacent u32 params are silently swappable
+pub fn make_rect(width: u32, height: u32) -> u32 { width * height }
+
+// accepted: distinct newtypes — a swap is now a compile error
+pub struct Width(pub u32);
+pub struct Height(pub u32);
+pub fn make_rect(width: Width, height: Height) -> u32 { width.0 * height.0 }
+```
+
+Scope and heuristics (this is a *syntactic* check — there is no type
+inference at lint time):
+
+- Fires only on **visible** functions/methods (private signatures are local
+  and easier to review), and never inside `#[cfg(test)]`.
+- Only **adjacent** pairs are compared (`transfer(from, amount, to)` with a
+  non-adjacent `from`/`to` is not caught — a known limitation that trades
+  recall for a lower false-positive rate).
+- Generic type parameters declared on the function are **exempt**:
+  `fn max<T>(a: T, b: T)` is intentional, not a footgun.
+- Types are compared structurally (syn's `PartialEq`), so `&str`/`&str` and
+  `Vec<u8>`/`Vec<u8>` are caught, while `u32`/`u64` are not.
+
+Escape hatch: `#[allow(trust::R0017, reason = "…")]` on the enclosing item
+when two same-typed parameters are genuinely interchangeable (e.g. a thin
+shim mirroring a `std` signature like `copy(from, to)`).
 
 ### R0042 — no-positional-args
 

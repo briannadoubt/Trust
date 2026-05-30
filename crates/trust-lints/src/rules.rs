@@ -29,6 +29,9 @@ pub enum Rule {
     NoBoolParam,
     /// `expr[idx]` indexing where `idx` is not a literal integer.
     NoBareIndex,
+    /// Visible function with two adjacent parameters of the same concrete
+    /// type (silently swappable; wrap each in a distinct newtype).
+    NoSameTypeParams,
     /// `#[allow(trust::Rxxxx)]` missing `reason = "..."` argument.
     AllowMissingReason,
     /// `#[allow(trust::Rxxxx)]` with an unknown rule code.
@@ -55,6 +58,7 @@ impl Rule {
             Rule::NoPanic => "R0011",
             Rule::NoBoolParam => "R0012",
             Rule::NoBareIndex => "R0014",
+            Rule::NoSameTypeParams => "R0017",
             Rule::AllowMissingReason => "R0015",
             Rule::AllowUnknownCode => "R0016",
             Rule::NoPositionalArgs => "R0042",
@@ -81,6 +85,7 @@ impl Rule {
             Rule::NoPanic => "no-panic",
             Rule::NoBoolParam => "no-bool-param",
             Rule::NoBareIndex => "no-bare-index",
+            Rule::NoSameTypeParams => "no-same-type-params",
             Rule::AllowMissingReason => "allow-missing-reason",
             Rule::AllowUnknownCode => "allow-unknown-code",
             Rule::NoPositionalArgs => "no-positional-args",
@@ -111,6 +116,7 @@ impl Rule {
                 | Rule::NoPanic
                 | Rule::NoBoolParam
                 | Rule::NoBareIndex
+                | Rule::NoSameTypeParams
         )
     }
 
@@ -128,6 +134,7 @@ impl Rule {
             Rule::NoPanic => "explicit panics drop typed errors on the floor; return `Err` and let the caller decide",
             Rule::NoBoolParam => "raw `bool` parameters are positional footguns; named enums make intent self-documenting",
             Rule::NoBareIndex => "`v[i]` panics on out-of-bounds; `.get(i)` makes the failure path explicit",
+            Rule::NoSameTypeParams => "adjacent same-type parameters are silently swappable; named args fix the call site but not values built into the wrong variable — distinct newtypes make a swap a type error",
             Rule::AllowMissingReason => "every `#[allow(trust::Rxxxx)]` must include a `reason = \"...\"` justification",
             Rule::AllowUnknownCode => "`#[allow(trust::Rxxxx)]` references a rule code that is not in the registry",
             Rule::NoPositionalArgs => "positional argument ordering is the largest LLM-authored bug class in Rust; named args eliminate it",
@@ -148,6 +155,7 @@ pub const ALL: &[Rule] = &[
     Rule::NoPanic,
     Rule::NoBoolParam,
     Rule::NoBareIndex,
+    Rule::NoSameTypeParams,
     Rule::AllowMissingReason,
     Rule::AllowUnknownCode,
     Rule::NoPositionalArgs,

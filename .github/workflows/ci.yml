@@ -71,6 +71,10 @@ jobs:
         run: |
           ! cargo run -p trust -- check examples/01-lints/bare-index-fail.rs 2>&1 | tee /tmp/p1x.log
           grep -q R0014 /tmp/p1x.log
+      - name: example — R0017 same-type-params-fail (must fail with R0017)
+        run: |
+          ! cargo run -p trust -- check examples/01-lints/same-type-params-fail.rs 2>&1 | tee /tmp/p1s.log
+          grep -q R0017 /tmp/p1s.log
 
       - name: example — cargo-style activation (must fail with R0001)
         run: |

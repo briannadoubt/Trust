@@ -53,6 +53,7 @@ pub fn run_rule(rule: Rule, file: &syn::File, source: &str, diagnostics: &mut Ve
         Rule::NoPanic => run_no_panic(file, diagnostics),
         Rule::NoBoolParam => run_no_bool_param(file, diagnostics),
         Rule::NoBareIndex => run_no_bare_index(file, diagnostics),
+        Rule::NoSameTypeParams => run_no_same_type_params(file, diagnostics),
         // R0015 / R0016 emission lives in `crate::allow::collect_allow_map`,
         // which the runner invokes before per-rule dispatch. The catalogue
         // entries stay here so SPEC.md and tooling can refer to the codes.
@@ -955,6 +956,132 @@ impl<'ast, 'a> Visit<'ast> for NoBareIndexVisitor<'a> {
 
 fn run_no_bare_index(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
     let mut v = NoBareIndexVisitor {
+        diagnostics,
+        in_test_depth: 0,
+    };
+    v.visit_file(file);
+}
+
+// ----------------------------------------------------------------------------
+// R0017 — no-same-type-params
+// ----------------------------------------------------------------------------
+
+/// `true` if `ty` is exactly one of the function's own declared generic type
+/// parameters (`fn f<T>(a: T, b: T)`). Two values of the same generic type
+/// are usually intentional (`max`, `min`, `swap`), so the rule exempts them —
+/// it targets *concrete* same-typed params (`u32`, `u64`, `&str`, ID types).
+fn ty_is_generic_param(ty: &syn::Type, generics: &[String]) -> bool {
+    let syn::Type::Path(tp) = ty else {
+        return false;
+    };
+    if tp.qself.is_some() || tp.path.segments.len() != 1 {
+        return false;
+    }
+    let seg = &tp.path.segments[0];
+    seg.arguments.is_empty() && generics.iter().any(|g| seg.ident == g.as_str())
+}
+
+fn param_name(pat: &syn::Pat) -> String {
+    match pat {
+        syn::Pat::Ident(p) => p.ident.to_string(),
+        _ => "<param>".to_string(),
+    }
+}
+
+struct NoSameTypeParamsVisitor<'a> {
+    diagnostics: &'a mut Vec<Diagnostic>,
+    in_test_depth: usize,
+}
+
+impl<'a> NoSameTypeParamsVisitor<'a> {
+    fn with_test_scope<F: FnOnce(&mut Self)>(&mut self, is_test: bool, f: F) {
+        if is_test {
+            self.in_test_depth += 1;
+        }
+        f(self);
+        if is_test {
+            self.in_test_depth -= 1;
+        }
+    }
+
+    fn check_sig(&mut self, sig: &syn::Signature, vis_visible: bool) {
+        if self.in_test_depth > 0 || !vis_visible {
+            return;
+        }
+        let generics: Vec<String> = sig
+            .generics
+            .type_params()
+            .map(|tp| tp.ident.to_string())
+            .collect();
+        // Typed params in declaration order (a `self` receiver is not a
+        // `Typed` arg, so it's naturally excluded).
+        let typed: Vec<&syn::PatType> = sig
+            .inputs
+            .iter()
+            .filter_map(|a| match a {
+                syn::FnArg::Typed(pt) => Some(pt),
+                syn::FnArg::Receiver(_) => None,
+            })
+            .collect();
+        // Compare each adjacent pair. `syn::Type: PartialEq` (the
+        // `extra-traits` feature) gives a structural, whitespace-insensitive
+        // comparison — no type inference needed, this is purely syntactic.
+        for pair in typed.windows(2) {
+            let (a, b) = (pair[0], pair[1]);
+            if a.ty == b.ty && !ty_is_generic_param(&a.ty, &generics) {
+                let na = param_name(&a.pat);
+                let nb = param_name(&b.pat);
+                let diag = Diagnostic::error(
+                    Rule::NoSameTypeParams.code(),
+                    format!(
+                        "visible function `{}` has adjacent same-type parameters `{na}` and `{nb}`",
+                        sig.ident
+                    ),
+                    span_range(b.ty.span()),
+                )
+                .with_why(Rule::NoSameTypeParams.rationale().to_string())
+                .with_help(
+                    "give each a distinct newtype (e.g. `struct Width(u32); struct Height(u32);`) so a swap is a type error, or `#[allow(trust::R0017, reason = \"…\")]` if the two are genuinely interchangeable",
+                );
+                self.diagnostics.push(diag);
+            }
+        }
+    }
+}
+
+impl<'ast, 'a> Visit<'ast> for NoSameTypeParamsVisitor<'a> {
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        let is_test = attrs_have_cfg_test(&node.attrs)
+            || node.attrs.iter().any(|a| a.path().is_ident("test"));
+        self.with_test_scope(is_test, |this| {
+            this.check_sig(&node.sig, is_visible(&node.vis));
+            visit::visit_item_fn(this, node);
+        });
+    }
+
+    fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_mod(this, node));
+    }
+
+    fn visit_item_impl(&mut self, node: &'ast syn::ItemImpl) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_impl(this, node));
+    }
+
+    fn visit_impl_item_fn(&mut self, node: &'ast syn::ImplItemFn) {
+        self.check_sig(&node.sig, is_visible(&node.vis));
+        visit::visit_impl_item_fn(self, node);
+    }
+
+    fn visit_trait_item_fn(&mut self, node: &'ast syn::TraitItemFn) {
+        self.check_sig(&node.sig, true);
+        visit::visit_trait_item_fn(self, node);
+    }
+}
+
+fn run_no_same_type_params(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    let mut v = NoSameTypeParamsVisitor {
         diagnostics,
         in_test_depth: 0,
     };

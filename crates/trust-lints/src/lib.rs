@@ -344,6 +344,77 @@ mod tests {
     }
 
     #[test]
+    fn r0017_fires_on_adjacent_same_type_params() {
+        let src = "#![strict]\npub fn make_rect(width: u32, height: u32) -> u32 { width * height }";
+        assert!(fires(Rule::NoSameTypeParams, src));
+    }
+
+    #[test]
+    fn r0017_fires_on_reference_same_type() {
+        // `rename(old: &str, new: &str)` — the classic swap.
+        let src = "#![strict]\npub fn rename(old: &str, new: &str) {}";
+        assert!(fires(Rule::NoSameTypeParams, src));
+    }
+
+    #[test]
+    fn r0017_silent_on_distinct_types() {
+        let src = "#![strict]\npub fn f(name: String, count: u32) {}";
+        let d = diags_for(Rule::NoSameTypeParams, src);
+        assert!(d.is_empty(), "distinct types must not fire R0017: {d:?}");
+    }
+
+    #[test]
+    fn r0017_silent_on_distinct_newtypes() {
+        // The fix: once wrapped in distinct newtypes, the swap is impossible.
+        let src = "#![strict]\npub fn make_rect(width: Width, height: Height) -> u32 { 0 }";
+        let d = diags_for(Rule::NoSameTypeParams, src);
+        assert!(d.is_empty(), "distinct newtypes must not fire R0017: {d:?}");
+    }
+
+    #[test]
+    fn r0017_silent_on_generic_type_params() {
+        // `max<T>(a: T, b: T)` is intentional, not a swap footgun.
+        let src = "#![strict]\npub fn max<T: Ord>(a: T, b: T) -> T { if a > b { a } else { b } }";
+        let d = diags_for(Rule::NoSameTypeParams, src);
+        assert!(d.is_empty(), "generic T,T must not fire R0017: {d:?}");
+    }
+
+    #[test]
+    fn r0017_silent_on_private_fn() {
+        let src = "#![strict]\nfn make_rect(width: u32, height: u32) -> u32 { width * height }";
+        let d = diags_for(Rule::NoSameTypeParams, src);
+        assert!(d.is_empty(), "private fn must not fire R0017: {d:?}");
+    }
+
+    #[test]
+    fn r0017_silent_in_test_mod() {
+        let src = "#![strict]\n#[cfg(test)]\nmod m { pub fn f(a: u32, b: u32) {} }";
+        let d = diags_for(Rule::NoSameTypeParams, src);
+        assert!(d.is_empty(), "cfg(test) must not fire R0017: {d:?}");
+    }
+
+    #[test]
+    fn r0017_fires_on_trait_method() {
+        let src = "#![strict]\npub trait T { fn scale(&self, x: f64, y: f64); }";
+        assert!(fires(Rule::NoSameTypeParams, src));
+    }
+
+    #[test]
+    fn r0017_silent_on_arity_one() {
+        let src = "#![strict]\npub fn f(x: u32) -> u32 { x }";
+        let d = diags_for(Rule::NoSameTypeParams, src);
+        assert!(d.is_empty(), "single param can't collide: {d:?}");
+    }
+
+    #[test]
+    fn r0017_fires_per_adjacent_pair() {
+        // x,y,w,h all f64 → adjacent pairs (x,y),(y,w),(w,h) → 3 diagnostics.
+        let src = "#![strict]\npub fn rect(x: f64, y: f64, w: f64, h: f64) {}";
+        let d = diags_for(Rule::NoSameTypeParams, src);
+        assert_eq!(d.len(), 3, "expected one diag per adjacent same-type pair: {d:?}");
+    }
+
+    #[test]
     fn r0014_fires_on_variable_index() {
         let src = "#![strict]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
         assert!(fires(Rule::NoBareIndex, src));
