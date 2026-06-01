@@ -1041,7 +1041,7 @@ impl<'a> NoSameTypeParamsVisitor<'a> {
                 )
                 .with_why(Rule::NoSameTypeParams.rationale().to_string())
                 .with_help(
-                    "give each a distinct newtype (e.g. `struct Width(u32); struct Height(u32);`) so a swap is a type error, or `#[allow(trust::R0017, reason = \"…\")]` if the two are genuinely interchangeable",
+                    "give each a distinct newtype — `trust_std::newtype!(pub Width(u32));` makes that a one-liner — so a swap is a type error; or `#[allow(trust::R0017, reason = \"…\")]` if the two are genuinely interchangeable",
                 );
                 self.diagnostics.push(diag);
             }

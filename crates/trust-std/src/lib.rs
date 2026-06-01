@@ -18,6 +18,58 @@
 
 trust_attrs::strict! {}
 
+/// Declare a distinct newtype in one line — the ergonomic fix for R0017
+/// (`no-same-type-params`). Wrapping each same-typed parameter in its own
+/// newtype turns a silent argument swap into a compile error.
+///
+/// ```
+/// trust_std::newtype!(pub Width(u32));
+/// trust_std::newtype!(pub Height(u32));
+///
+/// pub fn make_rect(width: Width, height: Height) -> u32 {
+///     width.0 * height.0
+/// }
+/// // make_rect(Height::new(5), Width::new(10)) is now a *type error*.
+/// ```
+///
+/// Generates a tuple struct with a public field plus `new`, `into_inner`, and
+/// `From<inner>`. It derives `Debug, Clone, PartialEq` (safe for any inner
+/// type, including `f64`). Add more — `Copy`, `Eq`, `Hash`, `Ord` — with an
+/// extra `#[derive(…)]` before the declaration (don't re-list the three
+/// already derived):
+///
+/// ```
+/// trust_std::newtype!(#[derive(Copy, Eq, Hash, PartialOrd, Ord)] pub UserId(u64));
+/// ```
+#[macro_export]
+macro_rules! newtype {
+    ($(#[$meta:meta])* $vis:vis $name:ident($inner:ty)) => {
+        #[derive(Debug, Clone, PartialEq)]
+        $(#[$meta])*
+        $vis struct $name(pub $inner);
+
+        impl $name {
+            /// Wrap a raw value.
+            #[inline]
+            $vis fn new(value: $inner) -> Self {
+                $name(value)
+            }
+
+            /// Consume the newtype, returning the underlying value.
+            #[inline]
+            $vis fn into_inner(self) -> $inner {
+                self.0
+            }
+        }
+
+        impl ::core::convert::From<$inner> for $name {
+            #[inline]
+            fn from(value: $inner) -> Self {
+                $name(value)
+            }
+        }
+    };
+}
 
 pub mod fs {
     use std::io;

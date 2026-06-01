@@ -506,6 +506,9 @@ pub struct Height(pub u32);
 pub fn make_rect(width: Width, height: Height) -> u32 { width.0 * height.0 }
 ```
 
+The [`trust_std::newtype!`](#standard-library-shims) macro makes each newtype a
+one-liner (`trust_std::newtype!(pub Width(u32));`), so the fix isn't tedious.
+
 Scope and heuristics (this is a *syntactic* check — there is no type
 inference at lint time):
 
@@ -723,6 +726,13 @@ the lints and named-arg checker hit most often. Live at
 The wrappers exist primarily so the lowering pass has something to rewrite
 against during development. Phase 6 expands the coverage; for now, calling
 bare `std::fs::write(path, contents)` is permitted but uses positional.
+
+`trust-std` also exports the **`newtype!`** macro (RT-77) — the ergonomic fix
+for [R0017](#r0017--no-same-type-params). `trust_std::newtype!(pub Width(u32));`
+generates a distinct tuple struct with a public field, `new` / `into_inner`,
+and `From<inner>`, deriving `Debug, Clone, PartialEq`; richer derives
+(`Copy`, `Eq`, `Hash`, `Ord`) are added with an extra `#[derive(…)]` before the
+declaration.
 
 ## Diagnostic format
 

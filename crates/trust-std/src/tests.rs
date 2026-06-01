@@ -89,3 +89,40 @@ fn string_and_vec_shims_construct() {
     vec::vec_push(&mut v2, 2);
     assert_eq!(v2, vec![1, 2]);
 }
+
+// --- RT-77: newtype! macro -------------------------------------------------
+
+crate::newtype!(pub Meters(f64));
+crate::newtype!(#[derive(Copy, Eq, Hash, PartialOrd, Ord)] pub UserId(u64));
+
+#[test]
+fn newtype_wraps_and_unwraps() {
+    let m = Meters::new(3.5);
+    assert_eq!(m.0, 3.5);
+    assert_eq!(m.into_inner(), 3.5);
+    let from = Meters::from(4.0);
+    assert_eq!(from.0, 4.0);
+}
+
+#[test]
+fn newtype_default_derives_debug_clone_partialeq() {
+    // f64 is Clone + PartialEq + Debug but NOT Eq/Ord/Hash — so the default
+    // derive set must stay safe for it.
+    let a = Meters::new(1.0);
+    let b = a.clone();
+    assert_eq!(a, b);
+    assert_eq!(format!("{a:?}"), "Meters(1.0)");
+}
+
+#[test]
+fn newtype_extra_derives_via_meta() {
+    // UserId opted into Copy/Eq/Hash/Ord through the meta passthrough.
+    let id = UserId::new(7);
+    assert_eq!(id.into_inner(), 7); // `id` is Copy, so it survives this call
+    let copied = id; // Copy
+    assert_eq!(id, copied); // Eq, and `id` still usable after the copy
+    let mut set = std::collections::HashSet::new();
+    set.insert(UserId(1)); // Hash
+    assert!(set.contains(&UserId(1)));
+    assert!(UserId(1) < UserId(2)); // Ord
+}
