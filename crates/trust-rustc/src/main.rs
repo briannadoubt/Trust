@@ -1,4 +1,3 @@
-
 //! `trust-rustc` — RUSTC_WRAPPER shim that runs Trust's lowering
 //! pass on each strict-marked `.rs` file before handing it to the real
 //! `rustc`. Set as `RUSTC_WRAPPER` to make `cargo build` understand the
@@ -25,10 +24,10 @@
 // require itself to build — it must stay free of the syntax extensions.
 
 use anyhow::{bail, Context, Result};
-use trust_rustc::{find_input_rs, prepare_strict_input};
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, ExitCode};
+use trust_rustc::{find_input_rs, prepare_strict_input};
 
 fn main() -> ExitCode {
     match run() {

@@ -6,10 +6,10 @@
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
-use trust_diag::Diagnostic;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use trust_diag::Diagnostic;
 
 /// Sentinel value (`-`) used in CLI input positions to mean "read from stdin",
 /// matching the convention used by `rustc`, `cat`, etc.
@@ -251,8 +251,7 @@ fn fix(input: &Path, write: bool) -> Result<()> {
         if is_stdin(input) {
             bail!("`fix --write` needs a file path to rewrite, not stdin");
         }
-        std::fs::write(input, &promoted)
-            .with_context(|| format!("writing {}", input.display()))?;
+        std::fs::write(input, &promoted).with_context(|| format!("writing {}", input.display()))?;
         eprintln!("rewrote {}", input.display());
     } else {
         print!("{promoted}");

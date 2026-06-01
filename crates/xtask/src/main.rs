@@ -53,13 +53,13 @@ fn gen_std_signatures(check_only: bool) -> Result<()> {
     let lib_path = root.join("crates/trust-std/src/lib.rs");
     let manifest_path = root.join("crates/trust-std/std-signatures.txt");
 
-    let raw = fs::read_to_string(&lib_path)
-        .with_context(|| format!("reading {}", lib_path.display()))?;
+    let raw =
+        fs::read_to_string(&lib_path).with_context(|| format!("reading {}", lib_path.display()))?;
 
     // Lower first: strips strict markers and rewrites any named-arg call
     // sites to positional form so `syn` can parse the result.
-    let lowered = trust_lower::lower(&raw)
-        .with_context(|| format!("lowering {}", lib_path.display()))?;
+    let lowered =
+        trust_lower::lower(&raw).with_context(|| format!("lowering {}", lib_path.display()))?;
 
     let file: syn::File = syn::parse_file(&lowered.source)
         .with_context(|| format!("syn parse of lowered {}", lib_path.display()))?;
@@ -87,7 +87,11 @@ fn gen_std_signatures(check_only: bool) -> Result<()> {
 
     fs::write(&manifest_path, &out)
         .with_context(|| format!("writing {}", manifest_path.display()))?;
-    println!("regenerated {} ({} entries)", manifest_path.display(), entry_count);
+    println!(
+        "regenerated {} ({} entries)",
+        manifest_path.display(),
+        entry_count
+    );
     Ok(())
 }
 
