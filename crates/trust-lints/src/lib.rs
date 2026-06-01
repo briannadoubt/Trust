@@ -51,6 +51,25 @@ mod tests {
         assert!(d.is_empty(), "expected no diagnostics, got {d:?}");
     }
 
+    // RT-78: every rule must carry agent guidance (rationale + instead) and a
+    // round-trippable code, so `trust explain` / WRITING-TRUST.md are never
+    // blank for a rule.
+    #[test]
+    fn every_rule_has_guidance_and_round_trips() {
+        for r in all_rules() {
+            assert!(!r.code().is_empty(), "rule has empty code");
+            assert!(!r.name().is_empty(), "{} has empty name", r.code());
+            assert!(!r.rationale().is_empty(), "{} has empty rationale", r.code());
+            assert!(!r.instead().is_empty(), "{} has empty `instead`", r.code());
+            assert_eq!(
+                Rule::from_code(r.code()),
+                Some(r),
+                "code round-trip failed for {}",
+                r.code()
+            );
+        }
+    }
+
     #[test]
     fn non_strict_program_skipped_even_with_violations() {
         let src = "fn main() { let x: Option<u32> = None; x.unwrap(); let n = 1u32 as u8; }";

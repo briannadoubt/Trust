@@ -140,6 +140,31 @@ impl Rule {
             Rule::NoPositionalArgs => "positional argument ordering is the largest LLM-authored bug class in Rust; named args eliminate it",
         }
     }
+
+    /// The canonical compliant idiom — what to write *instead*, in one line.
+    /// This is the agent-actionable counterpart to [`rationale`](Self::rationale)
+    /// (which says *why*). Surfaced by `trust explain` and the generated
+    /// `docs/WRITING-TRUST.md` agent guide (RT-78).
+    pub fn instead(self) -> &'static str {
+        match self {
+            Rule::NoUnwrap => "propagate with `?`, or `.expect(\"why this can't fail\")`",
+            Rule::EmptyExpect => "give `.expect(\"…\")` a real message explaining why it can't fail",
+            Rule::NoAsCast => "use `T::try_from(x)?` for fallible casts, or `.into()` for widening",
+            Rule::NoGlobImport => "import the specific items: `use foo::{A, B};`",
+            Rule::JustifyUnsafe => "precede the `unsafe` block with a `// safety: …` comment",
+            Rule::JustifyAllow => "precede the `#[allow(…)]` with a `// reason: …` comment",
+            Rule::NoImplTraitReturn => "name the type with a `type Alias = …;` and return the alias",
+            Rule::NoUserMacros => "inline the logic, or opt in with `#[strict::macros_ok]`",
+            Rule::NoTodoMacro => "finish the implementation, or return a typed `Err`",
+            Rule::NoPanic => "return a typed `Err` and let the caller decide whether to abort",
+            Rule::NoBoolParam => "replace the `bool` with a named enum, e.g. `enum Mode { On, Off }`",
+            Rule::NoBareIndex => "use `.get(i)` and handle the `Option`",
+            Rule::NoSameTypeParams => "wrap each in a distinct newtype — `trust_std::newtype!(pub Width(u32));`",
+            Rule::AllowMissingReason => "add a `reason = \"…\"` argument to the `#[allow(trust::…)]`",
+            Rule::AllowUnknownCode => "use a real rule code (run `trust explain` for the catalogue)",
+            Rule::NoPositionalArgs => "name the arguments — `f(width: …, height: …)` — or run `trust fix`",
+        }
+    }
 }
 
 pub const ALL: &[Rule] = &[

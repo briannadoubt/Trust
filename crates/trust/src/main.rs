@@ -107,6 +107,19 @@ enum Cmd {
         #[arg(short, long)]
         write: bool,
     },
+    /// Explain Trust's rules — the proactive agent contract (RT-78).
+    ///
+    /// With a rule code, explains that rule; with no code, lists the whole
+    /// catalogue. Each entry gives the rationale (why) and the canonical
+    /// compliant idiom (what to write instead). `--format json` emits a
+    /// machine-readable catalogue an agent harness can load into context.
+    Explain {
+        /// A rule code like `R0017` (omit to list every rule)
+        code: Option<String>,
+        /// Output format
+        #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
+        format: OutputFormat,
+    },
 }
 
 /// Returns true when the CLI input path is the stdin sentinel `-`.
@@ -144,6 +157,7 @@ fn main() -> Result<()> {
         Cmd::Lower { input } => lower_to_stdout(&input),
         Cmd::Index { input, out } => index(&input, out.as_deref()),
         Cmd::Fix { input, write } => fix(&input, write),
+        Cmd::Explain { code, format } => explain(code.as_deref(), format),
     }
 }
 
@@ -257,6 +271,59 @@ fn fix(input: &Path, write: bool) -> Result<()> {
         print!("{promoted}");
     }
     Ok(())
+}
+
+/// Explain Trust's rules (RT-78) — the proactive agent contract. With a code,
+/// explains one rule; otherwise lists the whole catalogue. `--format json`
+/// yields a machine-readable catalogue an agent can load into context.
+fn explain(code: Option<&str>, format: OutputFormat) -> Result<()> {
+    use trust_lints::Rule;
+    let rules: Vec<Rule> = match code {
+        Some(c) => match Rule::from_code(&c.to_uppercase()) {
+            Some(r) => vec![r],
+            None => bail!("unknown rule code `{c}` — run `trust explain` to list every rule"),
+        },
+        None => trust_lints::all_rules(),
+    };
+    match format {
+        OutputFormat::Json => print!("{}", explain_json(&rules)),
+        OutputFormat::Human => print!("{}", explain_human(&rules)),
+    }
+    Ok(())
+}
+
+fn explain_human(rules: &[trust_lints::Rule]) -> String {
+    let mut out = String::new();
+    for r in rules {
+        out.push_str(&format!("{}  {}  (error)\n", r.code(), r.name()));
+        out.push_str(&format!("  why:     {}\n", r.rationale()));
+        out.push_str(&format!("  instead: {}\n\n", r.instead()));
+    }
+    out
+}
+
+fn explain_json(rules: &[trust_lints::Rule]) -> String {
+    let mut out = String::from("{\n  \"version\": \"0.1\",\n  \"rules\": [");
+    for (i, r) in rules.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str("\n    {\"code\": ");
+        out.push_str(&trust_diag::json_escape(r.code()));
+        out.push_str(", \"name\": ");
+        out.push_str(&trust_diag::json_escape(r.name()));
+        out.push_str(", \"severity\": \"error\", \"why\": ");
+        out.push_str(&trust_diag::json_escape(r.rationale()));
+        out.push_str(", \"instead\": ");
+        out.push_str(&trust_diag::json_escape(r.instead()));
+        out.push('}');
+    }
+    if rules.is_empty() {
+        out.push_str("]\n}\n");
+    } else {
+        out.push_str("\n  ]\n}\n");
+    }
+    out
 }
 
 struct PipelineOutput {

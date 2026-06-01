@@ -216,6 +216,18 @@ jobs:
           cargo run -q -p trust -- fix /tmp/rt71.rs | tee /tmp/rt71-fixed.rs | grep -q 'make_rect(width: 1920, height: 1080)'
           cargo run -q -p trust -- lower /tmp/rt71-fixed.rs | tr -d ' \n' | grep -q 'make_rect(1920,1080)'
 
+      - name: trust explain — agent rule contract (RT-78)
+        run: |
+          # Per-rule explanation carries why + the compliant idiom.
+          cargo run -q -p trust -- explain R0017 | grep -q 'instead:'
+          # The full catalogue is valid JSON an agent can load into context.
+          cargo run -q -p trust -- explain --format json \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); assert len(d['rules'])>=15, d; assert all(r['instead'] for r in d['rules']); print('trust explain json ok')"
+          # Unknown codes fail cleanly.
+          if cargo run -q -p trust -- explain R9999 >/dev/null 2>&1; then
+            echo "FAIL: expected non-zero exit on unknown rule code"; exit 1
+          fi
+
       - name: dogfood — build strict library crates under wrapper
         run: |
           # The strict LIBRARY crates use `#![strict]` for lint dogfooding and

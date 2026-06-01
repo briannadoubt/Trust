@@ -262,6 +262,15 @@ pub fn to_json(diagnostics: &[Diagnostic], filename: &str, source: &str) -> Stri
     writer.into_string()
 }
 
+/// Escape `s` as a JSON string literal (with surrounding quotes), per RFC
+/// 8259. Exposed so other tools — e.g. `trust explain --format json` — can
+/// emit JSON without duplicating the escaper.
+pub fn json_escape(s: &str) -> String {
+    let mut writer = JsonWriter::new("");
+    writer.string(s);
+    writer.into_string()
+}
+
 fn severity_str(severity: Severity) -> &'static str {
     match severity {
         Severity::Error => "error",

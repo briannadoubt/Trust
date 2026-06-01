@@ -804,6 +804,7 @@ trust check <input.rs> [--format <human|json>]
 trust lower <input.rs>
 trust index <src-dir|input.rs> [--out <path>]
 trust fix <input.rs> [--write]
+trust explain [<code>] [--format <human|json>]
 ```
 
 - `build`: lower, lint, write the lowered source to a tempfile, shell out to
@@ -826,6 +827,13 @@ trust fix <input.rs> [--write]
   formatting is preserved. Prints to stdout, or rewrites in place with
   `--write`. Idempotent, and `trust fix | trust lower` round-trips back to the
   original positional source.
+- `explain`: the proactive agent contract (RT-78). With a rule code, explains
+  that rule; with no code, lists the whole catalogue. Each entry gives the
+  rationale (*why*) and the canonical compliant idiom (*what to write
+  instead*). `--format json` emits a machine-readable catalogue an agent
+  harness can load into context before writing Trust. The same content is
+  generated to [`docs/WRITING-TRUST.md`](WRITING-TRUST.md) by
+  `cargo xtask gen-docs`.
 
 `build`, `check`, and `lower` honour `TRUST_SIGNATURE_PATH` — they seed the
 callee registry from the named dependency manifests before lowering, so
