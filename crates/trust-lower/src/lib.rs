@@ -36,8 +36,15 @@ impl From<proc_macro2::LexError> for Error {
 
 #[derive(Debug, Default)]
 pub struct LowerOutput {
-    /// The lowered, prettyprinted Rust source.
+    /// The lowered, prettyprinted Rust source as handed to the downstream
+    /// compiler: Trust markers and `#[allow(trust::…)]` items stripped
+    /// (stock rustc rejects the `trust::` tool path — E0710).
     pub source: String,
+    /// The lowered source with `#[allow(trust::…)]` attributes still in
+    /// place. Parse THIS for linting — the allow map is built from these
+    /// attributes, so linting `source` would un-suppress everything the
+    /// user explicitly allowed (RT-89).
+    pub lint_source: String,
     /// Diagnostics emitted during lowering (e.g. unknown callee for named args).
     pub diagnostics: Vec<Diagnostic>,
     /// `true` if the original source had `#![strict]` at the crate root.
@@ -88,10 +95,20 @@ pub fn lower_with_extra_callees_forced(
     let tokens = pipe::rewrite(tokens, &mut diagnostics);
     let tokens = preprocess::strip_strict_attrs(tokens);
 
-    let file: syn::File = syn::parse2(tokens)?;
+    // Two views of the lowered output (RT-89): the linter must see the
+    // `#[allow(trust::…)]` attributes (the allow map is built from them),
+    // while the downstream compiler must NOT (stock rustc rejects the
+    // `trust::` tool path — E0710).
+    let lint_file: syn::File = syn::parse2(tokens.clone())?;
+    let lint_source = prettyplease::unparse(&lint_file);
+
+    let rustc_tokens = preprocess::strip_trust_allow_items(tokens);
+    let file: syn::File = syn::parse2(rustc_tokens)?;
     let source = prettyplease::unparse(&file);
+
     Ok(LowerOutput {
         source,
+        lint_source,
         diagnostics,
         strict_mode,
     })
@@ -209,6 +226,53 @@ mod tests {
         let out = lower("fn main() { println!(\"hi\"); }").expect("hello should lower");
         assert!(out.source.contains("fn main"));
         assert!(out.diagnostics.is_empty());
+    }
+
+    // RT-89: trust:: allow items are linter-only; rustc rejects the tool
+    // path (E0710), so lowering must strip them — wholly, or item-wise when
+    // mixed with real rustc lints.
+    #[test]
+    fn trust_allow_items_are_stripped_from_lowered_output() {
+        let src = "#![strict]\n#[allow(trust::R0017, reason = \"fixture\")]\npub fn f(a: u32, b: u32) {}\nfn main() {}";
+        let out = lower(src).expect("should lower");
+        assert!(
+            !out.source.contains("trust ::") && !out.source.contains("trust::"),
+            "trust:: must not survive lowering: {}",
+            out.source
+        );
+        assert!(
+            !out.source.contains("allow"),
+            "all-trust allow drops entirely: {}",
+            out.source
+        );
+        // ...but the lint-facing view keeps the attribute, so the allow map
+        // can suppress the rule the user silenced.
+        assert!(
+            out.lint_source.contains("allow(trust::R0017"),
+            "lint view keeps the trust allow: {}",
+            out.lint_source
+        );
+
+        let mixed = "#![strict]\n#[allow(dead_code, trust::R0017, reason = \"x\")]\npub fn g(a: u32, b: u32) {}\nfn main() {}";
+        let out = lower(mixed).expect("should lower");
+        assert!(
+            out.source.contains("allow(dead_code)"),
+            "non-trust lint kept: {}",
+            out.source
+        );
+        assert!(
+            !out.source.contains("trust"),
+            "trust item dropped: {}",
+            out.source
+        );
+
+        let plain = "#![strict]\n#[allow(dead_code)]\nfn h() {}\nfn main() {}";
+        let out = lower(plain).expect("should lower");
+        assert!(
+            out.source.contains("allow(dead_code)"),
+            "plain allow untouched: {}",
+            out.source
+        );
     }
 
     #[test]

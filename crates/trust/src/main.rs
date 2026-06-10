@@ -348,7 +348,10 @@ fn run_pipeline(
     all_diagnostics.extend(lower_out.diagnostics);
 
     // Parse lowered source for the linters.
-    let file: syn::File = syn::parse_str(&lower_out.source)
+    // lint_source, not source: the linter's allow map is built from the
+    // `#[allow(trust::…)]` attributes, which are stripped from the
+    // rustc-facing `source` (RT-89).
+    let file: syn::File = syn::parse_str(&lower_out.lint_source)
         .with_context(|| format!("re-parsing lowered source from {label}"))?;
 
     // Lints (only fire in `#![strict]` files; safe to skip on bootstrap).

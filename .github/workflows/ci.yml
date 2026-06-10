@@ -133,6 +133,22 @@ jobs:
           fi
           rm -rf "$tmp"
 
+      - name: cargo trust — full lint set enforced at build (RT-89)
+        run: |
+          # The wrapper runs the same rules as `trust check`: an .unwrap()
+          # in a strict crate must fail `cargo trust build` with R0001.
+          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          export PATH="$(realpath target/debug):$PATH"
+          tmp=$(mktemp -d); mkdir -p "$tmp/src"
+          cp examples/cargo-strict-config/Cargo.toml "$tmp/"
+          printf 'fn main() { let v: Option<i32> = Some(1); let _ = v.unwrap(); }\n' > "$tmp/src/main.rs"
+          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust build 2>/tmp/rt89.log); then
+            echo "FAIL: expected R0001 to reject .unwrap() under cargo trust build"
+            exit 1
+          fi
+          grep -q R0001 /tmp/rt89.log
+          rm -rf "$tmp"
+
       - name: example — Phase 2 pipe
         run: |
           cargo run -p trust -- build examples/02-pipe/chain.rs --out /tmp/p2

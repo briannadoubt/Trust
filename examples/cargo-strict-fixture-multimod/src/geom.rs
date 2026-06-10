@@ -11,6 +11,7 @@
 /// let r = make_rect(width: 7, height: 6);
 /// assert_eq!(r, (7, 6));
 /// ```
+#[allow(trust::R0017, reason = "fixture models the same-typed-swap bug class")]
 pub fn make_rect(width: u32, height: u32) -> (u32, u32) {
     (width, height)
 }

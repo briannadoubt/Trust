@@ -21,4 +21,5 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 syn.workspace = true
+trust-lints.workspace = true
 trust-lower.workspace = true

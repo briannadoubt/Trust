@@ -278,7 +278,7 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
         if !cached_file.exists() {
             let out = trust_lower::lower_with_extra_callees_forced(&source, &extras, force_strict)
                 .with_context(|| format!("lowering {}", input_path.display()))?;
-            emit_diagnostics(&out, input_path)?;
+            emit_diagnostics(&out, &source, input_path)?;
             fs::create_dir_all(&cache_dir)?;
             fs::write(&cached_file, &out.source)?;
         }
@@ -300,8 +300,29 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
     }))
 }
 
-fn emit_diagnostics(out: &trust_lower::LowerOutput, path: &Path) -> Result<()> {
-    for diag in &out.diagnostics {
+fn emit_diagnostics(
+    out: &trust_lower::LowerOutput,
+    original_source: &str,
+    path: &Path,
+) -> Result<()> {
+    // RT-89: the wrapper enforces the same rule set as `trust check` — the
+    // lowering diagnostics (R0042 et al) collected in `out`, plus the
+    // AST-level strict lints (R0001 unwrap, R0003 as-cast, ...). The AST
+    // comes from the LOWERED source (plain Rust, always parses); the
+    // ORIGINAL source string is what the linter needs for comment-window
+    // rules (R0005/R0006 justifications) — prettyplease strips comments
+    // from the lowered output. Mirrors `run_pipeline` in the trust CLI.
+    let mut diagnostics = out.diagnostics.clone();
+    if out.strict_mode {
+        // lint_source, not source: the allow map comes from the
+        // `#[allow(trust::…)]` attributes, which are stripped from the
+        // rustc-facing `source`.
+        let file: syn::File = syn::parse_str(&out.lint_source)
+            .with_context(|| format!("re-parsing lowered source from {}", path.display()))?;
+        diagnostics.extend(trust_lints::lint_strict(&file, original_source, true).diagnostics);
+    }
+
+    for diag in &diagnostics {
         eprintln!(
             "[{}] {}: {}",
             diag.rule,
@@ -309,7 +330,7 @@ fn emit_diagnostics(out: &trust_lower::LowerOutput, path: &Path) -> Result<()> {
             diag.message
         );
     }
-    if out.diagnostics.iter().any(|d| d.is_error()) {
+    if diagnostics.iter().any(|d| d.is_error()) {
         bail!("trust check failed on {}", path.display());
     }
     Ok(())
@@ -364,7 +385,7 @@ pub fn mirror_module_tree_with_extras(
                     crate_is_force_strict(),
                 )
                 .with_context(|| format!("lowering {}", path.display()))?;
-                emit_diagnostics(&out, &path)?;
+                emit_diagnostics(&out, &source, &path)?;
                 // Also lower any doc-test code blocks embedded in `///` /
                 // `//!` comments. rustdoc extracts these snippets verbatim
                 // and submits them to rustc; if they contain named-arg

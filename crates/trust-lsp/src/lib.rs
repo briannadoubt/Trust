@@ -232,7 +232,7 @@ pub fn compute_diagnostics(source: &str) -> Vec<Diagnostic> {
     };
     all.extend(lower_out.diagnostics);
 
-    if let Ok(file) = syn::parse_str::<syn::File>(&lower_out.source) {
+    if let Ok(file) = syn::parse_str::<syn::File>(&lower_out.lint_source) {
         let lint_report = trust_lints::lint_strict(&file, source, lower_out.strict_mode);
         all.extend(lint_report.diagnostics);
     }

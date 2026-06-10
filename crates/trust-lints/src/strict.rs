@@ -389,6 +389,16 @@ impl<'a, 'src> JustifyAllowVisitor<'a, 'src> {
             if !attr.path().is_ident("allow") {
                 continue;
             }
+            // An allow that carries its own `reason = "..."` argument (the
+            // `#[allow(trust::Rxxxx, reason = "…")]` form from RT-46) is
+            // self-justifying — demanding a `// reason:` comment on top of it
+            // would be redundant, and the comment-window check cannot work
+            // through the lowering pipeline anyway (prettyplease strips
+            // comments, so lowered-AST offsets drift against the original
+            // source — RT-91).
+            if attr_has_inline_reason(attr) {
+                continue;
+            }
             let span = attr.span();
             let range = span_range(span);
             let window = leading_window(self.source, range.start);
@@ -469,6 +479,21 @@ fn item_attrs(item: &syn::Item) -> Option<&Vec<syn::Attribute>> {
         syn::Item::Use(i) => Some(&i.attrs),
         _ => None,
     }
+}
+
+/// Does this `#[allow(...)]` attribute carry a `reason = "..."` argument?
+fn attr_has_inline_reason(attr: &syn::Attribute) -> bool {
+    let mut found = false;
+    let _ = attr.parse_nested_meta(|m| {
+        if m.path.is_ident("reason") {
+            let _: syn::LitStr = m.value()?.parse()?;
+            found = true;
+        } else if m.input.peek(syn::Token![=]) {
+            let _: syn::Expr = m.value()?.parse()?;
+        }
+        Ok(())
+    });
+    found
 }
 
 fn run_justify_allow(file: &syn::File, source: &str, diagnostics: &mut Vec<Diagnostic>) {

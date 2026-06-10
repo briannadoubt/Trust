@@ -44,6 +44,24 @@ mod tests {
         diags_for(rule, src).iter().any(|d| d.rule == rule.code())
     }
 
+    // RT-89/RT-91: `#[allow(trust::Rxxxx, reason = "...")]` is
+    // self-justifying — R0006 must not also demand a `// reason:` comment
+    // (which can't survive the lowering pipeline anyway).
+    #[test]
+    fn inline_reason_allow_satisfies_justify_allow() {
+        let src =
+            "#![strict]\n#[allow(trust::R0017, reason = \"fixture\")]\npub fn f(a: u32, b: u32) {}";
+        assert!(
+            !fires(Rule::JustifyAllow, src),
+            "inline reason must satisfy R0006"
+        );
+        let bare = "#![strict]\n#[allow(dead_code)]\nfn g() {}";
+        assert!(
+            fires(Rule::JustifyAllow, bare),
+            "bare allow still needs a comment"
+        );
+    }
+
     #[test]
     fn clean_program_has_no_diagnostics() {
         let src = "#![strict]\nfn main() { let x: u32 = 1; println!(\"{x}\"); }";
