@@ -396,6 +396,149 @@ fn emit_diagnostics(
     Ok(())
 }
 
+/// Files reachable only through a `#[cfg(test)] mod x;` declaration (RT-88).
+///
+/// Project-level force-strict must not apply to these: a stock-buildable
+/// library's tests routinely call its own multi-arg fns positionally, and
+/// the R0042 fix — named-arg syntax — is exactly what stock `cargo test`
+/// cannot parse. Skipping cfg(test)-only files lets such crates opt their
+/// *shipping* code into whole-package strict (trust-diag, trust-std) without
+/// rewriting their test suites in a dialect stock rustc rejects. A file that
+/// carries its own `#![strict]` marker is still lowered — explicit wins.
+///
+/// Detection is token-level (Trust syntax doesn't parse with syn): a file
+/// declares `NAME` test-only via `#[cfg(test)] (pub)? mod NAME ;`, mapping
+/// to `NAME.rs` or `NAME/mod.rs` beside it — and test-only-ness is
+/// transitive through plain `mod` declarations inside test-only files.
+pub fn collect_test_only_files(src_dir: &Path) -> std::collections::HashSet<PathBuf> {
+    use std::collections::HashSet;
+    let mut all_files: Vec<PathBuf> = Vec::new();
+    collect_rs_files(src_dir, &mut all_files);
+
+    // (declaring file, declared name, is_cfg_test)
+    let mut decls: Vec<(PathBuf, String, bool)> = Vec::new();
+    for file in &all_files {
+        let Ok(source) = fs::read_to_string(file) else {
+            continue;
+        };
+        let Ok(tokens) = source.parse::<proc_macro2::TokenStream>() else {
+            continue;
+        };
+        for (name, is_test) in file_mod_declarations(&tokens) {
+            decls.push((file.clone(), name, is_test));
+        }
+    }
+
+    let resolve = |declaring: &Path, name: &str| -> Option<PathBuf> {
+        let dir = declaring.parent()?;
+        let flat = dir.join(format!("{name}.rs"));
+        if flat.is_file() {
+            return flat.canonicalize().ok();
+        }
+        let nested = dir.join(name).join("mod.rs");
+        if nested.is_file() {
+            return nested.canonicalize().ok();
+        }
+        None
+    };
+
+    let mut test_only: HashSet<PathBuf> = HashSet::new();
+    // Seed with direct #[cfg(test)] declarations, then close transitively
+    // over plain mod declarations made from already-test-only files.
+    loop {
+        let mut grew = false;
+        for (declaring, name, is_test) in &decls {
+            let from_test_file = declaring
+                .canonicalize()
+                .map(|c| test_only.contains(&c))
+                .unwrap_or(false);
+            if !is_test && !from_test_file {
+                continue;
+            }
+            if let Some(target) = resolve(declaring, name) {
+                grew |= test_only.insert(target);
+            }
+        }
+        if !grew {
+            break;
+        }
+    }
+    test_only
+}
+
+fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(read) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in read.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_rs_files(&path, out);
+        } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+            out.push(path);
+        }
+    }
+}
+
+/// Top-level `mod NAME ;` declarations in a token stream, with whether the
+/// directly-preceding attribute run contains `#[cfg(test)]`.
+fn file_mod_declarations(tokens: &proc_macro2::TokenStream) -> Vec<(String, bool)> {
+    use proc_macro2::{Delimiter, TokenTree};
+    let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    let mut pending_cfg_test = false;
+    while i < trees.len() {
+        match &trees[i] {
+            // Attribute: `#` `[ ... ]` — note whether it's cfg(test).
+            TokenTree::Punct(p) if p.as_char() == '#' => {
+                if let Some(TokenTree::Group(g)) = trees.get(i + 1) {
+                    if g.delimiter() == Delimiter::Bracket {
+                        let inner: Vec<TokenTree> = g.stream().into_iter().collect();
+                        if let [TokenTree::Ident(name), TokenTree::Group(args)] = inner.as_slice() {
+                            if *name == "cfg" {
+                                let is_test = args
+                                    .stream()
+                                    .into_iter()
+                                    .any(|t| matches!(t, TokenTree::Ident(id) if id == "test"));
+                                pending_cfg_test |= is_test;
+                            }
+                        }
+                        i += 2;
+                        continue;
+                    }
+                }
+                i += 1;
+            }
+            // `pub` (and `pub(...)`) between attrs and `mod` — skip.
+            TokenTree::Ident(id) if *id == "pub" => {
+                i += 1;
+                if let Some(TokenTree::Group(g)) = trees.get(i) {
+                    if g.delimiter() == Delimiter::Parenthesis {
+                        i += 1;
+                    }
+                }
+            }
+            TokenTree::Ident(id) if *id == "mod" => {
+                if let (Some(TokenTree::Ident(name)), Some(TokenTree::Punct(semi))) =
+                    (trees.get(i + 1), trees.get(i + 2))
+                {
+                    if semi.as_char() == ';' {
+                        out.push((name.to_string(), pending_cfg_test));
+                    }
+                }
+                pending_cfg_test = false;
+                i += 1;
+            }
+            _ => {
+                pending_cfg_test = false;
+                i += 1;
+            }
+        }
+    }
+    out
+}
+
 /// Recursively mirror the source tree rooted at `src_dir` into `dest_dir`,
 /// lowering strict-marked `.rs` files and hard-linking/copying others.
 pub fn mirror_module_tree(
@@ -416,6 +559,24 @@ pub fn mirror_module_tree_with_extras(
     already_done: &mut std::collections::HashSet<PathBuf>,
     extras: &[(String, Vec<String>)],
 ) -> Result<()> {
+    // RT-88: under project-level force-strict, cfg(test)-only files keep
+    // their plain-Rust form (see collect_test_only_files). Computed once per
+    // mirror at the root call.
+    let test_only = if crate_is_force_strict() {
+        collect_test_only_files(src_dir)
+    } else {
+        std::collections::HashSet::new()
+    };
+    mirror_inner(src_dir, dest_dir, already_done, extras, &test_only)
+}
+
+fn mirror_inner(
+    src_dir: &Path,
+    dest_dir: &Path,
+    already_done: &mut std::collections::HashSet<PathBuf>,
+    extras: &[(String, Vec<String>)],
+    test_only: &std::collections::HashSet<PathBuf>,
+) -> Result<()> {
     if !src_dir.is_dir() {
         return Ok(());
     }
@@ -429,16 +590,21 @@ pub fn mirror_module_tree_with_extras(
         let dest = dest_dir.join(entry.file_name());
 
         let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+        let is_test_only = test_only.contains(&canonical);
         if !already_done.insert(canonical) {
             continue;
         }
 
         if path.is_dir() {
-            mirror_module_tree_with_extras(&path, &dest, already_done, extras)?;
+            mirror_inner(&path, &dest, already_done, extras, test_only)?;
         } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
             let source =
                 fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
-            if should_lower(&source) {
+            // Explicit #![strict] always lowers; force-strict lowers
+            // everything except cfg(test)-only files (RT-88).
+            let lower_this = trust_lower::is_strict_source(&source)
+                || (crate_is_force_strict() && !is_test_only);
+            if lower_this {
                 let out = trust_lower::lower_with_extra_callees_forced(
                     &source,
                     extras,
@@ -718,6 +884,38 @@ fn strip_hidden_doctest_prefix(s: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// RT-88: files reachable only via `#[cfg(test)] mod x;` are exempt from
+    /// force-strict — including transitively through plain `mod` decls in
+    /// test-only files. Explicitly-marked or normally-declared files are not.
+    #[test]
+    fn cfg_test_mod_files_are_detected_transitively() {
+        let base = std::env::temp_dir().join(format!("trust-rt88-{}", std::process::id()));
+        let src = base.join("src");
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("main.rs"),
+            "mod shipping;\n#[cfg(test)]\nmod tests;\nfn main() {}\n",
+        )
+        .unwrap();
+        fs::write(src.join("shipping.rs"), "pub fn ship() {}\n").unwrap();
+        fs::write(src.join("tests.rs"), "mod helpers;\nfn t() {}\n").unwrap();
+        fs::write(src.join("helpers.rs"), "pub fn helper() {}\n").unwrap();
+
+        let test_only = collect_test_only_files(&src);
+        let has = |name: &str| {
+            test_only
+                .iter()
+                .any(|p| p.file_name().and_then(|f| f.to_str()) == Some(name))
+        };
+        assert!(has("tests.rs"), "directly cfg(test)-declared file");
+        assert!(has("helpers.rs"), "transitively reached through tests.rs");
+        assert!(!has("shipping.rs"), "normal mod stays enforced");
+        assert!(!has("main.rs"), "the crate root is never test-only");
+
+        let _ = fs::remove_dir_all(&base);
+    }
 
     /// RT-81: project-level strict applies only to packages the user opted in,
     /// never to dependencies compiled by the same wrapper.

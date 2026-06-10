@@ -284,19 +284,20 @@ jobs:
         run: |
           # Crates with `[package.metadata.trust] strict = true` build
           # whole-package strict through `cargo trust`, which discovers the
-          # opt-in by scanning workspace members. Only trust-syntax qualifies:
+          # opt-in by scanning workspace members. trust-syntax and trust-diag
+          # qualify (RT-88's cfg(test) exemption keeps their test files plain);
           # the binary crates trust / trust-rustc / xtask are stage-0 plain
-          # Rust (RT-76), and trust-diag / trust-std / trust-lsp / trust-lints
-          # can't be whole-package strict while their tests call own fns
-          # positionally yet must stay stock-compilable (RT-88 tracks
-          # restoring that coverage). See case-studies/dogfooding.md.
+          # Rust (RT-76), and trust-std / trust-lsp / trust-lints stay out —
+          # R0008/R0017 fire on code that is those crates' actual design
+          # (macro-exporting, std-mirroring shims, visitor internals). See
+          # case-studies/dogfooding.md.
           cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
           export PATH="$(realpath target/debug):$PATH"
           # Force a real recompile: cargo fingerprints the rustc *version
           # string*, which the wrapper passes through unchanged — a cached
           # crate would otherwise skip the wrapper and make this step hollow.
-          cargo clean -p trust-syntax
-          cargo-trust trust build -p trust-syntax
+          cargo clean -p trust-syntax -p trust-diag
+          cargo-trust trust build -p trust-syntax -p trust-diag
 
       - name: std-signatures manifest up-to-date (RT-44)
         run: |

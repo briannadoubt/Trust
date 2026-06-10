@@ -221,13 +221,17 @@ Post-RT-82 status:
 | Crate | Whole-package strict? | Blocker |
 | ----- | --------------------- | ------- |
 | `trust-syntax` | **YES** — `[package.metadata.trust]`, enforced in CI | — |
-| `trust-diag`   | no | `tests.rs` calls `line_col(src, 0)` positionally |
-| `trust-std`    | no | `tests.rs` calls `duration`/`hashmap_insert` positionally |
+| `trust-diag`   | **YES** (RT-88) — cfg(test) files exempt; shipping-code R0003/R0017 fixed for real | — |
+| `trust-std`    | no | R0008 fires on the `macro_rules!` it exists to export; R0017 on the std-mirroring `copy`/`rename` shims. The escape hatches (`#[allow(trust::…)]`, `#[strict::macros_ok]`) are rejected by stock rustc, which a published crate must support. |
 | `trust-lsp`    | no | lib internals: positional calls to `compute_hover` etc. |
 | `trust-lints`  | no | lib internals + test helpers |
 | `trust`, `trust-rustc`, `xtask` | no (by design) | stage-0 bootstrap (RT-76) |
 
-RT-88 tracks restoring the lost coverage (cfg(test)-aware force-strict, a
-publish-lowered pipeline, or R0042-clean refactors). RT-87 (closure args
-break named-arg call parsing) currently blocks `heck-strict` regardless of
-activation mechanism.
+**Update (RT-88):** project-level force-strict now skips files reachable only
+through `#[cfg(test)] mod x;` (transitively), so a stock-buildable library's
+plain-Rust tests no longer block whole-package strict for its shipping code.
+That promoted `trust-diag` — and turned up two real `as`-casts and two R0017
+signatures (`render`/`to_json` took adjacent `filename: &str, source: &str`),
+all fixed via `u32::from` and a `NamedSource` struct. The remaining blockers
+are rule-design tensions, not test-file mechanics. RT-87 was resolved invalid;
+`heck-strict` and `tre-strict` both build and test green after RT-90/RT-91.

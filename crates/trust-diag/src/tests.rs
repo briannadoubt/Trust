@@ -33,7 +33,13 @@ fn json_escapes_strings() {
 
 #[test]
 fn json_empty_diagnostics() {
-    let json = to_json(&[], "f.rs", "");
+    let json = to_json(
+        &[],
+        NamedSource {
+            name: "f.rs",
+            text: "",
+        },
+    );
     assert!(json.contains("\"diagnostics\": []"));
     assert!(json.contains("\"file\": \"f.rs\""));
 }
@@ -54,7 +60,13 @@ fn json_full_diagnostic_with_fix() {
         "area(width: ..., height: ...)",
         Applicability::HasPlaceholders,
     ));
-    let json = to_json(std::slice::from_ref(&diag), "src/main.rs", src);
+    let json = to_json(
+        std::slice::from_ref(&diag),
+        NamedSource {
+            name: "src/main.rs",
+            text: src,
+        },
+    );
 
     // Spot-check the structured fields an agent would key on.
     assert!(json.contains("\"rule\": \"R0042\""));
@@ -69,7 +81,13 @@ fn json_full_diagnostic_with_fix() {
 #[test]
 fn json_null_fields_when_absent() {
     let diag = Diagnostic::warning("R0000", "x", 0..1);
-    let json = to_json(std::slice::from_ref(&diag), "f.rs", "xy");
+    let json = to_json(
+        std::slice::from_ref(&diag),
+        NamedSource {
+            name: "f.rs",
+            text: "xy",
+        },
+    );
     assert!(json.contains("\"why\": null"));
     assert!(json.contains("\"help\": null"));
     assert!(json.contains("\"fix\": null"));

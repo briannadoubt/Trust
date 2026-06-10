@@ -53,11 +53,11 @@ and passes the opted-in package names to the lowering shims in
 as strict, while leaving dependencies (compiled by the same wrapper, but
 with their own `CARGO_PKG_NAME`) untouched.
 
-One structural caveat: whole-package strict applies to `#[cfg(test)]`
-sources too. A library that must also stay buildable by *stock* cargo
-(stage-0 toolchains, published crates) cannot satisfy R0042 with named-arg
-syntax, so its tests must already be R0042-clean — see
-`case-studies/dogfooding.md` and RT-88.
+Files reachable only through a `#[cfg(test)] mod x;` declaration are exempt
+from the project-level opt-in (RT-88): a stock-buildable library's tests
+routinely call its own fns positionally, and the R0042 fix — named-arg
+syntax — is exactly what stock `cargo test` cannot parse. A `#![strict]`
+marker on such a file still wins. See `case-studies/dogfooding.md`.
 
 ### Per-file mode: `#![strict]`
 

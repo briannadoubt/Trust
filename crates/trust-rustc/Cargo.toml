@@ -19,6 +19,7 @@ name = "trust-rustc"
 path = "src/main.rs"
 
 [dependencies]
+proc-macro2.workspace = true
 anyhow.workspace = true
 syn.workspace = true
 trust-lints.workspace = true

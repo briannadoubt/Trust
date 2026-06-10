@@ -377,11 +377,27 @@ fn run_pipeline(
         OutputFormat::Human => {
             if !all_diagnostics.is_empty() {
                 let mut stderr = std::io::stderr();
-                let _ = trust_diag::render(&all_diagnostics, label, source, &mut stderr);
+                let _ = trust_diag::render(
+                    &all_diagnostics,
+                    trust_diag::NamedSource {
+                        name: label,
+                        text: source,
+                    },
+                    &mut stderr,
+                );
             }
         }
         OutputFormat::Json => {
-            print!("{}", trust_diag::to_json(&all_diagnostics, label, source));
+            print!(
+                "{}",
+                trust_diag::to_json(
+                    &all_diagnostics,
+                    trust_diag::NamedSource {
+                        name: label,
+                        text: source
+                    },
+                )
+            );
         }
     }
 
