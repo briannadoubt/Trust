@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KTRA6N4G5RG29RS7A2CNPEZ0",
+  "ts": "2026-06-10T08:25:54.576Z",
+  "actor": "ui",
+  "kind": "ticket.set_field",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DGT",
+    "field": "status",
+    "value": "cancelled"
+  }
+}
