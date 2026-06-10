@@ -107,6 +107,16 @@ enum Cmd {
         #[arg(short, long)]
         write: bool,
     },
+    /// Scaffold a new strict Trust project (RT-94).
+    ///
+    /// Creates `<name>/` with a `Cargo.toml` that opts into strict mode via
+    /// `[package.metadata.trust] strict = true`, a hello `src/main.rs` that
+    /// exercises named-argument syntax, a `.gitignore`, and a `README.md`.
+    /// Build it with `cargo trust build` (not plain cargo).
+    New {
+        /// Name of the project (and the directory to create)
+        name: String,
+    },
     /// Explain Trust's rules — the proactive agent contract (RT-78).
     ///
     /// With a rule code, explains that rule; with no code, lists the whole
@@ -157,6 +167,7 @@ fn main() -> Result<()> {
         Cmd::Lower { input } => lower_to_stdout(&input),
         Cmd::Index { input, out } => index(&input, out.as_deref()),
         Cmd::Fix { input, write } => fix(&input, write),
+        Cmd::New { name } => scaffold_new(&name),
         Cmd::Explain { code, format } => explain(code.as_deref(), format),
     }
 }
@@ -269,6 +280,96 @@ fn fix(input: &Path, write: bool) -> Result<()> {
         eprintln!("rewrote {}", input.display());
     } else {
         print!("{promoted}");
+    }
+    Ok(())
+}
+
+/// Scaffold a new strict Trust project (RT-94): a standalone cargo package
+/// with `[package.metadata.trust] strict = true` and a hello `main.rs` that
+/// uses named-argument syntax, proving the toolchain works on first run.
+fn scaffold_new(name: &str) -> Result<()> {
+    validate_project_name(name)?;
+
+    let root = Path::new(name);
+    if root.exists() {
+        bail!(
+            "destination `{}` already exists — pick another name or remove it first",
+            root.display()
+        );
+    }
+
+    let cargo_toml = format!(
+        "[package]\n\
+         name = \"{name}\"\n\
+         version = \"0.1.0\"\n\
+         edition = \"2021\"\n\
+         \n\
+         # Strict mode is enforced by `cargo trust` (build/run/test); stock cargo\n\
+         # ignores this metadata table entirely.\n\
+         [package.metadata.trust]\n\
+         strict = true\n"
+    );
+
+    let main_rs = "\
+// Named-argument call syntax below only compiles via `cargo trust build` —
+// plain `cargo build` will reject it.
+
+fn make_point(x: i32, y: i32) -> (i32, i32) {
+    (x, y)
+}
+
+fn main() {
+    let point = make_point(x: 1, y: 2);
+    println!(\"point = {point:?}\");
+}
+";
+
+    let readme = format!(
+        "# {name}\n\
+         \n\
+         A [Trust](https://github.com/briannadoubt/Trust) project — a strict Rust\n\
+         dialect that lowers to plain Rust at build time.\n\
+         \n\
+         Build and run with `cargo trust` (NOT plain cargo):\n\
+         \n\
+         ```sh\n\
+         cargo trust build\n\
+         cargo trust run\n\
+         ```\n"
+    );
+
+    let src = root.join("src");
+    std::fs::create_dir_all(&src)
+        .with_context(|| format!("creating directory {}", src.display()))?;
+
+    let write = |path: PathBuf, contents: &str| -> Result<()> {
+        std::fs::write(&path, contents).with_context(|| format!("writing {}", path.display()))
+    };
+    write(root.join("Cargo.toml"), &cargo_toml)?;
+    write(src.join("main.rs"), main_rs)?;
+    write(root.join(".gitignore"), "/target\n")?;
+    write(root.join("README.md"), &readme)?;
+
+    eprintln!("created strict project `{name}` — try `cd {name} && cargo trust run`");
+    Ok(())
+}
+
+/// A plausible crate name: non-empty, only `[a-zA-Z0-9_-]`, and not starting
+/// with a digit.
+fn validate_project_name(name: &str) -> Result<()> {
+    let valid_char = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '-';
+    match name.chars().next() {
+        None => bail!("project name must not be empty"),
+        Some(c) if c.is_ascii_digit() => {
+            bail!("invalid project name `{name}`: must not start with a digit")
+        }
+        _ => {}
+    }
+    if let Some(bad) = name.chars().find(|&c| !valid_char(c)) {
+        bail!(
+            "invalid project name `{name}`: character `{bad}` is not allowed \
+             (use letters, digits, `_`, or `-`)"
+        );
     }
     Ok(())
 }

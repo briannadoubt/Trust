@@ -127,6 +127,9 @@ cargo run -p trust -- check examples/01-lints/positional-fail.rs   # fails with 
 # the two-step cargo flow, against this checkout:
 export PATH="$PWD/target/debug:$PATH"     # cargo-trust + shims
 (cd examples/cargo-strict-config && cargo trust run)   # zero markers, zero env vars
+
+# or scaffold a fresh strict project in one command:
+cargo trust new demo && (cd demo && cargo trust run)
 ```
 
 The `check`, `build`, and `lower` subcommands accept `-` in place of a path to

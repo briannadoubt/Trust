@@ -892,6 +892,7 @@ exits non-zero when any diagnostic is an error.
 ### `trust` CLI
 
 ```
+trust new <name>
 trust build <input.rs> [--out <path>] [--edition <2021|2024>] [--no-lint]
 trust check <input.rs> [--format <human|json>]
 trust lower <input.rs>
@@ -900,6 +901,11 @@ trust fix <input.rs> [--write]
 trust explain [<code>] [--format <human|json>]
 ```
 
+- `new`: scaffold a standalone strict project (RT-94) — a `Cargo.toml` with
+  `[package.metadata.trust] strict = true`, a hello `src/main.rs` that uses
+  named-argument syntax, a `.gitignore`, and a `README.md`. Refuses to
+  overwrite an existing directory. Build the result with `cargo trust build`
+  (the named-arg call won't compile under stock cargo).
 - `build`: lower, lint, write the lowered source to a tempfile, shell out to
   `rustc` to produce a binary at `--out` (default: input with extension
   stripped).
