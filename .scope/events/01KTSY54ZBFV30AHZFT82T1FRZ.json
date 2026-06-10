@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTSY54ZBFV30AHZFT82T1FRZ",
+  "ts": "2026-06-10T23:33:51.211Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DGY",
+    "commentId": "01KTSY54ZBFV30AHZFT82T1FRY",
+    "author": "claude",
+    "body": "Suite shipped + locally validated (subagent built it; orchestrator re-verified every fixture from cold caches after the agent was stopped mid-report: 4/4 remediation fixtures fail with exactly their target rule, all references green, setup fixture correct both sides, runner/scorer compile). THE RUN ITSELF remains owner-gated per this ticket: commands + cost ballpark in eval/agent-workflow/README.md (~$1-2.50 per model both arms). Running it also closes the eval debt recorded on RT-68/72/73/74. Commit d278534."
+  }
+}

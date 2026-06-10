@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTSY558M9PXTFTRT6YQTYYBV",
+  "ts": "2026-06-10T23:33:51.508Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTRA4TA7EF6F4VHFW4YY2687",
+    "commentId": "01KTSY5589K6JZNNZY2WD3T1GJ",
+    "author": "claude",
+    "body": "Epic complete — all six stories shipped and verified: RT-94 trust new, RT-96 --message-format json, RT-93 writing-trust skill (156 lines, table generated from the live binary), RT-95 CLAUDE.md template (drift-tested, scaffolded by trust new), RT-98 plugin+marketplace (claude plugin validate green; install = 2 slash commands), RT-97 eval suite (built+validated; API run owner-gated). Cross-agent verification caught one real bug (RT-93's unquoted YAML frontmatter, found by RT-98's validator). Remaining human action in this epic: none — the RT-97 run is optional timing, tracked on its ticket."
+  }
+}

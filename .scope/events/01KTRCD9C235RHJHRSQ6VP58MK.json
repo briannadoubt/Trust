@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTRCD9C235RHJHRSQ6VP58MK",
+  "ts": "2026-06-10T09:04:29.058Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DGW",
+    "commentId": "01KTRCD9C235RHJHRSQ6VP58MJ",
+    "author": "claude",
+    "body": "Shipped (subagent + orchestrator verification): cargo trust build --message-format json (or TRUST_MESSAGE_FORMAT=json) emits one RT-70-shaped JSON document per failing file on stderr — rule/span/why/help/fix — same shape as trust check --format json. Flag is stripped before cargo sees it. e2e: R0001 crate exits nonzero with parseable JSON. Commit 5d82734."
+  }
+}
