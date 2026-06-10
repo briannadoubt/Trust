@@ -167,9 +167,36 @@ fn strict_packages(args: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     out.extend(parse_strict_package(&value));
 
+    // PR #1 review: when invoked from inside a workspace MEMBER, the nearest
+    // manifest has no [workspace] table, so a root-level
+    // [workspace.metadata.trust] opt-in was silently ignored unless the
+    // command ran from the root. Mirror cargo's root discovery: a manifest
+    // with a [workspace] table is its own root (including the empty
+    // `[workspace]` opt-out our fixtures use); otherwise walk ancestors for
+    // the nearest manifest that has one and process that root too.
+    let value = if value.get("workspace").is_some() {
+        value
+    } else if let Some((_root_path, root_value)) = find_workspace_root(&manifest) {
+        out.extend(parse_strict_package(&root_value));
+        // Re-anchor member resolution at the discovered root below.
+        return collect_workspace_strict(out, &root_value, _root_path.parent());
+    } else {
+        value
+    };
+
+    collect_workspace_strict(out, &value, manifest.parent())
+}
+
+/// Fold the workspace-level opt-ins of `value` (a manifest that may carry a
+/// `[workspace]` table rooted at `root_dir`) into `out`, then sort/dedup.
+fn collect_workspace_strict(
+    mut out: Vec<String>,
+    value: &toml::Value,
+    root_dir: Option<&Path>,
+) -> Vec<String> {
     if let Some(workspace) = value.get("workspace") {
         let all_members_strict = metadata_trust_strict(workspace);
-        let root = manifest.parent().unwrap_or(Path::new("."));
+        let root = root_dir.unwrap_or(Path::new("."));
         for member_dir in workspace_member_dirs(workspace, root) {
             let Some(member) = read_manifest(&member_dir.join("Cargo.toml")) else {
                 continue;
@@ -192,6 +219,23 @@ fn strict_packages(args: &[String]) -> Vec<String> {
     out.sort();
     out.dedup();
     out
+}
+
+/// Walk ancestor directories of `member_manifest` for the nearest
+/// `Cargo.toml` that carries a `[workspace]` table — cargo's workspace-root
+/// rule, minus the rare `package.workspace = "…"` explicit override.
+fn find_workspace_root(member_manifest: &Path) -> Option<(PathBuf, toml::Value)> {
+    let mut dir = member_manifest.parent()?.parent();
+    while let Some(d) = dir {
+        let candidate = d.join("Cargo.toml");
+        if let Some(value) = read_manifest(&candidate) {
+            if value.get("workspace").is_some() {
+                return Some((candidate, value));
+            }
+        }
+        dir = d.parent();
+    }
+    None
 }
 
 fn read_manifest(path: &Path) -> Option<toml::Value> {
@@ -529,6 +573,50 @@ mod tests {
             .to_string();
         assert!(err.contains("supported values: json"), "{err}");
         assert!(extract_message_format(&v(&["build", "--message-format"])).is_err());
+    }
+
+    /// PR #1 review regression: a root-level [workspace.metadata.trust]
+    /// opt-in must apply when cargo trust is invoked from a MEMBER directory
+    /// (whose manifest has no [workspace] table).
+    #[test]
+    fn workspace_opt_in_found_from_member_manifest() {
+        let base = std::env::temp_dir().join(format!("cargo-trust-pr1-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        std::fs::create_dir_all(base.join("m/src")).unwrap();
+        std::fs::write(
+            base.join("Cargo.toml"),
+            "[workspace]\nmembers = [\"m\"]\n[workspace.metadata.trust]\nstrict = true\n",
+        )
+        .unwrap();
+        std::fs::write(
+            base.join("m/Cargo.toml"),
+            "[package]\nname = \"member-crate\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+
+        let args = v(&[
+            "build",
+            "--manifest-path",
+            base.join("m/Cargo.toml").to_str().unwrap(),
+        ]);
+        assert_eq!(strict_packages(&args), vec!["member-crate".to_string()]);
+
+        // A member that IS its own root (empty [workspace] opt-out) must not
+        // inherit the ancestor's opt-in.
+        std::fs::create_dir_all(base.join("standalone/src")).unwrap();
+        std::fs::write(
+            base.join("standalone/Cargo.toml"),
+            "[workspace]\n[package]\nname = \"standalone\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+        let args = v(&[
+            "build",
+            "--manifest-path",
+            base.join("standalone/Cargo.toml").to_str().unwrap(),
+        ]);
+        assert!(strict_packages(&args).is_empty());
+
+        let _ = std::fs::remove_dir_all(&base);
     }
 
     #[test]
