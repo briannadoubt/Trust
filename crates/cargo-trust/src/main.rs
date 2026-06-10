@@ -112,18 +112,31 @@ fn run_cargo(args: &[String]) -> Result<i32> {
     let rustdoc = locate_shim("trust-rustdoc", "TRUST_RUSTDOC")?;
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
 
+    // RT-96: `--message-format <fmt>` is OURS, not cargo's — cargo's own
+    // flag takes different values (human, json-render-diagnostics, …), so
+    // it must never see ours. Strip it from the forwarded args and turn it
+    // into the TRUST_MESSAGE_FORMAT env var the shims read.
+    let (args, message_format) = extract_message_format(args)?;
+
     let mut cmd = Command::new(&cargo);
-    cmd.args(args)
+    cmd.args(&args)
         // Respect a wrapper the user already set, but default to ours.
         .env("RUSTC_WRAPPER", &rustc)
         .env("RUSTDOC", &rustdoc);
+
+    // The spawned cargo inherits our environment, so a user-set
+    // `TRUST_MESSAGE_FORMAT=json` (no flag) keeps working with no extra code
+    // here — the flag form below just sets the same var explicitly.
+    if message_format.is_some() {
+        cmd.env("TRUST_MESSAGE_FORMAT", "json");
+    }
 
     // Project-level strict opt-in: if the manifest declares
     // `[package.metadata.trust] strict = true`, tell the shims to lower the
     // whole crate even when individual files carry no `#![strict]` marker.
     // Scoped by package name so dependencies (compiled by the same wrapper)
     // are never force-lowered — see `crate_is_force_strict` in trust-rustc.
-    let strict = strict_packages(args);
+    let strict = strict_packages(&args);
     if !strict.is_empty() {
         cmd.env("TRUST_STRICT_PACKAGES", strict.join(","));
     }
@@ -244,6 +257,36 @@ fn workspace_member_dirs(workspace: &toml::Value, root: &Path) -> Vec<PathBuf> {
     }
     dirs.retain(|d| !excluded.contains(d));
     dirs
+}
+
+/// Pull our `--message-format <fmt>` / `--message-format=<fmt>` option out of
+/// a cargo-lifecycle arg list (RT-96). Returns the args with the flag (and its
+/// value) removed, plus the requested format if present. The flag may appear
+/// anywhere in the invocation. `json` is the only supported value; anything
+/// else (or a trailing flag with no value) is an error naming the supported
+/// set, so a typo never silently reaches cargo's same-named flag.
+fn extract_message_format(args: &[String]) -> Result<(Vec<String>, Option<String>)> {
+    let mut out = Vec::with_capacity(args.len());
+    let mut format = None;
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        let value = if a == "--message-format" {
+            let Some(value) = it.next() else {
+                bail!("--message-format requires a value; supported values: json");
+            };
+            value.as_str()
+        } else if let Some(value) = a.strip_prefix("--message-format=") {
+            value
+        } else {
+            out.push(a.clone());
+            continue;
+        };
+        if value != "json" {
+            bail!("unsupported --message-format `{value}`; supported values: json");
+        }
+        format = Some(value.to_string());
+    }
+    Ok((out, format))
 }
 
 /// Resolve the manifest path: `--manifest-path <p>` / `--manifest-path=<p>` if
@@ -446,6 +489,46 @@ mod tests {
             members = ["a", "b"]
         "#;
         assert_eq!(parse(virtual_ws), None);
+    }
+
+    /// RT-96: both flag forms are stripped from the args cargo sees and the
+    /// value is surfaced for the env-var translation.
+    #[test]
+    fn message_format_space_form_is_extracted_and_stripped() {
+        let (rest, fmt) =
+            extract_message_format(&v(&["build", "--message-format", "json", "--release"]))
+                .unwrap();
+        assert_eq!(rest, v(&["build", "--release"]));
+        assert_eq!(fmt, Some("json".to_string()));
+    }
+
+    #[test]
+    fn message_format_equals_form_is_extracted_and_stripped() {
+        let (rest, fmt) = extract_message_format(&v(&["build", "--message-format=json"])).unwrap();
+        assert_eq!(rest, v(&["build"]));
+        assert_eq!(fmt, Some("json".to_string()));
+    }
+
+    #[test]
+    fn message_format_absent_passes_args_through() {
+        let (rest, fmt) = extract_message_format(&v(&["build", "--release"])).unwrap();
+        assert_eq!(rest, v(&["build", "--release"]));
+        assert_eq!(fmt, None);
+    }
+
+    /// An unsupported value or a dangling flag with no value is a clear error
+    /// naming the supported set — never silently forwarded to cargo.
+    #[test]
+    fn message_format_unsupported_value_and_missing_value_are_errors() {
+        let err = extract_message_format(&v(&["build", "--message-format", "short"]))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("supported values: json"), "{err}");
+        let err = extract_message_format(&v(&["build", "--message-format=human"]))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("supported values: json"), "{err}");
+        assert!(extract_message_format(&v(&["build", "--message-format"])).is_err());
     }
 
     #[test]

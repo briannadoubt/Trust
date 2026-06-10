@@ -956,6 +956,15 @@ the first argument:
 `check` resolves to **`cargo check`** under `cargo trust` (whole-crate). For a
 single-file lint, call `trust check foo.rs` directly.
 
+For agent consumers, `--message-format json` (e.g. `cargo trust build
+--message-format json`) switches the shims' Trust diagnostics from human
+`[R0001]`-style lines to machine-readable output: one JSON document per file,
+written to stderr, with the same shape as `trust check --format json`.
+`cargo-trust` strips the flag before invoking cargo (cargo's own
+`--message-format` takes different values) and sets `TRUST_MESSAGE_FORMAT=json`
+on the spawned process; setting that env var directly is equivalent. `json` is
+the only supported value.
+
 The shims are located, in order: the `TRUST_RUSTC` / `TRUST_RUSTDOC` env
 overrides; a sibling of the `cargo-trust` binary (covers a `cargo install`ed
 `~/.cargo/bin` layout and a dev `target/debug/` checkout); then `PATH`. A

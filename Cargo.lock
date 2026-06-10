@@ -1096,7 +1096,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "proc-macro2",
+ "serde_json",
  "syn",
+ "trust-diag",
  "trust-lints",
  "trust-lower",
 ]

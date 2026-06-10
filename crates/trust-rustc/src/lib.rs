@@ -365,6 +365,30 @@ fn emit_diagnostics(
     original_source: &str,
     path: &Path,
 ) -> Result<()> {
+    emit_diagnostics_to(out, original_source, path, &mut std::io::stderr())
+}
+
+/// True when the caller asked for machine-readable diagnostics (RT-96).
+///
+/// `cargo trust build --message-format json` sets this env var on the spawned
+/// cargo process; cargo passes its environment through to every rustc/rustdoc
+/// (and therefore wrapper) invocation. Users may also set
+/// `TRUST_MESSAGE_FORMAT=json` directly — same effect, no flag needed.
+fn message_format_is_json() -> bool {
+    env::var("TRUST_MESSAGE_FORMAT").is_ok_and(|v| v == "json")
+}
+
+/// Testable core of [`emit_diagnostics`]: collects the full `trust check`
+/// rule set for one file and writes it to `writer` — as human `[R0001]`
+/// lines by default, or as one `trust_diag::to_json` document (newline
+/// terminated) when `TRUST_MESSAGE_FORMAT=json` (RT-96). Either way, bails
+/// when any diagnostic is an error.
+fn emit_diagnostics_to(
+    out: &trust_lower::LowerOutput,
+    original_source: &str,
+    path: &Path,
+    writer: &mut impl std::io::Write,
+) -> Result<()> {
     // RT-89: the wrapper enforces the same rule set as `trust check` — the
     // lowering diagnostics (R0042 et al) collected in `out`, plus the
     // AST-level strict lints (R0001 unwrap, R0003 as-cast, ...). The AST
@@ -382,13 +406,31 @@ fn emit_diagnostics(
         diagnostics.extend(trust_lints::lint_strict(&file, original_source, true).diagnostics);
     }
 
-    for diag in &diagnostics {
-        eprintln!(
-            "[{}] {}: {}",
-            diag.rule,
-            if diag.is_error() { "error" } else { "warning" },
-            diag.message
+    if message_format_is_json() {
+        // RT-96: one JSON document per file, same shape as
+        // `trust check --format json` (spans index the ORIGINAL source).
+        let name = path.display().to_string();
+        let doc = trust_diag::to_json(
+            &diagnostics,
+            trust_diag::NamedSource {
+                name: &name,
+                text: original_source,
+            },
         );
+        write!(writer, "{doc}")?;
+        if !doc.ends_with('\n') {
+            writeln!(writer)?;
+        }
+    } else {
+        for diag in &diagnostics {
+            writeln!(
+                writer,
+                "[{}] {}: {}",
+                diag.rule,
+                if diag.is_error() { "error" } else { "warning" },
+                diag.message
+            )?;
+        }
     }
     if diagnostics.iter().any(|d| d.is_error()) {
         bail!("trust check failed on {}", path.display());
@@ -884,6 +926,86 @@ fn strip_hidden_doctest_prefix(s: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Serialises tests that read or write `TRUST_MESSAGE_FORMAT` — the
+    /// process env is shared across parallel test threads.
+    static MESSAGE_FORMAT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Scoped env guard: sets (or clears) `TRUST_MESSAGE_FORMAT` and restores
+    /// the previous value on drop, holding [`MESSAGE_FORMAT_LOCK`] throughout
+    /// so the env mutation can't leak into a concurrently-running test.
+    struct MessageFormatGuard<'a> {
+        prev: Option<String>,
+        _lock: std::sync::MutexGuard<'a, ()>,
+    }
+
+    impl MessageFormatGuard<'_> {
+        fn set(value: Option<&str>) -> Self {
+            let lock = MESSAGE_FORMAT_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let prev = env::var("TRUST_MESSAGE_FORMAT").ok();
+            match value {
+                Some(v) => env::set_var("TRUST_MESSAGE_FORMAT", v),
+                None => env::remove_var("TRUST_MESSAGE_FORMAT"),
+            }
+            MessageFormatGuard { prev, _lock: lock }
+        }
+    }
+
+    impl Drop for MessageFormatGuard<'_> {
+        fn drop(&mut self) {
+            match &self.prev {
+                Some(prev) => env::set_var("TRUST_MESSAGE_FORMAT", prev),
+                None => env::remove_var("TRUST_MESSAGE_FORMAT"),
+            }
+        }
+    }
+
+    /// RT-96: with `TRUST_MESSAGE_FORMAT=json`, the wrapper emits one
+    /// machine-parseable JSON document per file (same shape as
+    /// `trust check --format json`) instead of human `[R0001]` lines — and
+    /// still bails because the diagnostic is an error.
+    #[test]
+    fn json_message_format_emits_parseable_document() {
+        let _guard = MessageFormatGuard::set(Some("json"));
+
+        let source =
+            "#![strict]\nfn main() { let v: Option<i32> = Some(1); let _ = v.unwrap(); }\n";
+        let out = trust_lower::lower(source).expect("lowering strict source");
+        let mut buf: Vec<u8> = Vec::new();
+        let result = emit_diagnostics_to(&out, source, Path::new("src/main.rs"), &mut buf);
+        assert!(result.is_err(), "R0001 is an error — must still bail");
+
+        let text = String::from_utf8(buf).expect("utf8 output");
+        let doc: serde_json::Value =
+            serde_json::from_str(text.trim()).expect("output must be valid JSON");
+        assert_eq!(doc["file"], "src/main.rs");
+        let rules: Vec<&str> = doc["diagnostics"]
+            .as_array()
+            .expect("diagnostics array")
+            .iter()
+            .filter_map(|d| d["rule"].as_str())
+            .collect();
+        assert!(rules.contains(&"R0001"), "expected R0001 in {rules:?}");
+    }
+
+    /// Without the env var, output stays in today's human form.
+    #[test]
+    fn default_message_format_is_human_lines() {
+        let _guard = MessageFormatGuard::set(None);
+        let source =
+            "#![strict]\nfn main() { let v: Option<i32> = Some(1); let _ = v.unwrap(); }\n";
+        let out = trust_lower::lower(source).expect("lowering strict source");
+        let mut buf: Vec<u8> = Vec::new();
+        let result = emit_diagnostics_to(&out, source, Path::new("src/main.rs"), &mut buf);
+        assert!(result.is_err());
+        let text = String::from_utf8(buf).expect("utf8 output");
+        assert!(
+            text.contains("[R0001] error:"),
+            "expected human line, got: {text}"
+        );
+    }
 
     /// RT-88: files reachable only via `#[cfg(test)] mod x;` are exempt from
     /// force-strict — including transitively through plain `mod` decls in
