@@ -273,6 +273,52 @@ fn clamp_to_char_boundary(s: &str, mut idx: usize) -> usize {
     idx
 }
 
+/// Is `marker` present in the comment lines justifying the site at byte
+/// `start`? Two accept paths (RT-91):
+///
+/// 1. The **contiguous comment block** directly above the site's line — every
+///    line walking upward whose trimmed form starts with `//`. This is the
+///    natural place for a justification, and unlike the byte window it can't
+///    be defeated by writing a *thorough* multi-line comment whose marker
+///    line scrolls past the window edge (how heck-strict's three-line
+///    `// reason:` block managed to fail R0006).
+/// 2. The legacy 200-byte window, for layouts the block walk misses.
+fn justified_by_preceding_comments(source: &str, start: usize, marker: &str) -> bool {
+    if window_contains_marker(leading_window(source, start), marker) {
+        return true;
+    }
+    // Walk whole lines upward from the site's line.
+    let start = clamp_to_char_boundary(source, start.min(source.len()));
+    let site_line_start = source[..start].rfind('\n').map(|i| i + 1).unwrap_or(0);
+    let mut rest = &source[..site_line_start];
+    for _ in 0..64 {
+        // `rest` ends with the newline that terminated the previous line —
+        // drop it so rfind locates the line's actual start.
+        rest = rest.strip_suffix('\n').unwrap_or(rest);
+        rest = rest.strip_suffix('\r').unwrap_or(rest);
+        if rest.is_empty() {
+            break;
+        }
+        let line_start = rest.rfind('\n').map(|i| i + 1).unwrap_or(0);
+        let line = rest[line_start..].trim_start();
+        let body = if let Some(b) = line.strip_prefix("//") {
+            b
+        } else if let Some(b) = line.strip_prefix("/*") {
+            b.trim_end_matches("*/")
+        } else {
+            break; // non-comment line ends the block
+        };
+        if body.to_ascii_lowercase().contains(marker) {
+            return true;
+        }
+        if line_start == 0 {
+            break;
+        }
+        rest = &rest[..line_start];
+    }
+    false
+}
+
 fn window_contains_marker(window: &str, marker: &str) -> bool {
     // We restrict the search to comment lines so a `safety:` appearing in
     // a string literal in nearby code doesn't satisfy the requirement.
@@ -370,7 +416,216 @@ impl<'ast, 'a, 'src> Visit<'ast> for JustifyUnsafeVisitor<'a, 'src> {
     }
 }
 
+/// RT-91: token-level site discovery for the comment-window rules.
+///
+/// R0005/R0006 check the 200 bytes of *original* source preceding a site for
+/// a justification comment. The AST visitors below get their spans from the
+/// **lowered** parse, and prettyplease strips comments during lowering — so
+/// lowered offsets drift against the original text and the window check
+/// misses justifications that are plainly there (or finds ones that aren't).
+///
+/// The fix: discover sites by tokenizing the ORIGINAL source. proc-macro2
+/// happily lexes Trust syntax (named args, pipe — they're valid tokens), and
+/// its spans index the original string exactly. The lowering rewrites never
+/// add or remove `unsafe` tokens or `#[allow]` attributes, so the token walk
+/// sees the same sites the AST would. `macro_rules!` bodies are skipped —
+/// template code isn't checked by the AST path either.
+mod window_sites {
+    use proc_macro2::{Delimiter, TokenStream, TokenTree};
+    use std::ops::Range;
+
+    pub struct UnsafeSite {
+        pub range: Range<usize>,
+        pub is_fn: bool,
+        /// Doc-comment text gathered from `#[doc = "..."]` attrs directly
+        /// preceding an `unsafe fn` (rustdoc `/// # Safety` sections count
+        /// as justification).
+        pub doc_text: String,
+    }
+
+    pub struct AllowSite {
+        pub range: Range<usize>,
+        pub has_inline_reason: bool,
+    }
+
+    pub fn scan(source: &str) -> Option<(Vec<UnsafeSite>, Vec<AllowSite>)> {
+        let tokens: TokenStream = source.parse().ok()?;
+        let mut unsafes = Vec::new();
+        let mut allows = Vec::new();
+        walk(&tokens, &mut unsafes, &mut allows);
+        // Sites surface in token order within each level but nested groups
+        // append after their siblings; sort so windows are deterministic.
+        unsafes.sort_by_key(|s| s.range.start);
+        allows.sort_by_key(|s| s.range.start);
+        Some((unsafes, allows))
+    }
+
+    fn walk(tokens: &TokenStream, unsafes: &mut Vec<UnsafeSite>, allows: &mut Vec<AllowSite>) {
+        let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
+        for i in 0..trees.len() {
+            match &trees[i] {
+                TokenTree::Ident(id) if *id == "unsafe" => {
+                    match trees.get(i + 1) {
+                        Some(TokenTree::Ident(next)) if *next == "fn" => {
+                            unsafes.push(UnsafeSite {
+                                range: byte_range(&trees[i]),
+                                is_fn: true,
+                                doc_text: preceding_doc_text(&trees, i),
+                            });
+                        }
+                        Some(TokenTree::Group(g)) if g.delimiter() == Delimiter::Brace => {
+                            unsafes.push(UnsafeSite {
+                                range: byte_range(&trees[i]),
+                                is_fn: false,
+                                doc_text: String::new(),
+                            });
+                        }
+                        // `unsafe impl` / `unsafe trait` / `unsafe extern`:
+                        // not flagged by R0005 (parity with the AST rule).
+                        _ => {}
+                    }
+                }
+                TokenTree::Punct(p) if p.as_char() == '#' => {
+                    if let Some(site) = allow_site_at(&trees, i) {
+                        allows.push(site);
+                    }
+                }
+                _ => {}
+            }
+        }
+        for (i, tree) in trees.iter().enumerate() {
+            if let TokenTree::Group(g) = tree {
+                if g.delimiter() == Delimiter::Brace && is_macro_rules_body(&trees, i) {
+                    continue;
+                }
+                walk(&g.stream(), unsafes, allows);
+            }
+        }
+    }
+
+    fn byte_range(tree: &TokenTree) -> Range<usize> {
+        tree.span().byte_range()
+    }
+
+    /// `trees[..i]` ends with `macro_rules ! IDENT`, making `trees[i]` a
+    /// macro definition body.
+    fn is_macro_rules_body(trees: &[TokenTree], i: usize) -> bool {
+        if i < 3 {
+            return false;
+        }
+        matches!(
+            (&trees[i - 3], &trees[i - 2], &trees[i - 1]),
+            (TokenTree::Ident(kw), TokenTree::Punct(bang), TokenTree::Ident(_))
+                if *kw == "macro_rules" && bang.as_char() == '!'
+        )
+    }
+
+    /// Gather `#[doc = "..."]` string contents from the attribute run
+    /// directly preceding `trees[i]`, skipping visibility / qualifier tokens
+    /// (`pub`, `pub(crate)`, `const`, `async`, `extern "C"`).
+    fn preceding_doc_text(trees: &[TokenTree], i: usize) -> String {
+        let mut out = String::new();
+        let mut j = i;
+        while j > 0 {
+            j -= 1;
+            match &trees[j] {
+                TokenTree::Ident(id)
+                    if *id == "pub" || *id == "const" || *id == "async" || *id == "extern" => {}
+                TokenTree::Literal(_) => {} // the "C" in extern "C"
+                TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis => {} // pub(crate)
+                TokenTree::Group(g) if g.delimiter() == Delimiter::Bracket => {
+                    // Possible attribute body — collect doc strings.
+                    if j == 0 || !matches!(&trees[j - 1], TokenTree::Punct(p) if p.as_char() == '#')
+                    {
+                        break;
+                    }
+                    let inner: Vec<TokenTree> = g.stream().into_iter().collect();
+                    if let [TokenTree::Ident(name), TokenTree::Punct(eq), TokenTree::Literal(lit)] =
+                        inner.as_slice()
+                    {
+                        if *name == "doc" && eq.as_char() == '=' {
+                            out.push_str(&lit.to_string());
+                            out.push('\n');
+                        }
+                    }
+                    j -= 1; // consume the `#`
+                }
+                _ => break,
+            }
+        }
+        out
+    }
+
+    /// If `trees[i..]` is `# [!]? [ (allow|expect) ( ... ) ]`, build the site.
+    fn allow_site_at(trees: &[TokenTree], i: usize) -> Option<AllowSite> {
+        let mut j = i + 1;
+        if let Some(TokenTree::Punct(bang)) = trees.get(j) {
+            if bang.as_char() == '!' {
+                j += 1;
+            }
+        }
+        let TokenTree::Group(bracket) = trees.get(j)? else {
+            return None;
+        };
+        if bracket.delimiter() != Delimiter::Bracket {
+            return None;
+        }
+        let inner: Vec<TokenTree> = bracket.stream().into_iter().collect();
+        let [TokenTree::Ident(name), TokenTree::Group(list)] = inner.as_slice() else {
+            return None;
+        };
+        if (*name != "allow" && *name != "expect") || list.delimiter() != Delimiter::Parenthesis {
+            return None;
+        }
+        // Top-level `reason` ident followed by `=` marks an inline reason.
+        let items: Vec<TokenTree> = list.stream().into_iter().collect();
+        let has_inline_reason = items.windows(2).any(|w| {
+            matches!(
+                (&w[0], &w[1]),
+                (TokenTree::Ident(id), TokenTree::Punct(eq))
+                    if *id == "reason" && eq.as_char() == '='
+            )
+        });
+        Some(AllowSite {
+            range: trees[i].span().byte_range(),
+            has_inline_reason,
+        })
+    }
+}
+
 fn run_justify_unsafe(file: &syn::File, source: &str, diagnostics: &mut Vec<Diagnostic>) {
+    // Token-accurate path (RT-91): sites + spans from the original source.
+    if let Some((unsafes, _)) = window_sites::scan(source) {
+        for site in unsafes {
+            let mut justified =
+                justified_by_preceding_comments(source, site.range.start, "safety:");
+            if !justified && site.is_fn {
+                let lower = site.doc_text.to_ascii_lowercase();
+                justified = lower.contains("safety:") || lower.contains("# safety");
+            }
+            if !justified {
+                let (what, help) = if site.is_fn {
+                    (
+                        "`unsafe fn` missing `// safety:` justification",
+                        "add a `// safety:` comment in the 200 bytes preceding this function, or in the function's doc comment",
+                    )
+                } else {
+                    (
+                        "`unsafe` block missing `// safety:` justification",
+                        "add a `// safety:` comment in the 200 bytes preceding this block",
+                    )
+                };
+                diagnostics.push(
+                    Diagnostic::error(Rule::JustifyUnsafe.code(), what, site.range)
+                        .with_why(Rule::JustifyUnsafe.rationale().to_string())
+                        .with_help(help),
+                );
+            }
+        }
+        return;
+    }
+    // Fallback (source failed to tokenize — shouldn't happen for inputs that
+    // reached the linter): the lowered-AST visitor.
     let mut v = JustifyUnsafeVisitor {
         diagnostics,
         source,
@@ -497,6 +752,30 @@ fn attr_has_inline_reason(attr: &syn::Attribute) -> bool {
 }
 
 fn run_justify_allow(file: &syn::File, source: &str, diagnostics: &mut Vec<Diagnostic>) {
+    // Token-accurate path (RT-91): sites + spans from the original source.
+    if let Some((_, allows)) = window_sites::scan(source) {
+        for site in allows {
+            if site.has_inline_reason {
+                // `#[allow(..., reason = "…")]` is self-justifying (RT-89).
+                continue;
+            }
+            if !justified_by_preceding_comments(source, site.range.start, "reason:") {
+                diagnostics.push(
+                    Diagnostic::error(
+                        Rule::JustifyAllow.code(),
+                        "`#[allow(...)]` missing `// reason:` justification",
+                        site.range,
+                    )
+                    .with_why(Rule::JustifyAllow.rationale().to_string())
+                    .with_help(
+                        "add a `// reason:` comment in the 200 bytes preceding this attribute",
+                    ),
+                );
+            }
+        }
+        return;
+    }
+    // Fallback: the lowered-AST visitor.
     let mut v = JustifyAllowVisitor {
         diagnostics,
         source,

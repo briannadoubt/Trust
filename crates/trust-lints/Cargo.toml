@@ -16,4 +16,5 @@ syn.workspace = true
 trust-diag.workspace = true
 
 [dev-dependencies]
+trust-lower.workspace = true
 insta.workspace = true

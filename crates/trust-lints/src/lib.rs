@@ -62,6 +62,37 @@ mod tests {
         );
     }
 
+    // RT-91 regression: window-rule offsets must come from the ORIGINAL
+    // source, not the lowered AST. The lowered text has comments stripped,
+    // so its offsets drift backwards — pre-fix, justifications that were
+    // plainly present went unseen.
+    #[test]
+    fn window_rules_survive_offset_drift_between_lowered_and_original() {
+        // "original": a fat comment block shifts all later offsets right.
+        let original = "#![strict]\n\
+            // A long leading comment that exists only in the original\n\
+            // source and is stripped by prettyplease during lowering,\n\
+            // pushing every later byte offset out of alignment.\n\
+            // reason: tracked upstream\n\
+            #[allow(dead_code)]\n\
+            fn quiet() {}\n\
+            // safety: the pointer is checked two lines above\n\
+            fn touch() { unsafe { core::ptr::null::<u8>().read_volatile(); } }\n\
+            fn main() {}\n";
+        // "lowered": comments gone, same items (what the linter's AST sees).
+        let lowered = "#![strict]\n#[allow(dead_code)]\nfn quiet() {}\nfn touch() { unsafe { core::ptr::null::<u8>().read_volatile(); } }\nfn main() {}\n";
+        let report = lint_strict(&parse(lowered), original, true);
+        let fired_window_rule = report
+            .diagnostics
+            .iter()
+            .any(|d| d.rule == "R0005" || d.rule == "R0006");
+        assert!(
+            !fired_window_rule,
+            "justified sites must not fire through drift: {:?}",
+            report.diagnostics
+        );
+    }
+
     #[test]
     fn clean_program_has_no_diagnostics() {
         let src = "#![strict]\nfn main() { let x: u32 = 1; println!(\"{x}\"); }";
