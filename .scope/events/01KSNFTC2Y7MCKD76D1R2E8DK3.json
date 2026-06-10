@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNFTC2Y7MCKD76D1R2E8DK3",
+  "ts": "2026-05-27T19:50:38.430Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71A",
+    "number": 22,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "rustdoc/doc-tests bypass RUSTC_WRAPPER — named-arg syntax fails in doc compilation",
+    "description": "rustdoc does not respect RUSTC_WRAPPER when running doc-tests. Rustricted named-arg syntax (transform(s: ..., f: ...)) in the crate source is valid only after the lowering pass. Since rustdoc runs without the wrapper, named args appear as invalid Rust and cause compilation errors. For now, crates with named-arg call sites must set doctest = false in Cargo.toml. Fix: add wrapper support to rustdoc invocation, or document limitation. Discovered during RT-12 heck case study.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

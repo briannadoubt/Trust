@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSHWBX80SZCT3HW7BPMAJGRW",
+  "ts": "2026-05-26T10:12:58.240Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR716",
+    "number": 18,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "MD render test (auto)",
+    "description": "# Markdown smoke test\n\nA paragraph with **bold**, *italic*, and `inline code`. And a [link](https://example.com).\n\n## Subheading\n\n- item one\n- item two with `code`\n- item three\n\n1. first\n2. second\n\n```\nconst x = 1;\nconsole.log(x);\n```\n\n### Smaller heading\n\nA line<br>with a break (escaped).",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTJXTNCJWF7EGV46GE12R5Z1",
+  "ts": "2026-06-08T06:13:26.546Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5Z0",
+    "number": 82,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Unify / eliminate the dual activation mechanism",
+    "description": "Today single-file inputs use the inner attribute #![strict] while cargo crates must use trust_attrs::strict!{} because stock rustc rejects #![strict]. This split is a real papercut. With project-level config (sibling story) the cargo case needs no per-file marker at all; this story is the cleanup to land on ONE documented activation story across single-file and cargo modes, and remove or deprecate the redundant path. Coordinate with the config story so we don't ship two half-migrations.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

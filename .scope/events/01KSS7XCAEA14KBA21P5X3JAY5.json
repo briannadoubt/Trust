@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KSS7XCAEA14KBA21P5X3JAY5",
+  "ts": "2026-05-29T06:49:26.094Z",
+  "actor": "migration",
+  "kind": "ticket.set_field",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72B",
+    "field": "status",
+    "value": "in_progress"
+  }
+}

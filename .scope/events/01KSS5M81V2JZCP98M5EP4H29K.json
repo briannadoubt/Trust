@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSS5M81V2JZCP98M5EP4H29K",
+  "ts": "2026-05-29T06:09:29.659Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71E",
+    "commentId": "01KT3T33TF1XZ5FFM8EA7M204C",
+    "author": null,
+    "body": "Ran with GPT-4o (5 tasks × 2 conditions × 3 trials = 30 samples). See eval/runs/005/summary.md. Headline: vanilla 9/15 (60%) ship rate; trust 0/15 (0%) ship rate. Same 60% baseline error rate as Haiku — cross-provider hypothesis confirmed."
+  }
+}

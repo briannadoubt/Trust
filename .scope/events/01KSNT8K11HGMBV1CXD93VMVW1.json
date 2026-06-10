@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT8K11HGMBV1CXD93VMVW1",
+  "ts": "2026-05-27T22:53:10.049Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71T",
+    "number": 38,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Publishable spec: why Rustricted + language reference",
+    "description": "docs/SPEC.md is a technical reference for contributors. Add a separate docs/WHY.md aimed at someone evaluating whether to use Rustricted: what problem it solves, what it costs, the design priorities (agent-first), and a short before/after code comparison. Keep it under 2 pages.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71Q",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

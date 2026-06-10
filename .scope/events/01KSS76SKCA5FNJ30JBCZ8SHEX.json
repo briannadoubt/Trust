@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSS76SKCA5FNJ30JBCZ8SHEX",
+  "ts": "2026-05-29T06:37:06.028Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71E",
+    "commentId": "01KT3T33TFSEW3FVK5QH9P4QP6",
+    "author": null,
+    "body": "Run 006 (Gemini 2.5 Flash, 29/30 trials — one transient missing). Headline matches 005: vanilla 9/15 (60%) ship, trust 0/14 (0%) ship. Three vendors (Anthropic Haiku, OpenAI 4o, Google 2.5-flash) and two capability tiers (small/fast and frontier) all confirm: 60% baseline error rate; 100% bug-ship reduction under #![strict]. Notable wrinkle: 13-numeric trust trials had bug regex miss (Gemini used try_into for the danger spot) but Trust still caught an as u64 cast elsewhere — partial-knowledge model + Trust safety net = clean result."
+  }
+}

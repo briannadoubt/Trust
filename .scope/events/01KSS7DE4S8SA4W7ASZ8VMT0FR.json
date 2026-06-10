@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS7DE4S8SA4W7ASZ8VMT0FR",
+  "ts": "2026-05-29T06:40:43.673Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72C",
+    "number": 56,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "README rewrite for first-time visitors",
+    "description": "The current README is what bri started with — written for a private dev workspace. Rewrite for a cold first-time visitor (developer or agent landing from HN / a search result / a coworker).\n\nStructure:\n1. **Headline** (3 lines max): what Trust is, what it gives you, the eval number. 'Strict Rust dialect for LLMs. 60% of agent code has bugs you can grep for. With #![strict] only 0% ship.'\n2. **One install command + one code sample** (before vs after, side-by-side or sequential).\n3. **The number** — pull the table from eval/runs/006/summary.md (or a synthesized 3-vendor table). Link the eval directory.\n4. **Why** — 2-3 sentences with link to docs/WHY.md.\n5. **Status** — '0.1, agent-authored evaluation harness, X case studies, MIT/Apache-2.0.'\n6. **Links** — case studies, eval runs, WHY, contributing-not-yet.\n\nThings to AVOID: don't bury the install, don't lead with architecture, don't claim more than the data shows ('100% catch on the audited rules' not '100% bug-free Rust').\n\nDone when: a stranger can read it top-to-bottom in 90 seconds and know whether they want to try it.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

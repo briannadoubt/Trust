@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4R8WJ9VDN1NJF94RDVR82",
+  "ts": "2026-05-25T18:01:03.122Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70W",
+    "number": 8,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Span fidelity: R0042 / R3001 / R4001 emit at byte 0..0",
+    "description": "The lowering-emitted diagnostics (R0042 in named_args, R3001 unknown-param, R4001 missing-effect) use 0..0 byte ranges because span tracking from proc_macro2 isn't plumbed through to the emission sites. proc-macro2's span-locations feature is already enabled. Wire the real spans through. Surfaced by Codex review + the rustricted CLI dogfood subagent.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70N",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

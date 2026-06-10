@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS7DSW13JZCF8SCRFCN3CEP",
+  "ts": "2026-05-29T06:40:55.681Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72D",
+    "number": 57,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Public GitHub repo + CI",
+    "description": "Push the repo to public GitHub (under bri's account or an org she picks) and stand up CI so visitors see a green badge.\n\nTasks:\n- Decide owner + repo name (default: github.com/briannadoubt/trust unless bri picks an org).\n- Initial push: git remote add, push main, set as default branch.\n- GitHub Actions workflow .github/workflows/ci.yml:\n  - cargo fmt --check\n  - cargo clippy -- -D warnings (probably; check what the repo currently tolerates)\n  - cargo test --workspace\n  - cargo trust check on case-studies/* (requires the wrapper built — bake the build step in)\n- README badges: build status, license, crates.io (link will be live after RT-58).\n- Branch protection on main: require CI green to merge. Skippable in solo mode but worth setting up.\n- Decide what to gitignore that currently isn't: .venv/, anything else surfaced by 'git ls-files | head'.\n\nAction requires bri's GitHub auth — not something an agent can do unattended. Ticket can be planned out fully and then bri runs the push step.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

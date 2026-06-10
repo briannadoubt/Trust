@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSVTABFKJJADFHV7A77EXZ9B",
+  "ts": "2026-05-30T06:49:34.451Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72V",
+    "commentId": "01KT3T33TFDN49Q1FPBT58TSG8",
+    "author": "agent",
+    "body": "Delivered the flagship facet: vanilla→strict named-argument insertion ('trust fix').\n\n- trust-lower: collect_name_insertions (the inverse of the lowering's strip pass) — records byte-offset insertions for positional calls to registered callees, EXACTLY where R0042 requires names (arity>1, all-positional, matching arity; method calls / std paths / attribute payloads / param lists / already-named calls excluded). promote_named_args(source, extras) splices 'name: ' into the ORIGINAL source right-to-left, preserving every other byte (comments, layout). Reuses the CalleeRegistry + named_args helpers. 8 tests.\n- trust CLI: 'trust fix <input> [--write]' — stdout or in-place; reads TRUST_SIGNATURE_PATH for cross-crate. Stage-0 plain Rust.\n- Proven: vanilla make_rect(1920,1080) → make_rect(width: 1920, height: 1080), formatting preserved; idempotent; 'trust fix | trust lower' round-trips back to positional. SPEC CLI entry + CI round-trip guard.\n\nFollow-on (not blocking): the other RT-71 facets — itemising glob imports (needs name resolution) and batch-applying the structured diagnostic Fixes from RT-70 (few are Automatic yet). The named-arg insertion is the mechanical, highest-value adoption transform; the rest can grow on the same edit engine."
+  }
+}

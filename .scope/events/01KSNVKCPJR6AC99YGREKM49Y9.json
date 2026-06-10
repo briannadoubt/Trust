@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNVKCPJR6AC99YGREKM49Y9",
+  "ts": "2026-05-27T23:16:32.594Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71W",
+    "number": 40,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "R0042/R3001: per-file registry can't resolve cross-file callees — named args fail for cross-module fns",
+    "description": "",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

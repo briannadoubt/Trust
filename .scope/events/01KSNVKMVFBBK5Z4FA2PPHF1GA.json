@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNVKMVFBBK5Z4FA2PPHF1GA",
+  "ts": "2026-05-27T23:16:40.943Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71Y",
+    "number": 42,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Span fidelity: errors emit at 1:1 (strict marker line) when violation is elsewhere — line numbers shifted/lost in per-file check",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

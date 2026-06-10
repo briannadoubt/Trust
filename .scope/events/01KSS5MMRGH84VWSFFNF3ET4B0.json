@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS5MMRGH84VWSFFNF3ET4B0",
+  "ts": "2026-05-29T06:09:42.672Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR727",
+    "number": 51,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Eval runner: silent skip on unknown task ids + misleading docs",
+    "description": "run_cross_provider.py silently skips unknown task ids ('warning: unknown task id X, skipping') and still prints 'Run NNN complete' afterward. NOTES.md (eval/runs/005/NOTES.md) advertises '--tasks 11,12,13,14,15' but tasks.toml ids are full strings like '11-pipeline'. So the documented command runs zero tasks and reports success. Fix: hard-error on unknown ids, and update NOTES.md + the runner's --tasks default + docstring example to use real ids.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71D",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

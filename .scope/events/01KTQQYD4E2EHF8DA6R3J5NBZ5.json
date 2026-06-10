@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTQQYD4E2EHF8DA6R3J5NBZ5",
+  "ts": "2026-06-10T03:06:49.870Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTQQYD4E2EHF8DA6R3J5NBZ4",
+    "number": 90,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "tre-strict fails R3001 at HEAD — named args rejected against wrong registry signature",
+    "description": "",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72K",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

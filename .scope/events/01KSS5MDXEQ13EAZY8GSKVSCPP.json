@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSS5MDXEQ13EAZY8GSKVSCPP",
+  "ts": "2026-05-29T06:09:35.662Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71F",
+    "commentId": "01KT3T33TFJY4KXT45W28ATZWF",
+    "author": null,
+    "body": "Tasks 11/13/15 all show 100% catch rate (R0042 / R0003 / R0001 respectively). Tasks 12 and 14 had 0% baseline error rate from GPT-4o — strong models don't make those mistakes, lints had nothing to catch. Net: 100% bug-ship reduction across the bug-bearing tasks. Bug regexes are well-calibrated against a different provider."
+  }
+}

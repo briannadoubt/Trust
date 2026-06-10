@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT7CHRQX6T6Z6159W3XG5J",
+  "ts": "2026-05-27T22:52:30.648Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71F",
+    "number": 27,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Analyze eval results: does strict mode reduce agent errors?",
+    "description": "Once runs are complete: run score.py + summarize.py, produce a summary table (provider x condition x task x pass rate). Identify which rules catch the most bugs, which tasks show the biggest delta between vanilla and strict conditions.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71D",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

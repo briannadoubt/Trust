@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4S6EB2J455XNVQKR9RAPQ",
+  "ts": "2026-05-25T18:01:33.387Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR712",
+    "number": 14,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "R0005 refinement: recognise // Safety: in doc comments at fn scope",
+    "description": "FP audit: R0005 fired 86 times against anyhow because anyhow uses paragraph-style '// Safety:' prose in the enclosing unsafe fn's doc comment, not per-block '// safety:' lines within 200 bytes of the unsafe block. The strict rule is legitimate but produces a stylistic clash. Look in the enclosing unsafe fn's doc comments before failing.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70R",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

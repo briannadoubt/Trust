@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSS8R80Y29SGSGCNYFB5S3V1",
+  "ts": "2026-05-29T07:04:06.430Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR729",
+    "commentId": "01KT3T33TF2FH2GB75QPBD2A2B",
+    "author": "claude",
+    "body": "Fixed: score.py resolves the release trust binary (TRUST_BIN overridable), validates it up front, and fails loud with the exact build command + exit 2 rather than faking a 0% catch rate. Added opt-in --build to bootstrap (cargo build -p trust-rustc; then RUSTC_WRAPPER=... cargo build --release -p trust). Verified: missing binary exits 2; present binary reproduces run 005 catch rates idempotently."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT8JXQNF10QBZYJ0S0P2T8",
+  "ts": "2026-05-27T22:53:09.943Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71S",
+    "number": 37,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Quick-eval: rustricted check < snippet.rs workflow",
+    "description": "Make it easy to test a snippet without a full cargo project. Options: (1) rustricted check reads from stdin, (2) a rustricted repl subcommand, (3) a web playground. Start with stdin support — it unblocks eval harness use cases too.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71Q",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

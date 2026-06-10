@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KSVF4FWYAWZYDVY95AYQJ7JT",
+  "ts": "2026-05-30T03:34:08.030Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72Z",
+    "number": 75,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Wrapper hard-links source into cache → can truncate originals",
+    "description": "trust-rustc's mirror_module_tree_with_extras (crates/trust-rustc/src/lib.rs) hard-links NON-strict source files into the /tmp/trust-cache mirror via fs::hard_link(&path, &dest). A hard link shares the inode, so a later write/truncate of the cached copy corrupts the ORIGINAL source file.\n\nObserved during RT-70: under cache-clear + cargo clean + wrapper-rebuild churn, crates/trust-rustc/src/lib.rs and crates/xtask/src/std_signatures.rs were both truncated to 0 bytes in the working tree (restored from git). Both are non-strict child files of strict multi-file crates, hard-linked into the cache.\n\nFix: use fs::copy (not hard_link) for the cache mirror, or only ever write via tmp+rename and never hard-link source. Add a regression test: mutate a cached file, assert the source is untouched.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "wrapper",
+      "data-loss"
+    ]
+  }
+}

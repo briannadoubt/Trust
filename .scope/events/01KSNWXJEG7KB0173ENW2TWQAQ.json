@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNWXJEG7KB0173ENW2TWQAQ",
+  "ts": "2026-05-27T23:39:34.736Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR721",
+    "number": 45,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "rustfmt: extend skip detection to strict-marked crates in scripts/fmt.sh",
+    "description": "",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

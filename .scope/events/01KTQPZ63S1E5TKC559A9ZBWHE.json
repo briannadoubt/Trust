@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQPZ63S1E5TKC559A9ZBWHE",
+  "ts": "2026-06-10T02:49:46.873Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTQPYNTN38W8NYWCPGZ5XV91",
+    "commentId": "01KTQPZ63S1E5TKC559A9ZBWHD",
+    "author": null,
+    "body": "Repro from RT-82 session: a failed mirror (R3001 mid-tree) left a partial /tmp/trust-cache/<hash>/ dir; prepare_strict_input's 'cached_file.exists()' root-file check then treated it as complete on later runs, producing phantom diagnostics/passes that flip depending on which wrapper build ran first. Cache key is FNV(source + CARGO_PKG_VERSION) so trust-lower code changes within a version reuse stale lowered output. Fix ideas: mirror into a temp dir + atomic rename of the WHOLE dir on success (no partial state), and mix a build/code fingerprint (e.g. compile-time hash or git sha) into the key for dev builds."
+  }
+}

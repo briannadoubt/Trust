@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQRJF3F11B651X7DSA2R9BG",
+  "ts": "2026-06-10T03:17:47.247Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5Z2",
+    "commentId": "01KTQRJF3F11B651X7DSA2R9BF",
+    "author": null,
+    "body": "Spike conclusion (RT-80/81/82/89 landed first, which answers most of it): RECOMMEND DEFER INDEFINITELY. The extension's two original motivations are now covered more cheaply — (1) activation ceremony: already zero via [package.metadata.trust] strict = true + cargo trust build; an extension can't beat 'no marker at all'. (2) editor identity: #![strict] at file top is visible identity for per-file opt-ins, and trust-lsp/VS Code can badge strict files from the same detection the toolchain uses. What an extension would COST, verified by how the wrapper actually works: cargo hard-codes .rs (src/main.rs, [[bin]] paths,  -> foo.rs resolution), so .trs means either a transpile-to-shadow-tree build step (a second cache/codegen pipeline to maintain — and RT-86 shows cache state is already the most fragile part) or a wrapper that must exist anyway (so the extension removes no tooling, it only moves where lowering triggers). It also forfeits the wrapper's best property: every tool that understands Rust (rust-analyzer, rustfmt on metadata-strict crates, grep-ability, GitHub syntax highlighting) keeps working on .rs. Revisit only if post-launch demand shows file-badge identity matters more than toolchain transparency."
+  }
+}

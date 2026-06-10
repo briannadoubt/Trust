@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS7E6F9Y895K87MFB5YBRX5",
+  "ts": "2026-05-29T06:41:08.585Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72E",
+    "number": 58,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Publish crates to crates.io",
+    "description": "Get Trust crates on crates.io so 'cargo install trust' works.\n\nTasks:\n- Blocked by RT-55 (metadata + license must land first).\n- Decide initial version: 0.1.0 across the board, or pin per-crate? Default: 0.1.0 uniform.\n- Publish order (deps first; cargo refuses to publish a crate whose deps aren't on the registry yet):\n  1. trust-attrs, trust-diag, trust-std (leaves of the graph)\n  2. trust-syntax (depends on trust-attrs?)\n  3. trust-lower (depends on trust-syntax)\n  4. trust-lints (depends on trust-syntax, trust-diag)\n  5. trust-rustc, trust-rustdoc (depend on trust-lower)\n  6. trust (depends on most of the above)\n  7. trust-lsp (depends on trust-syntax + trust-lints)\n  8. cargo-trust (if it exists; user-facing subcommand)\n- Verify post-publish: in a scratch dir, 'cargo install trust' + 'trust check some_file.rs' works end to end.\n- Document the bump-and-publish flow in scripts/release.sh or similar — bumping 9+ crates by hand is error-prone.\n\nEdge case to watch: trust-rustc is a RUSTC_WRAPPER — publishing it works, but downstream users still need to set RUSTC_WRAPPER manually unless cargo-trust wraps it for them. Out of scope for this ticket (that's a feature ask), but flag in README.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

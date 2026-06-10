@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSG62YE3TS8WEENZZKHBK4M2",
+  "ts": "2026-05-25T18:24:21.443Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70T",
+    "commentId": "01KT3T33TFDVD5GGQR84ZDEX52",
+    "author": null,
+    "body": "Done. Surfaced + fixed two real bugs in the lowering pass (name collision via path-qualified calls, rustfmt incompatibility with strict syntax — the latter logged as RT-16). Case study at case-studies/rustricted-cli-strict-success.md."
+  }
+}

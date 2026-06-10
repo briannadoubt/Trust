@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS5N6E3P7QC8PXNA591WJGR",
+  "ts": "2026-05-29T06:10:00.771Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR729",
+    "number": 53,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "score.py needs pre-built release trust binary; no auto-bootstrap",
+    "description": "score.py originally invoked 'cargo run -q --release -p trust -- check ...'. Since the trust crate dogfoods named-arg syntax (RT-31), the build needs RUSTC_WRAPPER=trust-rustc to compile. score.py doesn't set RUSTC_WRAPPER, so the build silently failed → every trust-condition file scored caught=✗ → fake 0/15 catch rate (initial run of 005 hit this).\\n\\nFix applied: changed score.py to invoke target/release/trust directly. New requirement: a release binary must exist beforehand, built via 'RUSTC_WRAPPER=$(pwd)/target/debug/trust-rustc cargo build --release -p trust' (or similar).\\n\\nFollow-up: either (a) make score.py bootstrap that build automatically, (b) ship a shell wrapper that score.py calls, or (c) check the binary's presence and fail loudly with a helpful 'run X first' message rather than silently scoring 0.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71D",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

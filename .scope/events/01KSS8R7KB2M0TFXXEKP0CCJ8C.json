@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSS8R7KB2M0TFXXEKP0CCJ8C",
+  "ts": "2026-05-29T07:04:05.995Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR727",
+    "commentId": "01KT3T33TFM4KY6M9XCB0NW4GP",
+    "author": "claude",
+    "body": "Fixed: run_cross_provider.py now hard-errors (exit 2) on unknown task ids and lists valid ids. --tasks default + docstring + run 005 NOTES.md all use full string ids (11-pipeline, ...). Verified: unknown id exits 2."
+  }
+}

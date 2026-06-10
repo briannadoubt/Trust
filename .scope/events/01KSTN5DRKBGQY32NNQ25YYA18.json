@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "id": "01KSTN5DRKBGQY32NNQ25YYA18",
+  "ts": "2026-05-29T20:00:15.635Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72N",
+    "number": 65,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Tier 3 — Novel agent-specific lint targets (eval-gated)",
+    "description": "Lints aimed at agent failure modes Clippy doesn't target. HONEST FRAMING: the mechanism here is commodity (a linter can do it) — these do NOT widen the moat. The novelty is the target, not the capability. Only the target selection differentiates from a clippy.toml.\n\nStrictly eval-gated: build a lint here only after a corpus/run shows agents shipping the bug, the same discipline that kept R0001/R0004 honest in the README (those rules were specified but NOT vindicated by the eval).",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "roadmap",
+      "post-0.1",
+      "tier-3"
+    ]
+  }
+}

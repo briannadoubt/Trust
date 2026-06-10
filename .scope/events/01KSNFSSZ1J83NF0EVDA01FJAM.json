@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNFSSZ1J83NF0EVDA01FJAM",
+  "ts": "2026-05-27T19:50:19.873Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR718",
+    "number": 20,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "R0006/R0005: justification comments stripped by lowering pass before linting",
+    "description": "R0006 (justify-allow) and R0005 (justify-unsafe) check for // reason: and // safety: comments within a 200-byte leading window. However, run_pipeline() lints the LOWERED source, from which proc_macro2/TokenStream serialization strips all comments. The rules always fire for any #[allow] or unsafe block in Rustricted-processed files, even with correct justification comments. Fix: pass original source string (with comments) to lint_strict() instead of the lowered source, or run lints BEFORE the lowering/comment-stripping step. Discovered during RT-12 heck case study.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

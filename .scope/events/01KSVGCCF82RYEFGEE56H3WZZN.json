@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSVGCCF82RYEFGEE56H3WZZN",
+  "ts": "2026-05-30T03:55:55.240Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR730",
+    "commentId": "01KT3T33TF55BTBECV0B1W6Q07",
+    "author": "agent",
+    "body": "Fixed via stage-0 bootstrap. trust, trust-rustc, xtask were #![strict]+named-arg syntax, which only compiles THROUGH the trust-rustc wrapper — but trust-rustc IS the wrapper, an unbuildable cycle on a clean checkout. Reverted the three to plain Rust (no marker, positional calls): a toolchain can't self-host its frontend before it's built (standard staged bootstrap).\n\nNow: cargo build/test/clippy --workspace + cargo run -p trust all work under STOCK rustc (24 test binaries pass, clippy -D warnings clean) — CI needs no wrapper for the workspace. Dialect still dogfooded: lints on the strict library crates, named-arg/pipe syntax on the examples/ fixtures (built via wrapper in CI). Also regenerated stale auto-gen artifacts so gen-docs/gen-std-signatures --check pass; updated CI dogfood step + dogfooding.md."
+  }
+}

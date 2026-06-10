@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KSNTFDZEYB632TJ8F9J9S5X3",
+  "ts": "2026-05-27T22:56:54.254Z",
+  "actor": "migration",
+  "kind": "ticket.set_field",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71E",
+    "field": "description",
+    "value": "BLOCKED: needs OPENAI_API_KEY and GEMINI_API_KEY in env. Harness ready (eval/run_cross_provider.py); see eval/runs/005/NOTES.md. Resume when keys available."
+  }
+}

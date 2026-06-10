@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KTQRE6FVQ48STA14R1QBFVYF",
+  "ts": "2026-06-10T03:15:27.355Z",
+  "actor": "unknown",
+  "kind": "ticket.set_field",
+  "payload": {
+    "ticketId": "01KTQQM61QRGQJAZE74NHQ9XYA",
+    "field": "branch",
+    "value": "feat/cargo-trust-wrapper"
+  }
+}

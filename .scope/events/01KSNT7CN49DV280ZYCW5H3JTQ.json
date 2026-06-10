@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT7CN49DV280ZYCW5H3JTQ",
+  "ts": "2026-05-27T22:52:30.756Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71G",
+    "number": 28,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Fix RT-22: rustdoc/doc-tests bypass RUSTC_WRAPPER",
+    "description": "rustdoc doesn't honour RUSTC_WRAPPER, so any doc-test containing named-arg syntax fails with a plain rustc parse error. Fix options: (1) RUSTDOC_WRAPPER shim, (2) policy of banning named-arg syntax from doc-test examples, (3) strip-and-rewrite doc-tests in the mirror pass.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71D",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

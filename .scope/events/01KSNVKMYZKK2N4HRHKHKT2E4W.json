@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNVKMYZKK2N4HRHKHKT2E4W",
+  "ts": "2026-05-27T23:16:41.055Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71Z",
+    "number": 43,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "R0014 friction on Slab/IndexMap: bare indexing is idiomatic for arena types; consider exempting types that impl Index<Key> + get(Key)",
+    "description": "",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

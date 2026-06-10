@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTJYXAXX5JA34NA2BGM1TKZ4",
+  "ts": "2026-06-08T06:32:22.717Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5YY",
+    "commentId": "01KTJYXAXX5JA34NA2BGM1TKZ3",
+    "author": null,
+    "body": "Implemented project-level strict opt-in. cargo-trust reads [package.metadata.trust] strict=true from the manifest (--manifest-path or nearest Cargo.toml) and passes the package name in TRUST_STRICT_PACKAGES. trust-rustc force-lowers a file when CARGO_PKG_NAME is in that set — scoped so dependencies (own CARGO_PKG_NAME, not in set) are NEVER force-lowered. Found+fixed a real gap: forced strict alone lowered syntax but didn't enforce R0042 because the lowering pass gates diagnostics on strict_mode (marker-derived). Added trust_lower::lower_with_extra_callees_forced(force_strict) so the manifest opt-in is equivalent to a per-file marker. New fixture examples/cargo-strict-config (NO markers). Tests: force_strict_for scoping unit test + manifest-parse unit tests + CI step (negative plain-build, positive run, R0042 enforcement). Note: scope is per-package; whole-workspace [workspace.metadata.trust] is a follow-up. Marker-based wrapper path unregressed. Branch feat/cargo-trust-wrapper."
+  }
+}

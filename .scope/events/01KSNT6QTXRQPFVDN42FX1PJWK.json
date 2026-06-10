@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT6QTXRQPFVDN42FX1PJWK",
+  "ts": "2026-05-27T22:52:09.437Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71B",
+    "number": 23,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Merge audit/effects branch to main",
+    "description": "The audit/effects branch has been open since RT-9/RT-10. All epics are done. Merge to main to ship everything.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

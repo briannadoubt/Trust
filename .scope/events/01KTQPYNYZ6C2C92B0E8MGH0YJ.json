@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQPYNYZ6C2C92B0E8MGH0YJ",
+  "ts": "2026-06-10T02:49:30.335Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTQPJ31PWR60R5Z6DBZANF0B",
+    "commentId": "01KTQPYNYZ6C2C92B0E8MGH0YH",
+    "author": null,
+    "body": "Confirmed real by code-reading (walk_for_fns recursed into every Group including macro_rules bodies) and by cold-cache repro: trust-std lib.rs fired R0042 'call to new (arity 1)' on Duration::new/Mutex::new because newtype!'s template fn new(value) registered as a callee. Fixed in trust-lower walk_for_fns with is_macro_rules_body skip + regression test."
+  }
+}

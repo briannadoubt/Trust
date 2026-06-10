@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT8JT23SWJJV3WY5BCKVKP",
+  "ts": "2026-05-27T22:53:09.826Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71R",
+    "number": 36,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Real LSP: hover, diagnostics, go-to-def",
+    "description": "Replace the 6-line stub in rustricted-lsp with a real tower-lsp server. MVP: (1) textDocument/publishDiagnostics from lint_strict on save, (2) hover on named-arg call sites shows parameter name, (3) go-to-def for local fns. Use the same lower+lint pipeline as the CLI.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71Q",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

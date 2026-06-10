@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS7EKAH3N095Y2WXJ9W4J21",
+  "ts": "2026-05-29T06:41:21.745Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72F",
+    "number": 59,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "VS Code extension wrapping trust-lsp",
+    "description": "Wrap the existing trust-lsp server (RT-36) in a VS Code extension so install is one click.\n\nTasks:\n- New directory: editors/vscode/ (out-of-tree from the Rust workspace).\n- TypeScript LSP client using vscode-languageclient. Boilerplate is short — see rust-analyzer's extension as a reference but don't copy its scale.\n- Binary distribution: ship platform binaries for darwin-arm64, darwin-x64, linux-x64, linux-arm64, win-x64 in the .vsix. Alternative: download on first activation. Vendored is heavier but more reliable for the agent audience.\n- Activation: on .rs files in a workspace that has trust-attrs in deps OR a #![strict] line OR a .trust marker file. Don't activate for non-Trust Rust projects.\n- Marketplace metadata: name 'Trust', description, icon (skip if no time), keywords. Publish to both VS Code Marketplace and Open VSX.\n- Minimal feature set: diagnostics + hover + go-to-def (whatever trust-lsp already serves). No quick-fixes / refactorings — defer.\n\nDone when: Open VS Code -> Install 'Trust' -> open a strict Rust file -> see R-rule diagnostics inline. Screenshot in extension README.\n\nNot blocked by RT-58 (publishing crates), but better if the trust-lsp binary downloaded by the extension matches a published version. Worth coordinating timing.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

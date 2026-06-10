@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4QNWN28C1CS3ZJZYB7W6X",
+  "ts": "2026-05-25T18:00:43.669Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70Q",
+    "number": 3,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Real-world validation",
+    "description": "Move beyond the in-house eval suite. Cross-provider replication (GPT, Gemini), conversion of a real external crate end-to-end via the wrapper, and a larger FP audit against something bigger than anyhow.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

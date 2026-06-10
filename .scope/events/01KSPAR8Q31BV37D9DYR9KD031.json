@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSPAR8Q31BV37D9DYR9KD031",
+  "ts": "2026-05-28T03:41:20.995Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR725",
+    "number": 49,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "RT Lowering: qualified-path calls match registry by simple name",
+    "description": "std::fs::copy(from, to) — a 3-segment qualified path — was matched against trust_std::fs::copy (which has named-arg shim signature), firing R0042. Same simple-name lookup issue as RT-41 but for qualified paths instead of methods. Fix: only match registry on bare-ident calls OR enforce the full path matches.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

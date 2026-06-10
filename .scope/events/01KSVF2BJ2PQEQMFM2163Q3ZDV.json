@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSVF2BJ2PQEQMFM2163Q3ZDV",
+  "ts": "2026-05-30T03:32:58.050Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72T",
+    "commentId": "01KT3T33TFGTPJKW5A7T3YH3QY",
+    "author": "agent",
+    "body": "Delivered the core: structured machine-applicable fixes + agent-native JSON output.\n\ntrust-diag:\n- Applicability enum (Automatic / MaybeIncorrect / HasPlaceholders) — the 'confidence' an agent loop keys on.\n- Fix { span, replacement, applicability } + Diagnostic.with_fix().\n- line_col(source, offset) (1-based, char-aware) and to_json(diags, file, source): stable JSON with rule, severity, message, byte span + line/col, why, help, and structured fix. Hand-rolled emitter (no serde), RFC-8259 escaping. 7 tests.\n- Dogfood note: trust-diag is #![strict], so the JSON emitter is written as methods on JsonWriter (method calls are R0042-exempt) and tests moved to a sibling tests.rs (the wrapper lints only the crate root) — same pattern trust-std uses.\n\ntrust CLI: 'trust check --format <human|json>'. JSON to stdout, non-zero exit preserved on error.\ntrust-lower: R0042 now carries a structured Fix (the named-arg template, applicability=hasPlaceholders).\n\nProven: 'trust check --format json' on a positional swap emits valid JSON (python json.load) with rule R0042, fix.applicability hasPlaceholders, fix.replacement '(width: ..., height: ...)', and line/col. CI step added.\n\nIncremental follow-ons (NOT blocking): SARIF emitter (did Trust-native JSON; ticket said 'JSON/SARIF'), and populating Fix on the remaining rules (only R0042 wired so far; the JSON already carries message/why/help/span for all). Applying fixes is RT-71 (trust fix)."
+  }
+}

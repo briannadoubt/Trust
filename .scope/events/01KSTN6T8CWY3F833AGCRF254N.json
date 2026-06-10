@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KSTN6T8CWY3F833AGCRF254N",
+  "ts": "2026-05-29T20:01:01.196Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72T",
+    "number": 70,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Machine-applicable structured fixes + agent-native output",
+    "description": "Promote every diagnostic to a structured, machine-applicable edit: span + exact replacement text + confidence, emitted as JSON/SARIF so an agent harness applies fixes deterministically without re-parsing prose.\n\nThe why:/help: contract already carries the literal replacement — this makes it a first-class machine field. Clippy has --fix and JSON but not the why + literal-replacement + confidence contract aimed at an autonomous loop. Highest-leverage Tier 2 item.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72M",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "diagnostics",
+      "agent-output"
+    ]
+  }
+}

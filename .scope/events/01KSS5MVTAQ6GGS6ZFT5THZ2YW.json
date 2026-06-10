@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS5MVTAQ6GGS6ZFT5THZ2YW",
+  "ts": "2026-05-29T06:09:49.898Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR728",
+    "number": 52,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Eval runner: 'Run complete' printed even when all calls error",
+    "description": "run_cross_provider.py reports 'Run NNN complete' and exits 0 even when every single sample errored (e.g. 30/30 'ERROR: No module named openai' still printed the success line). Fix: track per-call success, exit non-zero if any failed, and surface a summary line like 'N succeeded, M failed' before the next-steps block.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71D",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

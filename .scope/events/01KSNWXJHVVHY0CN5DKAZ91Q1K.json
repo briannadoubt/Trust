@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNWXJHVVHY0CN5DKAZ91Q1K",
+  "ts": "2026-05-27T23:39:34.843Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR722",
+    "number": 46,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "No per-callsite #[allow(rustricted::Rxxxx)] mechanism; dogfooding blocked when FPs surface",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

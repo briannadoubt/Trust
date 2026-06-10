@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "id": "01KSTN5DN65WPE5QTDJAA63XK0",
+  "ts": "2026-05-29T20:00:15.526Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72M",
+    "number": 64,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Tier 2 — Diagnostics as an agent action stream",
+    "description": "Turn the teaching-error contract (why: + literal help:) into something an autonomous agent loop consumes directly. This is the 'for the agent, not the human' thesis applied to the OUTPUT format, not the language — the third moat Clippy lacks.\n\nClippy has --fix and JSON, but not a why + literal-replacement + confidence contract aimed at an autonomous loop. Reuses the CalleeRegistry already built.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "roadmap",
+      "post-0.1",
+      "tier-2"
+    ]
+  }
+}

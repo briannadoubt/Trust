@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTJXTNCJWF7EGV46GE12R5Z5",
+  "ts": "2026-06-08T06:13:26.546Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5Z4",
+    "number": 84,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Rewrite README getting-started around the one-command flow",
+    "description": "Once cargo trust build + project-level strict config land, collapse the README. Replace 'Using strict source from cargo' (the export RUSTC_WRAPPER/RUSTDOC block) and the dual-activation explanation with: install cargo-trust, add strict=true to Cargo.toml, run `cargo trust build`. Keep the single-file `trust check/build/lower` flow for quick trials. Coordinate with RT-56 (README rewrite for first-time visitors) so the two don't conflict. Depends on the subcmd + config stories actually shipping.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

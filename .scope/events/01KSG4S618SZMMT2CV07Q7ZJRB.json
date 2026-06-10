@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4S618SZMMT2CV07Q7ZJRB",
+  "ts": "2026-05-25T18:01:32.968Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70X",
+    "number": 9,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Audit effects implementation honestly",
+    "description": "Write up what crates/rustricted-effects/ actually does today: intra-procedural simple-name lookup, tiny std seed table (println/eprintln/read_to_string/etc.), no trait dispatch, no closures, no aliases, no async/panic/unsafe inference, no propagation from upstream metadata. Goal is a one-pager that turns 'effects exist' into a precise list of what is and isn't implemented — so the invest-or-kill decision in RT-10 has data to lean on.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70P",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

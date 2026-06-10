@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "id": "01KSTN5DEBR1M4YPH8DFNA7GBW",
+  "ts": "2026-05-29T20:00:15.307Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72J",
+    "number": 62,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Tier 0 — Close the cross-crate moat",
+    "description": "Complete the one feature Clippy structurally cannot replicate: named-argument (R0042) enforcement across crate boundaries.\n\nToday R0042 stops at the crate boundary — the per-crate CalleeRegistry only sees in-crate fn declarations, and trust-std is a hand-built signature index used as a proof of concept. Until a dependency's signatures can be extracted automatically, the positional-swap bug class (the only audited bug Clippy can never catch, per README/WHY.md) still slips through on every third-party API. docs/WHY.md calls this 'the dialect's largest open gap.'\n\nThis epic closes that gap so the headline feature holds end to end.",
+    "status": "backlog",
+    "priority": "urgent",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "roadmap",
+      "post-0.1",
+      "tier-0"
+    ]
+  }
+}

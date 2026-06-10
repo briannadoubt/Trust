@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSS8B9PXN98T4VK5CFN8YGYC",
+  "ts": "2026-05-29T06:57:02.173Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72B",
+    "commentId": "01KT3T33TFSGMGZP16Z03NV9BR",
+    "author": null,
+    "body": "Done. Changes:\n\n- LICENSE-MIT and LICENSE-APACHE added at repo root (dual-license, Rust ecosystem default).\n- Internal crates declared in [workspace.dependencies] with version + path so cargo publish accepts them and local dev still uses path.\n- All 10 publishable crates (cargo-trust, trust, trust-attrs, trust-diag, trust-lints, trust-lower, trust-lsp, trust-rustc, trust-rustdoc, trust-std, trust-syntax) updated: switched internal deps to .workspace = true, added keywords (5 per crate) and categories. xtask correctly retains publish = false.\n- Verified: cargo check --workspace passes. cargo publish --dry-run -p trust-attrs and -p cargo-trust both clean (these are the leaves; pass through the full verify step). The other 9 hit 'no matching package named X found' — that's not a metadata bug, it's the registry-order problem RT-58 owns (cargo won't fully verify a crate whose deps aren't published yet).\n\nPublish-order plan documented in RT-58 description. RT-55 unblocks RT-58 as planned."
+  }
+}
