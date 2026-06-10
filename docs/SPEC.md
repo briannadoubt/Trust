@@ -48,6 +48,33 @@ which is fine for single-file inputs the Trust toolchain handles
 end-to-end, but unsuitable for files that need to compile under
 `cargo build`.
 
+### Project mode: `[package.metadata.trust] strict = true` (RT-81)
+
+The least-ceremony activation: declare strictness once in `Cargo.toml` and
+build with `cargo trust`. No per-file marker, no `trust-attrs` dependency, no
+environment setup.
+
+```toml
+[package.metadata.trust]
+strict = true
+```
+
+```sh
+cargo trust build    # lowers + checks the whole crate
+```
+
+`cargo trust` reads the key and passes the opted-in package name to the
+lowering shims in `TRUST_STRICT_PACKAGES`. The shims then treat every file in
+**that package** as strict — exactly as if each carried a marker — while
+leaving dependencies (compiled by the same wrapper, but with their own
+`CARGO_PKG_NAME`) untouched. This is the recommended activation for a Trust
+project; the two markers below remain for single files and for mixed crates
+that opt in file-by-file.
+
+> Scope note: the opt-in currently applies to the package named in the invoked
+> manifest. Whole-workspace activation (`[workspace.metadata.trust]`) is a
+> follow-up.
+
 ### Cargo mode: `trust_attrs::strict!{}` (lints only by default)
 
 For files that participate in a `cargo build` (e.g. crates written in

@@ -184,8 +184,43 @@ pub fn find_input_rs(args: &[String]) -> Option<usize> {
     })
 }
 
-/// If `input_path` is strict-marked, lower the whole source tree into the
-/// cache and return the new root path + a `--remap-path-prefix` flag.
+/// Whether the crate currently being compiled was opted into strict mode at
+/// the *project* level (`[package.metadata.trust] strict = true`), rather than
+/// per-file with a `#![strict]` / `strict!{}` marker.
+///
+/// `cargo-trust` passes the set of strict package names in
+/// `TRUST_STRICT_PACKAGES` (comma-separated). Cargo sets `CARGO_PKG_NAME` for
+/// every rustc invocation — including dependencies — so gating on membership
+/// scopes forced lowering to exactly the user's own opted-in package(s) and
+/// never touches third-party crates compiled in the same build.
+pub fn crate_is_force_strict() -> bool {
+    force_strict_for(
+        env::var("TRUST_STRICT_PACKAGES").ok().as_deref(),
+        env::var("CARGO_PKG_NAME").ok().as_deref(),
+    )
+}
+
+/// Pure membership check behind [`crate_is_force_strict`]: is `name` listed in
+/// the comma-separated `pkgs` set? An empty/absent name or list is never a
+/// match — this is what keeps dependencies (which carry their own
+/// `CARGO_PKG_NAME`, not in the user's set) out of forced lowering.
+fn force_strict_for(pkgs: Option<&str>, name: Option<&str>) -> bool {
+    let (Some(pkgs), Some(name)) = (pkgs, name) else {
+        return false;
+    };
+    let name = name.trim();
+    !name.is_empty() && pkgs.split(',').any(|p| p.trim() == name)
+}
+
+/// True if a file should be lowered: either it carries an explicit strict
+/// marker, or its crate was opted in at the project level.
+fn should_lower(source: &str) -> bool {
+    trust_lower::is_strict_source(source) || crate_is_force_strict()
+}
+
+/// If `input_path` is strict (per-file marker or project-level opt-in), lower
+/// the whole source tree into the cache and return the new root path +
+/// a `--remap-path-prefix` flag.
 ///
 /// Returns `Ok(None)` for non-strict sources — the caller should pass the
 /// original args through to the underlying tool unchanged.
@@ -195,9 +230,10 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
         Err(_) => return Ok(None),
     };
 
-    if !trust_lower::is_strict_source(&source) {
+    if !should_lower(&source) {
         return Ok(None);
     }
+    let force_strict = crate_is_force_strict();
 
     let file_name = input_path
         .file_name()
@@ -240,7 +276,7 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
         // Defensive: if the src_dir traversal somehow didn't write the
         // crate root (e.g. empty dir), do it directly.
         if !cached_file.exists() {
-            let out = trust_lower::lower_with_extra_callees(&source, &extras)
+            let out = trust_lower::lower_with_extra_callees_forced(&source, &extras, force_strict)
                 .with_context(|| format!("lowering {}", input_path.display()))?;
             emit_diagnostics(&out, input_path)?;
             fs::create_dir_all(&cache_dir)?;
@@ -321,9 +357,13 @@ pub fn mirror_module_tree_with_extras(
         } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
             let source =
                 fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
-            if trust_lower::is_strict_source(&source) {
-                let out = trust_lower::lower_with_extra_callees(&source, extras)
-                    .with_context(|| format!("lowering {}", path.display()))?;
+            if should_lower(&source) {
+                let out = trust_lower::lower_with_extra_callees_forced(
+                    &source,
+                    extras,
+                    crate_is_force_strict(),
+                )
+                .with_context(|| format!("lowering {}", path.display()))?;
                 emit_diagnostics(&out, &path)?;
                 // Also lower any doc-test code blocks embedded in `///` /
                 // `//!` comments. rustdoc extracts these snippets verbatim
@@ -597,6 +637,24 @@ fn strip_hidden_doctest_prefix(s: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// RT-81: project-level strict applies only to packages the user opted in,
+    /// never to dependencies compiled by the same wrapper.
+    #[test]
+    fn force_strict_is_scoped_by_package_name() {
+        // The user's own crate is in the set → forced strict.
+        assert!(force_strict_for(Some("my-app"), Some("my-app")));
+        // A dependency built in the same `cargo trust build` carries its own
+        // CARGO_PKG_NAME, which is NOT in the set → never force-lowered.
+        assert!(!force_strict_for(Some("my-app"), Some("serde")));
+        // Multi-package set, with whitespace.
+        assert!(force_strict_for(Some("a, b ,c"), Some("b")));
+        // Absent set or name is never a match.
+        assert!(!force_strict_for(None, Some("my-app")));
+        assert!(!force_strict_for(Some("my-app"), None));
+        // Empty name must not match an empty element from a trailing comma.
+        assert!(!force_strict_for(Some("a,"), Some("")));
+    }
 
     /// RT-75 regression: the cache mirror must COPY non-strict files, not
     /// hard-link them. A hard link shares the inode, so clobbering the cached

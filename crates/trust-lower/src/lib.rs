@@ -8,8 +8,8 @@
 //! The driver wires these together via [`lower`].
 
 use proc_macro2::TokenStream;
-use trust_diag::Diagnostic;
 use thiserror::Error;
+use trust_diag::Diagnostic;
 
 pub mod named_args;
 pub mod pipe;
@@ -62,9 +62,22 @@ pub fn lower_with_extra_callees(
     source: &str,
     extras: &[(String, Vec<String>)],
 ) -> Result<LowerOutput, Error> {
+    lower_with_extra_callees_forced(source, extras, false)
+}
+
+/// As [`lower_with_extra_callees`], but `force_strict` activates strict mode
+/// even when the source carries no `#![strict]` / `strict!{}` marker. Used by
+/// the `trust-rustc` wrapper for project-level opt-in
+/// (`[package.metadata.trust] strict = true`), where strictness is declared
+/// once in the manifest rather than per file (RT-81).
+pub fn lower_with_extra_callees_forced(
+    source: &str,
+    extras: &[(String, Vec<String>)],
+    force_strict: bool,
+) -> Result<LowerOutput, Error> {
     let tokens: TokenStream = source.parse()?;
 
-    let strict_mode = detect_strict_mode(&tokens);
+    let strict_mode = force_strict || detect_strict_mode(&tokens);
 
     // Build the callee registry from the local signatures plus any
     // crate-wide extras the caller supplied.

@@ -112,14 +112,84 @@ fn run_cargo(args: &[String]) -> Result<i32> {
     let rustdoc = locate_shim("trust-rustdoc", "TRUST_RUSTDOC")?;
     let cargo = env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo"));
 
-    let status = Command::new(&cargo)
-        .args(args)
+    let mut cmd = Command::new(&cargo);
+    cmd.args(args)
         // Respect a wrapper the user already set, but default to ours.
         .env("RUSTC_WRAPPER", &rustc)
-        .env("RUSTDOC", &rustdoc)
+        .env("RUSTDOC", &rustdoc);
+
+    // Project-level strict opt-in: if the manifest declares
+    // `[package.metadata.trust] strict = true`, tell the shims to lower the
+    // whole crate even when individual files carry no `#![strict]` marker.
+    // Scoped by package name so dependencies (compiled by the same wrapper)
+    // are never force-lowered — see `crate_is_force_strict` in trust-rustc.
+    let strict = strict_packages(args);
+    if !strict.is_empty() {
+        cmd.env("TRUST_STRICT_PACKAGES", strict.join(","));
+    }
+
+    let status = cmd
         .status()
         .with_context(|| format!("invoking {}", cargo.to_string_lossy()))?;
     Ok(status.code().unwrap_or(1))
+}
+
+/// Names of packages that opted into strict mode at the project level via
+/// `[package.metadata.trust] strict = true`. Reads the manifest cargo would
+/// use: `--manifest-path` if given, else the nearest `Cargo.toml` walking up
+/// from the current directory. Best-effort — a missing/unparseable manifest
+/// yields an empty set (per-file markers still work).
+fn strict_packages(args: &[String]) -> Vec<String> {
+    let Some(manifest) = manifest_path(args) else {
+        return Vec::new();
+    };
+    let Ok(text) = std::fs::read_to_string(&manifest) else {
+        return Vec::new();
+    };
+    let Ok(value) = text.parse::<toml::Value>() else {
+        return Vec::new();
+    };
+    parse_strict_package(&value).into_iter().collect()
+}
+
+/// Extract the package name from a parsed manifest iff it declares
+/// `[package.metadata.trust] strict = true`.
+fn parse_strict_package(manifest: &toml::Value) -> Option<String> {
+    let package = manifest.get("package")?;
+    let strict = package
+        .get("metadata")?
+        .get("trust")?
+        .get("strict")?
+        .as_bool()
+        .unwrap_or(false);
+    if !strict {
+        return None;
+    }
+    package.get("name")?.as_str().map(str::to_string)
+}
+
+/// Resolve the manifest path: `--manifest-path <p>` / `--manifest-path=<p>` if
+/// present in args, otherwise the nearest `Cargo.toml` walking up from cwd.
+fn manifest_path(args: &[String]) -> Option<PathBuf> {
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        if a == "--manifest-path" {
+            return it.next().map(PathBuf::from);
+        }
+        if let Some(p) = a.strip_prefix("--manifest-path=") {
+            return Some(PathBuf::from(p));
+        }
+    }
+    let mut dir = env::current_dir().ok()?;
+    loop {
+        let candidate = dir.join("Cargo.toml");
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+        if !dir.pop() {
+            return None;
+        }
+    }
 }
 
 /// Forward a trust-native subcommand to the `trust` CLI.
@@ -260,5 +330,55 @@ mod tests {
     #[test]
     fn no_args_shows_usage() {
         assert_eq!(dispatch(&v(&[])), Dispatch::Usage);
+    }
+
+    fn parse(s: &str) -> Option<String> {
+        parse_strict_package(&s.parse::<toml::Value>().unwrap())
+    }
+
+    #[test]
+    fn strict_true_yields_package_name() {
+        let m = r#"
+            [package]
+            name = "my-app"
+            version = "0.1.0"
+            [package.metadata.trust]
+            strict = true
+        "#;
+        assert_eq!(parse(m), Some("my-app".to_string()));
+    }
+
+    #[test]
+    fn strict_false_or_absent_yields_nothing() {
+        let false_ = r#"
+            [package]
+            name = "my-app"
+            [package.metadata.trust]
+            strict = false
+        "#;
+        assert_eq!(parse(false_), None);
+        let absent = r#"
+            [package]
+            name = "my-app"
+        "#;
+        assert_eq!(parse(absent), None);
+        // A virtual workspace manifest has no [package] at all.
+        let virtual_ws = r#"
+            [workspace]
+            members = ["a", "b"]
+        "#;
+        assert_eq!(parse(virtual_ws), None);
+    }
+
+    #[test]
+    fn manifest_path_reads_explicit_flag() {
+        assert_eq!(
+            manifest_path(&v(&["build", "--manifest-path", "/x/Cargo.toml"])),
+            Some(PathBuf::from("/x/Cargo.toml"))
+        );
+        assert_eq!(
+            manifest_path(&v(&["build", "--manifest-path=/y/Cargo.toml"])),
+            Some(PathBuf::from("/y/Cargo.toml"))
+        );
     }
 }

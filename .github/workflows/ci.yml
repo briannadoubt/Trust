@@ -109,6 +109,35 @@ jobs:
           out=$(cd examples/cargo-strict-fixture && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust run 2>/dev/null | tail -1)
           test "$out" = "(1, 2, 3)"
 
+      - name: cargo trust — project-level strict, no per-file marker (RT-81)
+        run: |
+          # `[package.metadata.trust] strict = true` activates strict mode for
+          # the whole crate; src/ has NO #![strict] / strict!{} marker.
+          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          export PATH="$(realpath target/debug):$PATH"
+          FIX=examples/cargo-strict-config
+          # Negative: plain cargo build rejects the named-arg syntax (no wrapper).
+          # Clean first so cargo can't report a stale artifact as up-to-date.
+          (cd "$FIX" && cargo clean >/dev/null)
+          if (cd "$FIX" && cargo build 2>/dev/null); then
+            echo "FAIL: expected plain cargo build to reject named-arg syntax"
+            exit 1
+          fi
+          # Positive: cargo trust run lowers the whole crate from the manifest
+          # opt-in alone — zero env vars, zero markers.
+          (cd "$FIX" && cargo clean >/dev/null)
+          out=$(cd "$FIX" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust run 2>/dev/null | tail -1)
+          test "$out" = "(4, 5, 6)"
+          # Enforcement: a positional same-typed call must trip R0042 crate-wide,
+          # proving the opt-in turns on the lints, not just syntax lowering.
+          tmp=$(mktemp -d); mkdir -p "$tmp/src"; cp "$FIX/Cargo.toml" "$tmp/"
+          printf 'fn make_point(x: i32, y: i32, z: i32) -> (i32, i32, i32) { (x, y, z) }\nfn main() { let p = make_point(4, 5, 6); println!("{p:?}"); }\n' > "$tmp/src/main.rs"
+          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust build 2>/dev/null); then
+            echo "FAIL: expected R0042 to reject positional same-typed call under project strict"
+            exit 1
+          fi
+          rm -rf "$tmp"
+
       - name: example — Phase 2 pipe
         run: |
           cargo run -p trust -- build examples/02-pipe/chain.rs --out /tmp/p2

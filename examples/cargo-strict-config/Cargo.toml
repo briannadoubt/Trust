@@ -1,0 +1,20 @@
+# Fixture for project-level strict opt-in (RT-81). NOTE: there is no
+# `strict!{}` marker anywhere in src/ — strict mode is activated purely by
+# the metadata key below, read by `cargo trust`.
+
+# Standalone workspace — keep out of the main workspace so building this
+# fixture doesn't drag in every trust-* crate.
+[workspace]
+
+[package]
+name = "cargo-strict-config"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.trust]
+strict = true
+
+[[bin]]
+name = "cargo-strict-config"
+path = "src/main.rs"
