@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTRA4TA8X401MSJ0HJ7A6DGX",
+  "ts": "2026-06-10T08:24:54.344Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DGW",
+    "number": 96,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Machine-readable diagnostics from cargo trust build (agent loop)",
+    "description": "The skill's iteration loop wants structured output from the WRAPPER path, not just `trust check`. Today the shims emit human lines ([R0042] error: ...) on stderr. Add an opt-in (env var or cargo trust --message-format json) that emits the RT-70 JSON diagnostic documents during cargo trust build, so an agent can parse rule/span/fix without scraping. Reuses trust-diag's to_json; the work is plumbing it through emit_diagnostics in trust-rustc.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTRA4TA7EF6F4VHFW4YY2687",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

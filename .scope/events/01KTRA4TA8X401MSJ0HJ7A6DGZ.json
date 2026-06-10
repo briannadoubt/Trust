@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTRA4TA8X401MSJ0HJ7A6DGZ",
+  "ts": "2026-06-10T08:24:54.344Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DGY",
+    "number": 97,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Eval: does the skill actually help? (setup + authoring tasks)",
+    "description": "Extend the eval harness with agent-workflow tasks: (a) cold-start setup ('make this crate strict and green'), (b) fix-the-R-code remediation tasks, (c) greenfield authoring. Run skill-equipped vs bare. This is the same eval-gated discipline as Tier 1/3 — and it also pays down the validation debt recorded on RT-68/72/73/74 if the task set includes the new rules. Needs API spend: bri's call on when.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTRA4TA7EF6F4VHFW4YY2687",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}
