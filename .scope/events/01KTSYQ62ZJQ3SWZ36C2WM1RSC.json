@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTSYQ62ZJQ3SWZ36C2WM1RSC",
+  "ts": "2026-06-10T23:43:42.175Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTQQ7DG6JGQZ93NN6ZZJ5V3M",
+    "commentId": "01KTSYQ62ZJQ3SWZ36C2WM1RSB",
+    "author": "claude",
+    "body": "PR #1 Codex review fix (commit 374ca06): cfg(test) detector no longer substring-matches — not(test)/all(unix, not(test)) modules are production code and stay enforced; positive test predicates (bare, any/all) remain exempt; feature = \"test\" doesn't count. Regression + e2e verified."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTSYQ5YSG7K4BDEZBN164FSR",
+  "ts": "2026-06-10T23:43:42.041Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5YY",
+    "commentId": "01KTSYQ5YSG7K4BDEZBN164FSQ",
+    "author": "claude",
+    "body": "PR #1 Codex review fix (commit 0597970): workspace-root discovery — [workspace.metadata.trust] opt-in now honored when cargo trust runs from inside a member dir, mirroring cargo's root-finding (manifest with [workspace] = its own root, else ancestor walk). Regression + e2e verified."
+  }
+}
