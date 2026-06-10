@@ -1,0 +1,20 @@
+# REFERENCE SOLUTION — never shown to the agent. run_agent_eval.py excludes
+# `reference-solution/` when copying the fixture into the work directory.
+# Fix per R0021 `instead:` guidance — `.len()` is the element count.
+
+# Standalone workspace (own [workspace] so this crate doesn't attach to the
+# fixture's workspace one directory up).
+[workspace]
+
+[package]
+name = "fixture-r0021-capacity"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.trust]
+strict = true
+
+[[bin]]
+name = "fixture-r0021-capacity"
+path = "src/main.rs"

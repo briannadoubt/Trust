@@ -1,0 +1,18 @@
+# Eval fixture (RT-97, setup task): a plain-Rust crate the agent must convert
+# to Trust. In this broken state it builds green with plain `cargo build` —
+# there is deliberately NO trust metadata key yet.
+
+# Standalone workspace — keep out of the main workspace so building this
+# fixture doesn't drag in every trust-* crate (same pattern as
+# examples/cargo-strict-fixture).
+[workspace]
+
+[package]
+name = "logstat"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "logstat"
+path = "src/main.rs"

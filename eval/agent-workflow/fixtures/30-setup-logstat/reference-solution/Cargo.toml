@@ -1,0 +1,21 @@
+# REFERENCE SOLUTION — never shown to the agent. run_agent_eval.py excludes
+# `reference-solution/` when copying the fixture into the work directory.
+# Hand-converted Trust version of the logstat fixture: metadata key added,
+# named args at both multi-arg call sites, `.unwrap()` replaced.
+
+# Standalone workspace (own [workspace] so this crate doesn't attach to the
+# fixture's workspace one directory up).
+[workspace]
+
+[package]
+name = "logstat"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.trust]
+strict = true
+
+[[bin]]
+name = "logstat"
+path = "src/main.rs"

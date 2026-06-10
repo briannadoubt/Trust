@@ -1,0 +1,19 @@
+# Eval fixture (RT-97 / RT-72 validation debt): fails `cargo trust build`
+# with exactly R0019 (no-unchecked-len-arith).
+
+# Standalone workspace — keep out of the main workspace (same pattern as
+# examples/cargo-strict-config).
+[workspace]
+
+[package]
+name = "fixture-r0019-len-arith"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.trust]
+strict = true
+
+[[bin]]
+name = "fixture-r0019-len-arith"
+path = "src/main.rs"

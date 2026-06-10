@@ -1,0 +1,19 @@
+# Eval fixture (RT-97 / RT-74 validation debt): fails `cargo trust build`
+# with exactly R0021 (no-capacity-as-len).
+
+# Standalone workspace — keep out of the main workspace (same pattern as
+# examples/cargo-strict-config).
+[workspace]
+
+[package]
+name = "fixture-r0021-capacity"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.trust]
+strict = true
+
+[[bin]]
+name = "fixture-r0021-capacity"
+path = "src/main.rs"

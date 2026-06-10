@@ -1,0 +1,19 @@
+# Eval fixture (RT-97 / RT-73 validation debt): fails `cargo trust build`
+# with exactly R0020 (no-lock-across-await).
+
+# Standalone workspace — keep out of the main workspace (same pattern as
+# examples/cargo-strict-config).
+[workspace]
+
+[package]
+name = "fixture-r0020-lock-await"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.trust]
+strict = true
+
+[[bin]]
+name = "fixture-r0020-lock-await"
+path = "src/main.rs"

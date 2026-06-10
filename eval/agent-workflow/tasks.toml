@@ -1,0 +1,104 @@
+# Agent-workflow eval suite (RT-97). Same shape as ../tasks.toml — each
+# [[task]] is one row of the matrix — but a trial here is a short *agent
+# session* over a fixture crate (propose files → cargo trust build → read
+# diagnostics → repeat), not a single completion. Each task runs in two arms:
+#
+#   bare     — the prompt below, nothing else
+#   skilled  — the same prompt with skills/writing-trust/SKILL.md prepended
+#
+# `bug` / `good` are Python regexes with the same semantics as ../tasks.toml:
+# `bug` is the anti-pattern that must be GONE from the final sources for a
+# pass, `good` is the expected fix idiom. Validated against both the broken
+# fixture (bug must match, good must not) and reference-solution/ (inverse).
+#
+# `kind = "setup"` adds three extra scored predicates (see score_agent.py):
+# the trust metadata key is present, no per-file `#![strict]` markers were
+# used, and plain `cargo build` still fails — i.e. the agent kept the named
+# args instead of "fixing" the dialect away.
+#
+# Remediation tasks 31–34 pay down the validation debt recorded on
+# RT-68/72/73/74: each fixture fails `cargo trust build` with exactly the
+# rule under test (verified at authoring time — see README.md).
+
+[[task]]
+id = "30-setup-logstat"
+kind = "setup"
+description = "Convert a plain-Rust crate to Trust: metadata key, named args, no unwrap. Pass = trust-green + key present + no per-file markers + named args kept (plain cargo still fails)."
+bug = '(?:(?:parse_entry|format_entry)\s*\(\s*(?!\w+\s*:))|\.unwrap\s*\(\s*\)'
+good = '(?<!fn )(?:parse_entry|format_entry)\s*\(\s*\w+\s*:'
+prompt = """
+The crate in your working directory is plain Rust and currently builds with
+plain `cargo build`. Convert it to Trust, the strict Rust dialect this
+repository uses:
+
+1. Opt the whole crate in at the project level (the Cargo.toml way — do not
+   add per-file markers to the sources).
+2. Fix every violation the Trust toolchain reports until `cargo trust build`
+   exits green.
+
+Keep the program's behavior identical. Note that once converted, plain
+`cargo build` failing on Trust syntax is expected and correct — do not undo
+dialect syntax to appease plain cargo.
+"""
+
+[[task]]
+id = "31-remediate-r0018"
+kind = "remediation"
+expected_rule = "R0018"
+description = "Fix an error-context-dropped failure (R0018): `.map_err(|_| …)` must carry the source error."
+bug = 'map_err\s*\(\s*\|\s*_\s*\||\.ok\s*\(\s*\)\s*\.\s*expect'
+good = 'map_err\s*\(\s*\|\s*(?!_\s*\|)\w+\s*\|'
+prompt = """
+The crate in your working directory fails `cargo trust build` (the build
+output is included below). Fix the code properly, following the diagnostic's
+guidance — do not suppress the rule with `#[allow]`, and do not delete the
+error handling. The build must exit green.
+"""
+
+[[task]]
+id = "32-remediate-r0019"
+kind = "remediation"
+expected_rule = "R0019"
+description = "Fix a no-unchecked-len-arith failure (R0019): bare arithmetic on `.len()` must become checked_/saturating_."
+bug = '\.len\s*\(\s*\)\s*[+\-*]|[+\-*]\s*[\w.]*\.len\s*\(\s*\)'
+good = '(?:checked|saturating|wrapping)_(?:sub|add|mul)'
+prompt = """
+The crate in your working directory fails `cargo trust build` (the build
+output is included below). Fix the code properly, following the diagnostic's
+guidance — do not suppress the rule with `#[allow]`. Keep the function's
+signature and intent; make the edge case explicit. The build must exit green.
+"""
+
+[[task]]
+id = "33-remediate-r0020"
+kind = "remediation"
+expected_rule = "R0020"
+description = "Fix a no-lock-across-await failure (R0020): drop the sync guard before awaiting (scope it) or switch to an async-aware lock."
+# Scope-sensitivity is beyond a plain grep, so the bug regex encodes its own
+# exception: it only matches when the file has a sync-guard acquisition AND
+# contains neither fix idiom (a statement-level bare block or tokio::sync).
+# `cargo trust build` green remains the authoritative scope-aware check.
+bug = '(?m)\A(?![\s\S]*(?:tokio::sync|^[ \t]*\{[ \t]*$))[\s\S]*\.lock\s*\(\s*\)\s*\.\s*(?:unwrap|expect)\b'
+good = '(?m)tokio::sync::(?:Mutex|RwLock)|^[ \t]*\{[ \t]*$'
+prompt = """
+The crate in your working directory fails `cargo trust build` (the build
+output is included below). Fix the code properly, following the diagnostic's
+guidance — do not suppress the rule with `#[allow]`, and keep the caching
+behavior (fast path on hit, fetch + store on miss). The crate must stay
+std-only. The build must exit green.
+"""
+
+[[task]]
+id = "34-remediate-r0021"
+kind = "remediation"
+expected_rule = "R0021"
+description = "Fix a no-capacity-as-len failure (R0021): `.capacity()` as a loop bound must become `.len()`."
+bug = '\.\.\s*[\w.]*capacity\s*\(\s*\)|capacity\s*\(\s*\)\s*\.\.|\[[^\[\]\n]*capacity\s*\(\s*\)'
+good = '\.len\s*\(\s*\)'
+prompt = """
+The crate in your working directory fails `cargo trust build` (the build
+output is included below). Fix the code properly, following the diagnostic's
+guidance — do not suppress the rule with `#[allow]`. Keep the checksum
+behavior for the elements that are actually in the buffer. The build must
+exit green.
+"""

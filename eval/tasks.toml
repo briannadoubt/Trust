@@ -676,3 +676,133 @@ The program must:
 
 5. Use explicit imports — no `use std::collections::*;`.
 """
+
+[[task]]
+id = "16-frame-parse"
+description = "Length-prefixed frame parser. Bug surface: R0019 bare `.len()` arithmetic (the leftover-bytes count tempts `frame.len() - 1 - n`; the bound check also tempts an `as` cast, but R0019 is the scored rule). Added by RT-97 to pay down RT-72's eval-validation debt."
+bug = '\.len\s*\(\s*\)\s*[+\-*]|[+\-*]\s*[\w.]*\.len\s*\(\s*\)'
+good = '(?:checked|saturating)_(?:sub|add)'
+expected_rule = "R0019"
+vanilla_prompt = """
+Write a complete single-file Rust program. Output ONLY the source
+code, no commentary, no markdown fences.
+
+The program parses a length-prefixed frame.
+
+Define:
+
+    fn split_frame(frame: &[u8]) -> Option<(&[u8], usize)> {
+        // The first byte of `frame` is the payload length `n`.
+        // Return Some((payload, leftover)) where `payload` is the `n`
+        // bytes immediately after the length byte and `leftover` is
+        // the count of bytes remaining after the payload. Return None
+        // if the frame is empty or shorter than 1 + n bytes.
+    }
+
+In `fn main()`:
+1. Call `split_frame(&[3, 10, 20, 30, 99])` and print the result with
+   `println!("{:?}", result);`.
+2. Call `split_frame(&[5, 1])` and print the result the same way.
+
+Use only std. Compile with `rustc`.
+"""
+trust_prompt = """
+Write a complete single-file program in the Trust dialect.
+Trust is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+The program parses a length-prefixed frame.
+
+Define:
+
+    fn split_frame(frame: &[u8]) -> Option<(&[u8], usize)> {
+        // The first byte of `frame` is the payload length `n`.
+        // Return Some((payload, leftover)) where `payload` is the `n`
+        // bytes immediately after the length byte and `leftover` is
+        // the count of bytes remaining after the payload. Return None
+        // if the frame is empty or shorter than 1 + n bytes.
+    }
+
+In `fn main()`:
+1. Call `split_frame(&[3, 10, 20, 30, 99])` and print the result with
+   `println!("{:?}", result);`.
+2. Call `split_frame(&[5, 1])` and print the result the same way.
+"""
+
+[[task]]
+id = "17-async-cache"
+description = "Async cache around a std::sync::Mutex. Bug surface: R0020 guard held across the fetch `.await`. The bug regex encodes its own fix-idiom exceptions (statement-level scope block or tokio::sync) since guard scope is beyond a plain grep; R0020 via `trust check` is the authoritative catch. Free fn by design — R0020 currently skips impl methods. Added by RT-97 to pay down RT-73's eval-validation debt."
+bug = '(?m)\A(?![\s\S]*(?:tokio::sync|^[ \t]*\{[ \t]*$))[\s\S]*\.lock\s*\(\s*\)\s*\.\s*(?:unwrap|expect)\b'
+good = '(?m)tokio::sync::(?:Mutex|RwLock)|^[ \t]*\{[ \t]*$'
+expected_rule = "R0020"
+vanilla_prompt = """
+Write a single-file Rust library (no `main`). Output ONLY the source
+code, no commentary, no markdown fences.
+
+Define exactly:
+
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+
+    pub struct Cache {
+        entries: Mutex<HashMap<String, String>>,
+    }
+
+    pub fn new_cache() -> Cache {
+        Cache { entries: Mutex::new(HashMap::new()) }
+    }
+
+    async fn fetch_remote(key: &str) -> String {
+        std::future::ready(format!("remote:{key}")).await
+    }
+
+Then implement:
+
+    pub async fn get_or_fetch(cache: &Cache, key: &str) -> String {
+        // Look `key` up in `cache.entries`; on a hit return the cached
+        // value. On a miss, call `fetch_remote(key).await`, store the
+        // result in `cache.entries`, and return it.
+    }
+
+Use only std. Compile with `rustc --edition 2021 --crate-type lib`.
+"""
+trust_prompt = """
+Write a single-file library in the Trust dialect (no `main`).
+Trust is Rust with `#![strict]` at the top of the file, which
+enables an additional set of static checks. Apart from `#![strict]`,
+write idiomatic Rust.
+
+Output ONLY the source code, no commentary, no markdown fences. The
+first line must be `#![strict]`.
+
+Define exactly:
+
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+
+    pub struct Cache {
+        entries: Mutex<HashMap<String, String>>,
+    }
+
+    pub fn new_cache() -> Cache {
+        Cache { entries: Mutex::new(HashMap::new()) }
+    }
+
+    async fn fetch_remote(key: &str) -> String {
+        std::future::ready(format!("remote:{key}")).await
+    }
+
+Then implement:
+
+    pub async fn get_or_fetch(cache: &Cache, key: &str) -> String {
+        // Look `key` up in `cache.entries`; on a hit return the cached
+        // value. On a miss, call `fetch_remote(key).await`, store the
+        // result in `cache.entries`, and return it.
+    }
+
+Use only std.
+"""
