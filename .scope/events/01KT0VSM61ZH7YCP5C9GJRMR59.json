@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KT0VSM61ZH7YCP5C9GJRMR59",
+  "ts": "2026-06-01T05:51:35.617Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR731",
+    "commentId": "01KT3T33TFCK467Y3FCBDKNVSP",
+    "author": "agent",
+    "body": "Delivered. trust_std::newtype! makes the R0017 fix a one-liner.\n\n- trust-std: #[macro_export] macro_rules! newtype — 'newtype!(pub Width(u32));' generates a tuple struct with a pub field + new/into_inner + From<inner>, deriving Debug/Clone/PartialEq (safe for any inner incl f64). Richer derives (Copy/Eq/Hash/Ord) via an extra #[derive(...)] before the decl (meta passthrough). 3 lib tests + 2 doc-tests.\n- R0017's help text now points at it; SPEC R0017 + std-shims sections document it.\n- Proven end-to-end: raw u32 params fire R0017; the newtype! fix silences it (distinct types) with no R0008 (invocation, not a macro_rules def).\n\nHome: trust-std (proc-macro crates can't export macro_rules; needs a normal lib). It's a macro_rules DEF in a strict crate, so 'trust check crates/trust-std' reports R0008 on it — but the wrapper runs lowering only (not AST lints), so this is NOT CI-enforced, consistent with R0017's own trust-std std-mirror hits. Verified: stock build/test/clippy -D warnings, dogfood wrapper build of trust-std, and gen-docs/gen-std-signatures --check all green."
+  }
+}

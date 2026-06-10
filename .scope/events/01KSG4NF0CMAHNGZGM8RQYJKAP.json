@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSG4NF0CMAHNGZGM8RQYJKAP",
+  "ts": "2026-05-25T17:59:31.084Z",
+  "actor": "migration",
+  "kind": "workspace.init",
+  "payload": {
+    "key": "RT",
+    "name": "Trust",
+    "description": "A strict Rust dialect for the bugs LLMs actually ship — strict lints + named-args and pipe (|>) syntax extensions, lowered to plain Rust. Catches the agent bug classes Clippy can't (same-typed positional-arg swaps) plus the ones it can (unwrap, as-casts, globs).",
+    "overview": "# Trust\n\nA **strict Rust dialect for the bugs LLMs actually ship** (formerly Rustricted).\n\nAgents write Rust that compiles, type-checks, and reviews clean — then ship a small, predictable set of bugs: positional-argument swaps, `.unwrap()` in production paths, `as` casts that silently truncate, glob imports. Add `#![strict]` and those become compile errors with a fix in the message.\n\n## What it is\n\nA thin frontend over **stable Rust**. Two grammar extensions — named arguments and the pipe `|>` — lower to plain positional Rust before `rustc` sees the file; the lints are ordinary static checks. Stop using Trust tomorrow and the lowered code still builds.\n\n## The moat over Rust + Clippy\n\nThe one thing Clippy structurally cannot do: catch same-typed positional-argument swaps, because the fix needs syntax Rust lacks (names at the call site). Most strict lints have Clippy analogues — the real differentiators are the frontend, a cross-crate signature index, and an agent-tuned diagnostic contract.\n\n## Status\n\n0.1 — agent-authored, eval-backed prototype. 18 rules, working CLI, RUSTC_WRAPPER/RUSTDOC shims, LSP. MIT OR Apache-2.0. Post-0.1 technical roadmap is RT-62..RT-74 (Tiers 0–3)."
+  }
+}

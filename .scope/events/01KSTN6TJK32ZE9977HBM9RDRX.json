@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "id": "01KSTN6TJK32ZE9977HBM9RDRX",
+  "ts": "2026-05-29T20:01:01.523Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72X",
+    "number": 73,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Lock-held-across-await / async footgun lints",
+    "description": "Flag std Mutex/RwLock guards held across .await points and related async footguns agents misuse (Arc<Mutex> patterns).\n\nPartial overlap with Clippy's await_holding_lock — confirm the delta before building. Eval-gated.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72N",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "lint",
+      "eval-gated",
+      "async"
+    ]
+  }
+}

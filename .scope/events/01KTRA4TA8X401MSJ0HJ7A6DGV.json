@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTRA4TA8X401MSJ0HJ7A6DGV",
+  "ts": "2026-06-10T08:24:54.344Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DGT",
+    "number": 95,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Drop-in CLAUDE.md / AGENTS.md template for Trust projects",
+    "description": "A short, copy-pasteable template block that Trust-using projects put in their CLAUDE.md/AGENTS.md so ANY agent (not just one with the skill installed) gets the essentials in-context: build with cargo trust not cargo, the syntax extensions exist, R-codes are teaching errors — read why:/instead: and retry, tests are exempt. Ship as docs/templates/CLAUDE-md-snippet.md, referenced from README and emitted by `trust new`. Keep it under ~30 lines — it lives in someone else's context budget.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTRA4TA7EF6F4VHFW4YY2687",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

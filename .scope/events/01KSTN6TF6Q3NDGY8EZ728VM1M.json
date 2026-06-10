@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KSTN6TF6Q3NDGY8EZ728VM1M",
+  "ts": "2026-05-29T20:01:01.414Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72W",
+    "number": 72,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Error-context preservation lint",
+    "description": "Ban .map_err(|_| ...) / .ok() patterns that silently drop the source error. Agents do this constantly to make ? typecheck, discarding the error chain.\n\nMechanism is commodity (a linter can do it); the novelty is the target. Clippy doesn't aim here. Eval-gated.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72N",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "lint",
+      "eval-gated"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTRBW9DP8EX16X8C3PNRWFXB",
+  "ts": "2026-06-10T08:55:12.054Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DH0",
+    "commentId": "01KTRBW9DP8EX16X8C3PNRWFXA",
+    "author": "claude",
+    "body": "Distribution mechanics confirmed against current Claude Code docs (2026-06): (1) ZERO-INSTALL — .claude/skills/<name>/SKILL.md in a project auto-loads for anyone who clones; trust new (RT-94) should scaffold it. (2) PERSONAL — copy to ~/.claude/skills/<name>/; hot-reloads, no restart. (3) PLUGIN — bundle as trust-plugin/{.claude-plugin/plugin.json, skills/<name>/SKILL.md}; the Trust repo itself can host the marketplace via .claude-plugin/marketplace.json at repo root; users: /plugin marketplace add briannadoubt/Trust then /plugin install trust@<marketplace-name>. Skills namespace as /trust:writing-trust. Set version in plugin.json so users update only on bumps. Dev/test loop: claude --plugin-dir ./trust-plugin (overrides installed copy); claude plugin validate before submitting to the community marketplace (platform.claude.com/plugins/submit). Plugins can also bundle hooks (e.g. nudge cargo build -> cargo trust build) + agents + MCP. Docs: code.claude.com/docs/en/skills.md, plugins.md, plugin-marketplaces.md."
+  }
+}

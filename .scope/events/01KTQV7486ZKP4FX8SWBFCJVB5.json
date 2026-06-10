@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQV7486ZKP4FX8SWBFCJVB5",
+  "ts": "2026-06-10T04:04:01.414Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72F",
+    "commentId": "01KTQV7486ZKP4FX8SWBFCJVB4",
+    "author": "claude",
+    "body": "Extension shipped at editors/vscode (client wrapping trust-lsp; compiles; F5 dev-host ready; vsce package script in place). Remaining for one-click install: bundled platform binaries + marketplace publish — both belong to the release pipeline alongside RT-58 and need bri's publisher account."
+  }
+}

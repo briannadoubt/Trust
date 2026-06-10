@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KSTN6STXG4DCYPT78MRW5DTV",
+  "ts": "2026-05-29T20:01:00.765Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72P",
+    "number": 66,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Cross-crate signature-index auto-extraction",
+    "description": "Extract named-arg signature indices from arbitrary dependencies so R0042 enforces across the crate boundary, not just in-crate.\n\nApproaches, cheapest first:\n1. cargo trust index — emit a sidecar signature file per crate at build time.\n2. Parse rustdoc JSON for dependency signatures.\n3. Read .rmeta metadata directly.\n\nDone when: a positional call into a third-party fn with arity>1 is rejected/reordered against an auto-extracted index, with no hand-written trust-std-style shim. Removes the 'largest open gap' caveat from docs/WHY.md.",
+    "status": "backlog",
+    "priority": "urgent",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "named-args",
+      "cross-crate"
+    ]
+  }
+}

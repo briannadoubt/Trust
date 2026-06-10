@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTQR3CDDHJ6RX04HCPHGZB4R",
+  "ts": "2026-06-10T03:09:32.973Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTQR3CDDHJ6RX04HCPHGZB4Q",
+    "number": 91,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "R0005/R0006 comment-window checks misalign through lowering (offsets from lowered AST index original source)",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72K",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

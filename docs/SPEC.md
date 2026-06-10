@@ -27,14 +27,41 @@ the final Rust. The driver lives in `crates/trust`; the orchestration is
 
 ## Activation
 
-Trust is opt-in per file. Two activation forms are accepted; pick the
-one that matches your build setup.
+Trust is opt-in. Two activation forms exist (the `trust_attrs::strict!{}`
+marker macro was removed in RT-82): a per-project key in `Cargo.toml`, and a
+per-file inner attribute.
 
-### Single-file mode: `#![strict]`
+### Project mode: `[package.metadata.trust] strict = true` (recommended)
 
-For files run through `trust check` directly (no cargo build of the
-file is required), an inner attribute at the crate root activates strict
-mode:
+Declare strictness once in `Cargo.toml` and build with `cargo trust`. No
+per-file marker, no extra dependency, no environment setup.
+
+```toml
+[package.metadata.trust]
+strict = true
+```
+
+```sh
+cargo trust build    # lowers + checks the whole crate
+```
+
+`cargo trust` reads the key — from the package manifest, or by scanning
+member manifests when invoked from a workspace root
+(`[workspace.metadata.trust] strict = true` opts in every member at once) —
+and passes the opted-in package names to the lowering shims in
+`TRUST_STRICT_PACKAGES`. The shims then treat every file in those packages
+as strict, while leaving dependencies (compiled by the same wrapper, but
+with their own `CARGO_PKG_NAME`) untouched.
+
+Files reachable only through a `#[cfg(test)] mod x;` declaration are exempt
+from the project-level opt-in (RT-88): a stock-buildable library's tests
+routinely call its own fns positionally, and the R0042 fix — named-arg
+syntax — is exactly what stock `cargo test` cannot parse. A `#![strict]`
+marker on such a file still wins. See `case-studies/dogfooding.md`.
+
+### Per-file mode: `#![strict]`
+
+An inner attribute at the top of a file activates strict mode for that file:
 
 ```rust
 #![strict]
@@ -42,51 +69,24 @@ mode:
 fn main() { /* ... */ }
 ```
 
-This is the form used by `examples/01-lints/*.rs` and the eval tasks. Stock
-`rustc` rejects `#![strict]` because it is not a registered attribute —
-which is fine for single-file inputs the Trust toolchain handles
-end-to-end, but unsuitable for files that need to compile under
-`cargo build`.
+This is the form used by `examples/01-lints/*.rs`, the eval tasks, and the
+cargo fixtures. Stock `rustc` rejects `#![strict]` (it is not a registered
+attribute), so a marked file only compiles through the Trust toolchain:
+`trust check`/`trust build` for single files, or the `trust-rustc` wrapper —
+i.e. `cargo trust` — for cargo crates, which strips the marker during
+lowering before the real rustc ever sees it. Use this form for single files
+and for mixed crates that opt in file-by-file under `cargo trust`.
 
-### Cargo mode: `trust_attrs::strict!{}` (lints only by default)
+### How the wrapper applies activation
 
-For files that participate in a `cargo build` (e.g. crates written in
-Trust), use the marker macro from the `trust-attrs` crate
-instead:
-
-```rust
-trust_attrs::strict! {}
-
-fn main() { /* ... */ }
-```
-
-Add `trust-attrs = "0.1"` to `[dependencies]`. The macro expands to
-nothing for `rustc`, so cargo builds are unaffected; the Trust
-toolchain detects the invocation and activates the **lints** that work
-at the AST level (R0001 unwrap, R0003 as-cast, R0004 glob, R0007
-impl-trait, R0010 todo, R0011 panic, R0012 bool-param, R0014 bare-index,
-R0005/R0006 justify-{unsafe,allow}, R0008 user-macros).
-
-**Caveat — syntax extensions need the wrapper.** The marker alone does
-not enable the syntax extensions (named arguments, pipe, `effect`). Those
-are token-level rewrites that must run *before* rustc sees the file, and
-`cargo build` invokes rustc directly. To make cargo crates accept the
-extensions, set `RUSTC_WRAPPER` to the `trust-rustc` binary
-(`crates/trust-rustc/`):
-
-```sh
-cargo build -p trust-rustc -p trust-rustdoc
-RUSTC_WRAPPER=$(realpath target/debug/trust-rustc) \
-RUSTDOC=$(realpath target/debug/trust-rustdoc) \
-  cargo build
-```
-
-The wrapper detects strict-marked input files, runs the lowering pass,
-substitutes the lowered source into the rustc invocation, and exec's the
-real rustc with `--remap-path-prefix` set so diagnostics still point at
-the original source. See `examples/cargo-strict-fixture/` for an
-end-to-end demo (the file uses `make_point(x: 1, y: 2, z: 3)` named-arg
-syntax which stock rustc rejects).
+The wrapper detects strict input files (per-file marker, or any file of a
+`TRUST_STRICT_PACKAGES` package), runs the lowering pass over the source
+tree, substitutes the lowered source into the rustc invocation, and exec's
+the real rustc with `--remap-path-prefix` set so diagnostics still point at
+the original source. See `examples/cargo-strict-fixture/` (per-file
+`#![strict]`) and `examples/cargo-strict-config/` (project metadata, zero
+markers) for end-to-end demos — both use `make_point(x: 1, y: 2, z: 3)`
+named-arg syntax which stock rustc rejects.
 
 **Why both `RUSTC_WRAPPER` and `RUSTDOC`?** `rustdoc` does NOT honour
 `RUSTC_WRAPPER` — it invokes rustc directly when compiling each doc-test
@@ -102,25 +102,19 @@ shim). See `examples/cargo-strict-fixture-multimod/src/geom.rs` for a
 doc-test that uses named-arg syntax — `cargo test --doc` fails without
 the shim and passes with it.
 
-**Current wrapper limitation.** Only the input `.rs` file passed to rustc
-is lowered. Child modules referenced by `mod foo;` are read by rustc from
-the original on-disk paths and are NOT lowered. A multi-file strict crate
-must either keep all extension syntax in the crate root, or pre-lower its
-sources manually. Generalising to a recursive walk of the crate's module
-tree is a Phase 1 item.
-
 ### Detection rules
 
-Both `trust_lower::detect_strict_mode` (token-level, runs before
-parsing) and `trust_lints::detect_strict` (AST-level, runs after
-lowering) accept either form. The lints crate returns an empty report
-when neither is present; the lowering passes run unconditionally because
-they are pure rewrites, but in a file without an activation marker they
-have nothing to rewrite — pipe and `effect` are syntax errors in vanilla
-Rust, and positional calls remain positional.
+`trust_lower::detect_strict_mode` (token-level, runs before parsing)
+recognises the `#![strict]` inner attribute; project-level activation
+bypasses detection entirely — `cargo trust` threads it through as a forced
+flag (`lower_with_extra_callees_forced`). The lints crate returns an empty
+report when strict mode is off; the lowering passes run unconditionally
+because they are pure rewrites, but in a non-strict file they have nothing
+to rewrite — pipe and `effect` are syntax errors in vanilla Rust, and
+positional calls remain positional.
 
-In practice: files without either activation marker round-trip through the
-driver unchanged.
+In practice: files without activation round-trip through the driver
+unchanged.
 
 ## Lints
 
@@ -137,6 +131,10 @@ regenerate.
 | Code  | Name                  | Phase | Severity |
 | ----- | --------------------- | ----- | -------- |
 | R0001 | no-unwrap             | 1     | error    |
+| R0018 | error-context-dropped | 1     | error    |
+| R0019 | no-unchecked-len-arith | 1     | error    |
+| R0020 | no-lock-across-await  | 1     | error    |
+| R0021 | no-capacity-as-len    | 1     | error    |
 | R0002 | empty-expect          | 1     | error    |
 | R0003 | no-as-cast            | 1     | error    |
 | R0004 | no-glob-import        | 1     | error    |
@@ -526,6 +524,82 @@ Escape hatch: `#[allow(trust::R0017, reason = "…")]` on the enclosing item
 when two same-typed parameters are genuinely interchangeable (e.g. a thin
 shim mirroring a `std` signature like `copy(from, to)`).
 
+### R0018 — error-context-dropped
+
+`.map_err(|_| …)` (a wildcard-param closure) and `.ok().expect(…)` discard
+the source error. Agents do this constantly to make `?` typecheck; the
+dropped chain is exactly what a debugging agent needs later.
+
+```rust
+// rejected
+let n: u32 = s.parse().map_err(|_| MyError::Bad)?;
+let f = std::fs::read(p).ok().expect("read failed");
+
+// accepted
+let n: u32 = s.parse().map_err(MyError::Parse)?;   // source carried
+let f = std::fs::read(p).expect("read failed");     // panic keeps the error
+```
+
+Exempt in `#[cfg(test)]`. *(RT-72 — implemented ahead of its eval gate;
+validation owed.)*
+
+### R0019 — no-unchecked-len-arith
+
+Bare `+` / `-` / `*` where an operand is a `.len()` call. Debug builds
+panic on overflow, release builds silently wrap — `v.len() - 1` on empty
+input is the canonical agent bug. The rule forces an explicit choice:
+
+```rust
+// rejected
+let last = v.len() - 1;
+
+// accepted — the failure mode is now a typed decision
+let last = v.len().checked_sub(1)?;
+let last = v.len().saturating_sub(1);
+```
+
+Exempt in `#[cfg(test)]`. *(RT-68 scoped: detection-as-lint; the lowering
+form — auto-rewriting to checked ops — needs type info and stays future
+work. Eval validation owed.)*
+
+### R0020 — no-lock-across-await
+
+A sync lock guard (`.lock().unwrap()`, `.read().expect(…)`, …) bound by a
+`let` with a later `.await` in the same async block. The unwrap/expect
+suffix is the syntactic discriminator from async-aware locks (whose
+acquisition is `.lock().await`).
+
+```rust
+// rejected
+let g = m.lock().unwrap();
+something().await;          // every task on `m` now blocks on this one
+
+// accepted
+{ let g = m.lock().unwrap(); use_it(&g); }  // guard dropped before await
+something().await;
+```
+
+Statement-level, no dataflow — a guard scoped in its own block never
+flags. *(RT-73 — overlaps Clippy's type-aware `await_holding_lock`; the
+delta is operating pre-typecheck inside the Trust pipeline so agents get
+the teaching error in the same pass as every other rule. Eval owed.)*
+
+### R0021 — no-capacity-as-len
+
+`.capacity()` used as an index or range bound. Allocation size is not
+element count; the swap compiles and reads plausible.
+
+```rust
+// rejected
+for i in 0..v.capacity() { … }
+let last = v[v.capacity() - 1];
+
+// accepted
+for i in 0..v.len() { … }
+```
+
+*(RT-74 — speculative tier, narrowest trigger in the set; eval owed.)*
+
 ### R0042 — no-positional-args
 
 The dialect's main bug-prevention lint. Calls to locally-defined functions
@@ -669,6 +743,25 @@ builds a `CalleeRegistry` from local `fn` declarations, and rewrites every
 named call to positional based on declared order. The rewritten Rust contains
 no trace of the name annotations.
 
+### Precondition contracts: `requires!(…)`
+
+A strict-mode function body may state preconditions with `requires!`:
+
+```rust
+fn withdraw(balance: u64, amount: u64) -> u64 {
+    requires!(amount <= balance);
+    balance - amount
+}
+```
+
+Lowering rewrites each bare invocation to
+`debug_assert!(COND, "requires violated: COND")` — a checkable assertion
+in debug builds, gone in release. Deliberately lowering-only: no solver,
+no dataflow, no new type machinery, and no `ensures!` (postconditions
+would have to wrap every return path — out of scope by design, RT-69).
+Path-qualified `other::requires!(…)` and non-strict files pass through
+untouched, so the name doesn't collide with user macros.
+
 ### Pipe operator `|>`
 
 _Phase 2; the lowering hook exists as a pass-through in `pipe.rs`._
@@ -799,6 +892,7 @@ exits non-zero when any diagnostic is an error.
 ### `trust` CLI
 
 ```
+trust new <name>
 trust build <input.rs> [--out <path>] [--edition <2021|2024>] [--no-lint]
 trust check <input.rs> [--format <human|json>]
 trust lower <input.rs>
@@ -807,6 +901,11 @@ trust fix <input.rs> [--write]
 trust explain [<code>] [--format <human|json>]
 ```
 
+- `new`: scaffold a standalone strict project (RT-94) — a `Cargo.toml` with
+  `[package.metadata.trust] strict = true`, a hello `src/main.rs` that uses
+  named-argument syntax, a `.gitignore`, and a `README.md`. Refuses to
+  overwrite an existing directory. Build the result with `cargo trust build`
+  (the named-arg call won't compile under stock cargo).
 - `build`: lower, lint, write the lowered source to a tempfile, shell out to
   `rustc` to produce a binary at `--out` (default: input with extension
   stripped).
@@ -841,9 +940,36 @@ cross-crate calls get the same R0042 / named-arg treatment as in-crate ones.
 
 ### `cargo trust`
 
-`cargo-trust` is a thin subcommand wrapper. When `cargo trust <args>`
-is invoked, cargo prepends the literal `trust` to argv; the wrapper strips
-it and execs `trust` with the remainder. The binary must be on `PATH`.
+`cargo-trust` is the cargo bridge. When `cargo trust <args>` is invoked, cargo
+prepends the literal `trust` to argv; the wrapper strips it and dispatches on
+the first argument:
+
+- **Cargo lifecycle commands** (`build`, `run`, `test`, `check`, `clippy`,
+  `doc`, `bench`, `install`) run the real `cargo` with `RUSTC_WRAPPER` and
+  `RUSTDOC` set to the bundled `trust-rustc` / `trust-rustdoc` shims — so a
+  cargo crate gets the syntax extensions with **one command and no environment
+  setup**. `cargo trust build` is exactly `RUSTC_WRAPPER=… RUSTDOC=… cargo
+  build`, without the `export $(realpath …)` dance.
+- **Everything else** (`lower`, `index`, `fix`, `explain`, …) is forwarded
+  verbatim to the `trust` CLI.
+
+`check` resolves to **`cargo check`** under `cargo trust` (whole-crate). For a
+single-file lint, call `trust check foo.rs` directly.
+
+For agent consumers, `--message-format json` (e.g. `cargo trust build
+--message-format json`) switches the shims' Trust diagnostics from human
+`[R0001]`-style lines to machine-readable output: one JSON document per file,
+written to stderr, with the same shape as `trust check --format json`.
+`cargo-trust` strips the flag before invoking cargo (cargo's own
+`--message-format` takes different values) and sets `TRUST_MESSAGE_FORMAT=json`
+on the spawned process; setting that env var directly is equivalent. `json` is
+the only supported value.
+
+The shims are located, in order: the `TRUST_RUSTC` / `TRUST_RUSTDOC` env
+overrides; a sibling of the `cargo-trust` binary (covers a `cargo install`ed
+`~/.cargo/bin` layout and a dev `target/debug/` checkout); then `PATH`. A
+missing shim is a hard error with a fix hint, never a silent fall-through to an
+un-lowered build.
 
 ### `trust-lsp`
 

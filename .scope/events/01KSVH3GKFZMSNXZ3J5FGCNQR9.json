@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KSVH3GKFZMSNXZ3J5FGCNQR9",
+  "ts": "2026-05-30T04:08:33.135Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR731",
+    "number": 77,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "newtype! ergonomic helper for R0017",
+    "description": "Follow-on from RT-67. R0017 tells agents to wrap same-typed params in distinct newtypes; this makes that a one-liner so the fix isn't tedious.\n\nProvide a 'newtype!' declarative macro (in trust-std, #[macro_export] #[strict::macros_ok]) and/or a derive that generates: struct Name(pub Inner); + new()/From/Deref, with Copy only when Inner: Copy. Invoking trust_std::newtype! does NOT trip R0008 (the visitor only flags macro_rules! DEFINITIONS, not invocations). Wire it into R0017's help text once it exists.\n\nWatch scope: keep it a thin declarative macro; don't grow a proc-macro framework.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72K",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "ergonomics",
+      "follow-on"
+    ]
+  }
+}

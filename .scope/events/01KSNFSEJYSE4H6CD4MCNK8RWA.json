@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNFSEJYSE4H6CD4MCNK8RWA",
+  "ts": "2026-05-27T19:50:08.222Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR717",
+    "number": 19,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "R0008: #[strict::macros_ok] suppression broken — attribute stripped before linting",
+    "description": "R0008 fires for macro_rules! items inside modules that have #[strict::macros_ok] attribute. Root cause: preprocess.rs strip_strict_attrs() removes ALL strict:: namespace attributes (including #[strict::macros_ok]) BEFORE the linting pass runs. By the time NoUserMacrosVisitor sees the code, the suppression attribute is gone. Fix: either (a) lint before stripping strict attrs, or (b) use a different suppression mechanism that survives stripping, or (c) in NoUserMacrosVisitor, check the original source for the attribute rather than the lowered AST. Discovered during RT-12 heck case study.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

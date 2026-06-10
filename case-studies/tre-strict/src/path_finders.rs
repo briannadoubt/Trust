@@ -1,5 +1,3 @@
-trust_attrs::strict!{}
-
 use crate::file_tree::FileType;
 use std::process::Command;
 use std::{fs, path};

@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTR6J5N13SNPGK0J2VBPTV8P",
+  "ts": "2026-06-10T07:22:17.633Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72R",
+    "commentId": "01KTR6J5N13SNPGK0J2VBPTV8N",
+    "author": "claude",
+    "body": "Shipped as R0019 no-unchecked-len-arith (detection-as-lint; bare +/-/* with a .len() operand forces an explicit checked_/saturating_/wrapping_ choice). The lowering form (auto-rewrite to checked ops) needs type info — out of scope for the syntax-level pipeline. EVAL VALIDATION STILL OWED: implemented ungated by owner decision 2026-06-10."
+  }
+}

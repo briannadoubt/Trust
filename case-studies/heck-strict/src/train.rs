@@ -44,7 +44,7 @@ pub struct AsTrainCase<T: AsRef<str>>(pub T);
 
 impl<T: AsRef<str>> fmt::Display for AsTrainCase<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        transform(self.0.as_ref(), capitalize, |f| write!(f, "-"), f)
+        transform(s: self.0.as_ref(), with_word: capitalize, boundary: |f| write!(f, "-"), f: f)
     }
 }
 

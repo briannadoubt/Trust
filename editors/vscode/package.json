@@ -1,0 +1,68 @@
+{
+  "name": "trust-lang",
+  "displayName": "Trust",
+  "description": "Language support for Trust — the strict Rust dialect for the bugs LLMs actually ship. Live diagnostics, hover, and go-to-definition via trust-lsp.",
+  "version": "0.1.0",
+  "publisher": "briannadoubt",
+  "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/briannadoubt/trust",
+    "directory": "editors/vscode"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters"
+  ],
+  "keywords": [
+    "rust",
+    "trust",
+    "strict",
+    "lsp",
+    "llm"
+  ],
+  "activationEvents": [
+    "onLanguage:rust"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Trust",
+      "properties": {
+        "trust.serverPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to the `trust-lsp` binary. Leave empty to search `PATH` (and `~/.cargo/bin`)."
+        },
+        "trust.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Trace LSP traffic between VS Code and trust-lsp."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "typescript": "^5.4.0"
+  }
+}

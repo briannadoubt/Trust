@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTRCRFQH034N0CA34EYH5Y89",
+  "ts": "2026-06-10T09:10:36.017Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTRA4TA7EF6F4VHFW4YY2689",
+    "commentId": "01KTRCRFQH034N0CA34EYH5Y88",
+    "author": "claude",
+    "body": "Shipped: skills/writing-trust/SKILL.md (156 lines) + skills/README.md. Rule table generated from live trust explain --format json (20 codes, cross-checked both directions by subagent AND orchestrator); trigger-tuned frontmatter; iteration loop uses RT-96's --message-format json. Commit 8af8e73."
+  }
+}

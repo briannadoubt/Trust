@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS7D1KER2G1BTW3GKT66MWY",
+  "ts": "2026-05-29T06:40:30.830Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72B",
+    "number": 55,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "License + crate metadata audit (cargo-publish prep)",
+    "description": "Make every publishable crate cargo-publish-ready and add a license that's compatible with the Rust ecosystem.\n\nTasks:\n- Add LICENSE-MIT and LICENSE-APACHE at repo root (default: dual-licensed, matches rustc/cargo/most of the ecosystem). Override on bri's confirmation.\n- For each publishable crate in crates/* and cargo-trust/ (if it exists): set description, repository, keywords (3-5), categories, license = 'MIT OR Apache-2.0' in Cargo.toml.\n- Walk every path-only dependency and add a version requirement. cargo publish blocks otherwise — easy to miss until the publish itself errors.\n- Decide which crates are pub vs internal-only. trust-lsp and cargo-trust are user-facing; trust-rustc is a wrapper others may want; trust-attrs/trust-syntax/trust-lower/trust-lints/trust-diag/trust-std are implementation details but still need publishing because the user-facing ones depend on them. Document the call in the description.\n- Verify with 'cargo publish --dry-run -p <each>'. Should report clean.\n\nBlocks RT-58 (the actual publish). Doesn't block RT-57 (GitHub push).",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

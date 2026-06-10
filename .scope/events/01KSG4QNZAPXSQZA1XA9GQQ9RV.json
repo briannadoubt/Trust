@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4QNZAPXSQZA1XA9GQQ9RV",
+  "ts": "2026-05-25T18:00:43.754Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70R",
+    "number": 4,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Polish, naming, documentation",
+    "description": "Refinements that don't need new architecture: stylistic FP rule tweaks, docs that make the two-languages-with-one-name framing explicit, optional rename of strict!{} to lints!{} for the cargo-mode lint-only subset.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

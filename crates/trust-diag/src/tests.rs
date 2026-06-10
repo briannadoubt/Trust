@@ -12,7 +12,7 @@ fn line_col_basic() {
     assert_eq!(line_col(src, 3), (2, 1)); // first char of line 2
     assert_eq!(line_col(src, 4), (2, 2));
     assert_eq!(line_col(src, 7), (3, 1)); // 'f'
-    // Out-of-range clamps to end.
+                                          // Out-of-range clamps to end.
     assert_eq!(line_col(src, 999), (3, 2));
 }
 
@@ -33,7 +33,13 @@ fn json_escapes_strings() {
 
 #[test]
 fn json_empty_diagnostics() {
-    let json = to_json(&[], "f.rs", "");
+    let json = to_json(
+        &[],
+        NamedSource {
+            name: "f.rs",
+            text: "",
+        },
+    );
     assert!(json.contains("\"diagnostics\": []"));
     assert!(json.contains("\"file\": \"f.rs\""));
 }
@@ -42,15 +48,25 @@ fn json_empty_diagnostics() {
 fn json_full_diagnostic_with_fix() {
     let src = "fn main() {\n    let _ = area(1, 2);\n}\n";
     let span = 20..30;
-    let diag = Diagnostic::error("R0042", "call to `area` must use named arguments", span.clone())
-        .with_why("positional ordering is the largest LLM bug class")
-        .with_help("rewrite as `area(width: ..., height: ...)`")
-        .with_fix(Fix::new(
-            span,
-            "area(width: ..., height: ...)",
-            Applicability::HasPlaceholders,
-        ));
-    let json = to_json(std::slice::from_ref(&diag), "src/main.rs", src);
+    let diag = Diagnostic::error(
+        "R0042",
+        "call to `area` must use named arguments",
+        span.clone(),
+    )
+    .with_why("positional ordering is the largest LLM bug class")
+    .with_help("rewrite as `area(width: ..., height: ...)`")
+    .with_fix(Fix::new(
+        span,
+        "area(width: ..., height: ...)",
+        Applicability::HasPlaceholders,
+    ));
+    let json = to_json(
+        std::slice::from_ref(&diag),
+        NamedSource {
+            name: "src/main.rs",
+            text: src,
+        },
+    );
 
     // Spot-check the structured fields an agent would key on.
     assert!(json.contains("\"rule\": \"R0042\""));
@@ -65,7 +81,13 @@ fn json_full_diagnostic_with_fix() {
 #[test]
 fn json_null_fields_when_absent() {
     let diag = Diagnostic::warning("R0000", "x", 0..1);
-    let json = to_json(std::slice::from_ref(&diag), "f.rs", "xy");
+    let json = to_json(
+        std::slice::from_ref(&diag),
+        NamedSource {
+            name: "f.rs",
+            text: "xy",
+        },
+    );
     assert!(json.contains("\"why\": null"));
     assert!(json.contains("\"help\": null"));
     assert!(json.contains("\"fix\": null"));

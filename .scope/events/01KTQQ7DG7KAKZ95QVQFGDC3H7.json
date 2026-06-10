@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTQQ7DG7KAKZ95QVQFGDC3H7",
+  "ts": "2026-06-10T02:54:16.583Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTQQ7DG6JGQZ93NN6ZZJ5V3M",
+    "number": 88,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Restore strict dogfood coverage for trust-diag/std/lsp/lints",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

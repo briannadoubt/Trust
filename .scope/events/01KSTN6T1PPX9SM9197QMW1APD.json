@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "id": "01KSTN6T1PPX9SM9197QMW1APD",
+  "ts": "2026-05-29T20:01:00.982Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72R",
+    "number": 68,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Forced-explicit fallible arithmetic on boundary integers",
+    "description": "Agents write a+b, len*n on user-derived sizes; debug panics, release silently wraps. Lower bare ops on flagged integer types to a checked form, or require an explicit .checked_/.saturating_/.wrapping_ choice.\n\nHonest caveat: Clippy DETECTS this (arithmetic_side_effects, restriction) — detection is commodity. The moat is that Trust can LOWER to a checked form or force the choice as a typed decision, which a linter can only nag about. Eval-gated: build only if a run shows agents shipping silent overflow.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72K",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "lint",
+      "frontend",
+      "eval-gated"
+    ]
+  }
+}

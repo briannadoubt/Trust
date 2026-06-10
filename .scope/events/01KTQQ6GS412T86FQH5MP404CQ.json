@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQQ6GS412T86FQH5MP404CQ",
+  "ts": "2026-06-10T02:53:47.172Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTQQ6GMYGC0NSDP3WF1DEJTH",
+    "commentId": "01KTQQ6GS412T86FQH5MP404CP",
+    "author": null,
+    "body": "Repro: heck-strict case study at HEAD (cold cache, freshly built wrapper) fails R0042 'call to transform must use named arguments (arity 4)' on calls that ARE fully named — e.g. transform(s: ..., with_word: |s, f| {...}, boundary: ..., f: f). The arg splitter cuts on top-level commas; a closure's |s, f| params are bare tokens (not a Group), so the comma inside the pipes splits the closure into two pseudo-args and the call no longer parses as named. Same bug class as the generics-comma fix already in named_args.rs (~line 699). Every case-study/eval source passing closures via named args is affected. Fix: treat |...| (and move |...|) as an atomic unit when splitting; mind BitOr ambiguity."
+  }
+}

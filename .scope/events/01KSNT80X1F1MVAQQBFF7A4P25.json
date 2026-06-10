@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT80X1F1MVAQQBFF7A4P25",
+  "ts": "2026-05-27T22:52:51.489Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71M",
+    "number": 32,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Cross-crate named-arg lowering via CalleeRegistry",
+    "description": "Currently CalleeRegistry is built only from fns defined in the same file. Calls to rustricted_std::fs::read_to_string(path: p) are not lowered — they pass through as-is and fail rustc. Fix: populate CalleeRegistry from the named signatures of imported crates (rustricted-std at minimum). Approach TBD: could parse lib.rs at lower time, or use a metadata file.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

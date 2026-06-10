@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "id": "01KSTN5DHRH295JFX8VD0Y8HRT",
+  "ts": "2026-05-29T20:00:15.416Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72K",
+    "number": 63,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Tier 1 — New frontend extensions (Clippy-proof bug classes)",
+    "description": "Spend the frontend/lowering budget on NEW bug classes that a linter structurally cannot catch, in the spirit of named-args: cheap, source-to-source, high bug-caught-per-unit-complexity.\n\nDesign discipline (the effects lesson): the effect keyword was the most ambitious type-system extension and it was REMOVED. The bar for anything here: kill a real, observed agent bug class with lowering-level machinery only. No new type system, no solver, no dataflow. If a feature starts wanting those, cut it.\n\nStories are eval-gated where noted: don't build until a run shows agents actually shipping that bug.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "roadmap",
+      "post-0.1",
+      "tier-1"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQQ7VQBW0ENEDHX1FN3R8PF",
+  "ts": "2026-06-10T02:54:31.147Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTQQ7DG6JGQZ93NN6ZZJ5V3M",
+    "commentId": "01KTQQ7VQBW0ENEDHX1FN3R8PE",
+    "author": null,
+    "body": "RT-82 removed the strict!{} per-file marker, which was the only way a stock-buildable library crate could dogfood SOME files (lib.rs) while leaving its #[cfg(test)] code plain. Whole-package metadata strict fails for trust-diag (tests.rs calls line_col(src, 0) positionally), trust-std (tests.rs calls duration/hashmap_insert positionally), trust-lsp + trust-lints (lib internals use positional multi-arg calls). Satisfying R0042 means named-arg syntax, which stock cargo test (stage-0 CI + downstream consumers) cannot parse. Only trust-syntax survives as whole-package strict. Options: (a) wrapper-side cfg(test)-aware force-strict (skip files reached only via #[cfg(test)] mod), (b) publish-lowered pipeline so sources can use named args while crates.io gets plain Rust, (c) convert lib internals (lsp/lints) to be R0042-clean via distinct param types. See dogfooding.md update in RT-82."
+  }
+}

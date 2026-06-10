@@ -5,10 +5,3 @@ version = 3
 [[package]]
 name = "heck-strict"
 version = "0.5.0"
-dependencies = [
- "rustricted-attrs",
-]
-
-[[package]]
-name = "rustricted-attrs"
-version = "0.1.0"

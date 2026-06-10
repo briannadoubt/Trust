@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSH8WA14WEQ4KSS25VN51YQR",
+  "ts": "2026-05-26T04:32:24.100Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70P",
+    "commentId": "01KT3T33TFG4SKGM73P8JVZFTW",
+    "author": null,
+    "body": "Audit landed as case-studies/effects-audit.md (commit abdc2e4 on audit/effects branch). TL;DR: io has 13 seed entries, the other 4 built-in effects (mut/async/panic/unsafe) have zero inference. Recommendation in the audit: kill (preferred) or demote to R4002 declared-intent lint. RT-10 can now decide against concrete numbers."
+  }
+}

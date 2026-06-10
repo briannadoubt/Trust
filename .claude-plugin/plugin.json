@@ -1,0 +1,13 @@
+{
+  "name": "trust",
+  "version": "0.1.0",
+  "description": "Skills for writing Trust — the strict Rust dialect for the bugs LLMs actually ship",
+  "author": {
+    "name": "Bri",
+    "email": "bri@briannadoubt.com",
+    "url": "https://github.com/briannadoubt"
+  },
+  "repository": "https://github.com/briannadoubt/Trust",
+  "license": "MIT OR Apache-2.0",
+  "keywords": ["rust", "trust", "lints", "strictness", "llm", "skills"]
+}

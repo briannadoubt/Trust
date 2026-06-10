@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTQQM61RGAPZDRNEQ02VG388",
+  "ts": "2026-06-10T03:01:14.936Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTQQM61QRGQJAZE74NHQ9XYA",
+    "number": 89,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Wrapper runs the full lint set — cargo trust build == trust check",
+    "description": "",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

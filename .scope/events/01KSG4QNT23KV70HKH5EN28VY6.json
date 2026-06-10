@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4QNT23KV70HKH5EN28VY6",
+  "ts": "2026-05-25T18:00:43.586Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70P",
+    "number": 2,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Effects — invest or kill",
+    "description": "Codex called R4001 vestigial: only opt-in funcs, simple-name lookup, tiny std seed, ignores trait dispatch / closures / aliases / unsafe / panic / async. Either invest in a real inter-procedural analysis or remove the rule. Half-shipped is worse than either.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

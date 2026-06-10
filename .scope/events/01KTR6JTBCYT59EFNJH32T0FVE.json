@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTR6JTBCYT59EFNJH32T0FVE",
+  "ts": "2026-06-10T07:22:38.828Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72N",
+    "commentId": "01KTR6JTBCYT59EFNJH32T0FVD",
+    "author": "claude",
+    "body": "RT-72/73/74 shipped as R0018/R0020/R0021 with deliberately narrow triggers; eval/corpus validation debts recorded per ticket (owner chose to implement ungated)."
+  }
+}

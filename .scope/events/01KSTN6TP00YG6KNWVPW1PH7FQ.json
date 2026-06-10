@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "id": "01KSTN6TP00YG6KNWVPW1PH7FQ",
+  "ts": "2026-05-29T20:01:01.632Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72Y",
+    "number": 74,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Confusable-API pairs lint",
+    "description": "Flag confusable method pairs where the swap compiles but changes meaning: .len() vs .capacity(), ownership-changing .iter() vs .into_iter().\n\nSPECULATIVE / low confidence — only worth it if a corpus shows the swap actually happens. Highest risk of false positives in the tier.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72N",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "lint",
+      "speculative",
+      "eval-gated"
+    ]
+  }
+}

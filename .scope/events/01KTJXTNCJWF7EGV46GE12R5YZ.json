@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTJXTNCJWF7EGV46GE12R5YZ",
+  "ts": "2026-06-08T06:13:26.546Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5YY",
+    "number": 81,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Project-level strict config — [package.metadata.trust] strict = true",
+    "description": "The tsconfig.json move: make strictness a project setting instead of a per-file marker. cargo trust reads `[package.metadata.trust] strict = true` from Cargo.toml and injects the strict marker during lowering, so no file needs #![strict] OR trust_attrs::strict!{}. Strictness becomes 'I built this with Trust', which is the correct mental model. Depends on RT subcmd story (cargo trust is the thing that reads the config). Acceptance: a crate with strict=true and zero in-file markers is fully lint-enforced under `cargo trust build`.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

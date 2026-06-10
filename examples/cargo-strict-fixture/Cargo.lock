@@ -5,10 +5,3 @@ version = 4
 [[package]]
 name = "cargo-strict-fixture"
 version = "0.1.0"
-dependencies = [
- "rustricted-attrs",
-]
-
-[[package]]
-name = "rustricted-attrs"
-version = "0.1.0"

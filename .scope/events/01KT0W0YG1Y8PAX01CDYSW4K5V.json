@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KT0W0YG1Y8PAX01CDYSW4K5V",
+  "ts": "2026-06-01T05:55:35.553Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72D",
+    "commentId": "01KT3T33TF5T7JB2VCXHE8F2H2",
+    "author": "agent",
+    "body": "CI half validated — full ci.yml dry-run is green locally after this session's work.\n\nVerified end-to-end: fmt --check (caught + fixed rustfmt drift in the stage-0 crates, commit 27ad26c), clippy --workspace -D warnings, test --workspace (24 test binaries, 0 failed), gen-docs --check, check-emissions (18 rules), gen-std-signatures --check, release dogfood build (libs via release wrapper), the RUSTDOC doc-test gate (negative fails / positive passes), all 10 lint-fail fixtures firing their rule (incl. new R0017), strict-clean, and hello/pipe/named-args build+run. Plus the RT-66/70/71 wrapper+CLI demos.\n\nCI is launch-ready. REMAINING (ops, user action): make the GitHub repo public and confirm Actions is enabled so the workflow actually runs on push/PR. Leaving RT-57 in_progress until that's done."
+  }
+}

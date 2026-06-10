@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSG5FNRV7HVVEAPZ93TJ8F9M",
+  "ts": "2026-05-25T18:13:49.979Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70S",
+    "commentId": "01KT3T33TFEERDFPBCT9MPHSBK",
+    "author": null,
+    "body": "Multi-module mirror walk landed. Both single-file (examples/cargo-strict-fixture) and multi-module (examples/cargo-strict-fixture-multimod) fixtures pass via wrapper; CI covers both. SPEC.md updated. Remaining known limit: #[path] attributes not resolved (rare in normal layouts)."
+  }
+}

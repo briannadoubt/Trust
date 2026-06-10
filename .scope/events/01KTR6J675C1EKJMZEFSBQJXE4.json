@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTR6J675C1EKJMZEFSBQJXE4",
+  "ts": "2026-06-10T07:22:18.213Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72Y",
+    "commentId": "01KTR6J675C1EKJMZEFSBQJXE3",
+    "author": "claude",
+    "body": "Shipped as R0021 no-capacity-as-len with the narrowest trigger in the set (.capacity() as an index or range bound only — not general use). The ticket's corpus question stands: EVAL/CORPUS VALIDATION OWED; if FPs show up in practice this is the first rule to demote."
+  }
+}

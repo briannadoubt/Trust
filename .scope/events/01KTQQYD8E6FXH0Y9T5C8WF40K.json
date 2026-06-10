@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQQYD8E6FXH0Y9T5C8WF40K",
+  "ts": "2026-06-10T03:06:49.998Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTQQYD4E2EHF8DA6R3J5NBZ4",
+    "commentId": "01KTQQYD8E6FXH0Y9T5C8WF40J",
+    "author": null,
+    "body": "Repro (cold cache, absolute wrapper path, pre-RT-82 AND post-RT-82 — pre-existing, not in CI): tre-strict build fails 2x R3001 'format_file has no parameter named make_absolute' + 1x 'format_paths has no parameter named path_style'. diagram_formatting.rs:60 fn format_file DOES declare make_absolute (5 params) and its call at :103 names it; format_paths is defined twice (json_formatting.rs:74 vs diagram_formatting.rs:117, different params). Hypothesis: the crate-wide extras index (collect_crate_callees) wins over / conflicts with the local in-file registry differently than documented ('local fns win'), or the multi-line/&mut params parse differently between the syn-based and token-based collectors. Note: my earlier session bisects that showed tre 'clean' were invalid — realpath ran after cd in a subshell, so RUSTC_WRAPPER pointed at a nonexistent file and the grep-based check misread the failure as clean."
+  }
+}

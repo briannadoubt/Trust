@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS7CQJGF386V45JZXH3CN65",
+  "ts": "2026-05-29T06:40:20.560Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "number": 54,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Public distribution — Trust v0.1",
+    "description": "Take Trust from local greenfield to publicly installable. Target: any developer or agent can find the repo, run one install command, point an editor at a Rust file, see the eval headline numbers, and have a strict-mode Trust file under cargo within 5 minutes.\n\nValidation evidence (now in hand from RT-25 epic): vanilla 60% bug-ship rate → trust 0% across 3 vendors (Haiku, GPT-4o, Gemini 2.5 Flash). Time to make those numbers visible to people who aren't bri.\n\nPhases:\n- Prep: license, crate metadata, README for cold visitors (RT-55, RT-56)\n- Channels: public GitHub + CI, crates.io publish, VS Code extension (RT-57, RT-58, RT-59)\n- Story: extend WHY.md with eval numbers + neighbors comparison; draft launch comms (RT-60, RT-61)\n\nOpen questions for bri to resolve before relevant stories start:\n- License: assuming dual MIT + Apache-2.0 (Rust ecosystem default). Confirm or override on RT-55.\n- Editor scope: starting VS Code only (highest reach). Zed/JetBrains can come later if there's demand.\n- cargo-trust-new project scaffolder: NOT in this epic — it's a feature, not distribution. File separately if wanted.\n- Launch timing: RT-61 preps the comms but doesn't fire. Bri decides when to ship the HN/Reddit/Lobsters posts.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

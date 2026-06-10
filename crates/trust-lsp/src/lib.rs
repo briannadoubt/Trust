@@ -11,12 +11,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
-use trust_diag::{Diagnostic as RtDiag, Severity};
-use trust_lower::named_args::CalleeRegistry;
 use tokio::sync::Mutex;
 use tower_lsp::jsonrpc::Result as LspResult;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
+use trust_diag::{Diagnostic as RtDiag, Severity};
+use trust_lower::named_args::CalleeRegistry;
 
 /// Holds source text per Uri.
 #[derive(Default)]
@@ -232,7 +232,7 @@ pub fn compute_diagnostics(source: &str) -> Vec<Diagnostic> {
     };
     all.extend(lower_out.diagnostics);
 
-    if let Ok(file) = syn::parse_str::<syn::File>(&lower_out.source) {
+    if let Ok(file) = syn::parse_str::<syn::File>(&lower_out.lint_source) {
         let lint_report = trust_lints::lint_strict(&file, source, lower_out.strict_mode);
         all.extend(lint_report.diagnostics);
     }

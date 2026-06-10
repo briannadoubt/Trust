@@ -200,3 +200,38 @@ under `RUSTC_WRAPPER` (after RT-44). The remaining 4 are blocked by:
 Most of those gaps were known going in (RT-40, RT-41 pre-existed). RT-44
 was shipped as part of this case-study iteration; RT-46 is still
 outstanding. RT-39 was caught and fixed in passing during RT-31.
+
+## Update (RT-82) — `strict!{}` removed; dogfood moves to project-level opt-in
+
+The `trust_attrs::strict!{}` per-file marker (and the whole `trust-attrs`
+crate) was removed in RT-82. Activation is now `#![strict]` per file
+(wrapper-built code only — stock rustc rejects it) or
+`[package.metadata.trust] strict = true` per package, discovered by
+`cargo trust` from the workspace manifest.
+
+That trade has a real cost recorded here honestly: per-file granularity for
+**stock-buildable library crates** is gone. A library that must keep
+compiling under plain `cargo test` (stage-0 CI, downstream consumers)
+cannot satisfy whole-package R0042 when any of its files — in practice the
+`#[cfg(test)]` siblings — call its own multi-arg fns positionally, because
+the fix (named args) is syntax stock rustc can't parse.
+
+Post-RT-82 status:
+
+| Crate | Whole-package strict? | Blocker |
+| ----- | --------------------- | ------- |
+| `trust-syntax` | **YES** — `[package.metadata.trust]`, enforced in CI | — |
+| `trust-diag`   | **YES** (RT-88) — cfg(test) files exempt; shipping-code R0003/R0017 fixed for real | — |
+| `trust-std`    | no | R0008 fires on the `macro_rules!` it exists to export; R0017 on the std-mirroring `copy`/`rename` shims. The escape hatches (`#[allow(trust::…)]`, `#[strict::macros_ok]`) are rejected by stock rustc, which a published crate must support. |
+| `trust-lsp`    | no | lib internals: positional calls to `compute_hover` etc. |
+| `trust-lints`  | no | lib internals + test helpers |
+| `trust`, `trust-rustc`, `xtask` | no (by design) | stage-0 bootstrap (RT-76) |
+
+**Update (RT-88):** project-level force-strict now skips files reachable only
+through `#[cfg(test)] mod x;` (transitively), so a stock-buildable library's
+plain-Rust tests no longer block whole-package strict for its shipping code.
+That promoted `trust-diag` — and turned up two real `as`-casts and two R0017
+signatures (`render`/`to_json` took adjacent `filename: &str, source: &str`),
+all fixed via `u32::from` and a `NamedSource` struct. The remaining blockers
+are rule-design tensions, not test-file mechanics. RT-87 was resolved invalid;
+`heck-strict` and `tre-strict` both build and test green after RT-90/RT-91.

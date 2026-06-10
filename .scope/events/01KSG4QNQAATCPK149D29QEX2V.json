@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4QNQAATCPK149D29QEX2V",
+  "ts": "2026-05-25T18:00:43.498Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70N",
+    "number": 1,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Cargo integration completeness",
+    "description": "Finish what crates/rustricted-rustc/ started so cargo crates can use the full dialect (named args, pipe, effects), not just the lint subset.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

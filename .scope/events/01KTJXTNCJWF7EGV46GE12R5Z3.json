@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTJXTNCJWF7EGV46GE12R5Z3",
+  "ts": "2026-06-08T06:13:26.546Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5Z2",
+    "number": 83,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Spike: .trs/.trust file extension for editor identity + activation-by-extension",
+    "description": "Time-boxed spike, NOT a commitment. Appeal: an extension makes a file unambiguously strict (clean LSP/highlighter trigger, no in-file marker). Hard part: it fights cargo's build model — cargo hard-codes src/main.rs|lib.rs and resolves `mod foo;` to foo.rs, so a new extension means either transpiling .trs -> a shadow .rs tree before cargo runs (a real build step to maintain) or a wrapper that still must exist to intercept. Conclusion to validate: an extension buys ergonomics but does NOT remove tooling — it only moves where lowering triggers. Deliverable: a short writeup with a recommendation (likely: defer until cargo-subcommand flow lands, then revisit as a nicety). Do NOT start before the subcmd + config stories.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

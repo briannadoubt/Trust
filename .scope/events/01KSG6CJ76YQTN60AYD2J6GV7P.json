@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSG6CJ76YQTN60AYD2J6GV7P",
+  "ts": "2026-05-25T18:29:36.614Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70W",
+    "commentId": "01KT3T33TFF6WZ0TV4SKA7NJW4",
+    "author": null,
+    "body": "Done. Enabled span-locations feature on proc-macro2 in rustricted-lower's Cargo.toml; span_to_range in pipe.rs uses real byte_range; rewrite_call_args in named_args.rs gets the call site span (from the paren Group) plumbed in and uses it for R0042+R3001. R4001 already had real spans. End-to-end verified: rustricted check examples/01-lints/positional-fail.rs now points at line 11:17 (the actual call site) instead of 1:1."
+  }
+}

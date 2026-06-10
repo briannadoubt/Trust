@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQRMK16EKMVMT8F1H0QY29Y",
+  "ts": "2026-06-10T03:18:56.806Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "commentId": "01KTQRMK16EKMVMT8F1H0QY29X",
+    "author": "claude",
+    "body": "Epic rollup after the RT-80..RT-91 session: the core promise is shipped — cargo install cargo-trust, strict = true in Cargo.toml, cargo trust build. RT-80 (cargo trust subcommand), RT-81 (project-level strict), RT-82 (strict!{} macro + trust-attrs crate removed; #![strict] and metadata are the only two activation forms), RT-89 (wrapper enforces the FULL lint set — build == check), RT-84 (README two-step story), RT-83 (extension spike: defer indefinitely) all done. Remaining children: RT-86 (lowering-cache integrity) and RT-88 (restore dogfood coverage) — follow-ups, not launch blockers. Bugs found en route now under RT-63: RT-87 (closure args break named-arg parsing — blocks heck-strict), RT-90 (tre-strict R3001 registry mismatch), RT-91 (comment-window offset drift). Both case-study crates were already red at HEAD before this session; they are not in CI, which is how it went unnoticed."
+  }
+}

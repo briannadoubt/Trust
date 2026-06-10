@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTRA4TA8X401MSJ0HJ7A6DGQ",
+  "ts": "2026-06-10T08:24:54.344Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTRA4TA7EF6F4VHFW4YY2689",
+    "number": 93,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "writing-trust skill — author strict code correctly the first time",
+    "description": "A packaged agent skill (SKILL.md + supporting files, Claude Code skill format) that teaches: the two-line activation, named-arg/pipe/requires! syntax with examples, the full R-code remediation table (rule -> what to write instead, sourced from `trust explain --format json` so it can't drift), and the iteration loop (cargo trust build -> read JSON diagnostics -> apply fix -> rerun; reach for `trust fix` for R0042 batches). Trigger description tuned for 'working in a repo with [package.metadata.trust]' and 'user asks for Trust/strict Rust'. Ship in-repo (e.g. skills/writing-trust/) so it versions with the toolchain.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTRA4TA7EF6F4VHFW4YY2687",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

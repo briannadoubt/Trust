@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSG6689CH9C59ACMJ1SA375R",
+  "ts": "2026-05-25T18:26:09.836Z",
+  "actor": "migration",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR711",
+    "commentId": "01KT3T33TFDP6DBSJ7EG2CMSRJ",
+    "author": null,
+    "body": "Docs reframe shipped. README leads with a three-mode capability table (single-file / cargo+wrapper / cargo-no-wrapper) making the split first-class. SPEC.md Activation section gets the same table at the top, with the per-mode docs reorganised under it. Decided not to rename strict!{} → lints!{} for now — the same marker activates either subset depending on whether the wrapper is set; renaming would imply lint-only when it's actually the toolchain that decides."
+  }
+}

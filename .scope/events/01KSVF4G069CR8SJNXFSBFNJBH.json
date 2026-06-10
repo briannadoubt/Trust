@@ -1,0 +1,26 @@
+{
+  "v": 1,
+  "id": "01KSVF4G069CR8SJNXFSBFNJBH",
+  "ts": "2026-05-30T03:34:08.134Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR730",
+    "number": 76,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Strict binary crates can't build from a clean checkout (no wrapper bootstrap)",
+    "description": "trust, trust-rustc, and xtask are #![strict]-dogfooded and use named-arg syntax, so 'cargo build -p trust-rustc' under stock rustc FAILS (rustc rejects f(name: val)). But trust-rustc IS the RUSTC_WRAPPER needed to build them — chicken-and-egg. Local dev works only because a prebuilt target/debug/trust-rustc exists; a clean checkout (and CI, once RT-57 stands it up) has none. CI's 'cargo test --workspace' and the fixture steps assume these build plainly.\n\nFix options: (a) a bootstrap step that builds trust-rustc from a positional-lowered copy first, then self-hosts; (b) commit a pre-lowered trust-rustc; (c) keep trust-rustc/xtask main.rs free of syntax extensions (lints-only) so they build under stock rustc. Tie into RT-57 (Public repo + CI).",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "wrapper",
+      "ci",
+      "bootstrap"
+    ]
+  }
+}

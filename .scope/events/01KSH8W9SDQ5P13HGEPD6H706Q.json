@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSH8W9SDQ5P13HGEPD6H706Q",
+  "ts": "2026-05-26T04:32:23.853Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR715",
+    "number": 17,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "R4001 false positive on local fn names colliding with std seed (e.g. local fn read)",
+    "description": "rustricted-effects' check pass uses simple-name lookup against (declared | seed). A user crate that defines fn read(s: &str) -> String (pure) and calls it from a fn that declares no effects fires R4001 demanding 'io' — because the call collector grabs the simple name 'read', misses the local-no-effects entry, falls through to the seed where 'read' is hardcoded as io. Repro in case-studies/effects-audit.md (\"Latent bugs\" section #1). If RT-10 picks kill, this becomes moot. If RT-10 keeps effects, the fix is to make the seed table receiver-type-aware OR exclude any name that also appears as a local fn definition.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70P",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

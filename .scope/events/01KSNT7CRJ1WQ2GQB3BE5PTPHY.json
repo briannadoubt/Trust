@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT7CRJ1WQ2GQB3BE5PTPHY",
+  "ts": "2026-05-27T22:52:30.866Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71H",
+    "number": 29,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Case study: convert a real app crate (not just a library)",
+    "description": "heck was a pure-function library with no I/O. Pick a small real app (e.g. a CLI tool from crates.io) and convert it with the wrapper. Document violations found, FPs hit, and friction points. Feeds language completeness epic.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71D",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

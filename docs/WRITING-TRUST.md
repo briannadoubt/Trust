@@ -16,10 +16,10 @@ iterating against the checker.
 - **A pipe operator** for chaining free functions onto a receiver — see
   `docs/SPEC.md` for the grammar.
 
-**Activation:** `#![strict]` for single-file `trust check`; the
-`trust_attrs::strict!{}` marker for cargo crates (set `RUSTC_WRAPPER` to the
-`trust-rustc` shim for the syntax extensions). See `docs/SPEC.md` for the full
-grammar and per-rule detail.
+**Activation:** `[package.metadata.trust] strict = true` in `Cargo.toml` for
+whole crates built with `cargo trust build`; `#![strict]` at the top of a file
+for single-file `trust check` or per-file opt-in. See `docs/SPEC.md` for the
+full grammar and per-rule detail.
 
 ## Rules
 
@@ -27,6 +27,26 @@ grammar and per-rule detail.
 
 - **Why:** panics on None/Err are silent control flow; agents reach for `.unwrap()` reflexively
 - **Instead:** propagate with `?`, or `.expect("why this can't fail")`
+
+### R0018 · error-context-dropped
+
+- **Why:** `.map_err(|_| …)` and `.ok().expect(…)` discard the source error agents need to debug the failure; the chain is the context
+- **Instead:** carry the source: `.map_err(|e| MyError::Io(e))`, or use `?` with a `From` impl
+
+### R0019 · no-unchecked-len-arith
+
+- **Why:** bare arithmetic on `.len()`-derived values panics in debug and silently wraps in release; the underflow of `len() - 1` on empty input is a classic agent bug
+- **Instead:** make the choice explicit: `.checked_sub(1)?`, `.saturating_sub(1)`, or `.wrapping_*` if wrap is intended
+
+### R0020 · no-lock-across-await
+
+- **Why:** holding a sync `MutexGuard` across `.await` blocks every task on that lock and can deadlock single-threaded runtimes
+- **Instead:** drop the guard before awaiting (scope it in a block), or use an async-aware lock like `tokio::sync::Mutex`
+
+### R0021 · no-capacity-as-len
+
+- **Why:** `.capacity()` is allocation size, not element count; using it as a bound reads uninitialized slots or panics
+- **Instead:** use `.len()` for element counts; `.capacity()` only sizes future allocations
 
 ### R0002 · empty-expect
 

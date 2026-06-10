@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4S6BQNE0E2TJ9C2C1R1T2",
+  "ts": "2026-05-25T18:01:33.303Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR711",
+    "number": 13,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "SPEC.md + README: make 'two languages with one name' framing explicit",
+    "description": "The Activation section in SPEC.md mentions the cargo-mode caveat but treats it as a footnote. README still calls the cargo-mode subset 'Rustricted' without qualification. Either rewrite both to make the split a first-class concept, OR rename rustricted_attrs::strict!{} to lints!{} to signal the lint-only scope by name.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70R",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

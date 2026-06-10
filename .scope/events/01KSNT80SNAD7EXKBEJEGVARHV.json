@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT80SNAD7EXKBEJEGVARHV",
+  "ts": "2026-05-27T22:52:51.381Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71K",
+    "number": 31,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Dogfood: add #![strict] to rustricted-* crates",
+    "description": "Add rustricted_attrs::strict!{} to each crate in the workspace. Fix all resulting violations. Any violation that can't be fixed without changing the lint rule is a real language gap — file it as a bug. Start with rustricted-lints (leaf crate, no dialect syntax) then work up.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

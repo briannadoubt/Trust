@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT6YFSV4F9FWJFC0ASZ4N7",
+  "ts": "2026-05-27T22:52:16.249Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71D",
+    "number": 25,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Validation: prove Rustricted measurably helps agents",
+    "description": "Run the cross-provider eval harness, analyze results, expand case studies. Goal: data showing #![strict] reduces agent error rate vs. vanilla Rust.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

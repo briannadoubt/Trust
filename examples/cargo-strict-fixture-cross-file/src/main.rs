@@ -14,7 +14,7 @@
 //! actually reordered the args — `make_rect` returns `(width, height)`,
 //! so printing the `.0` field must yield `10`.
 
-trust_attrs::strict! {}
+#![strict]
 
 mod geom;
 

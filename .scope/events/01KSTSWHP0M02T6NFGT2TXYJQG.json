@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSTSWHP0M02T6NFGT2TXYJQG",
+  "ts": "2026-05-29T21:22:47.616Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72P",
+    "commentId": "01KT3T33TFWJ97QV5RY5NW5V77",
+    "author": "agent",
+    "body": "Delivered. Cross-crate named-arg enforcement now works against a signature index auto-extracted from ANY crate — no hand-written trust-std-style shim.\n\nEngine (crates/trust-lower/src/sig_index.rs, plain Rust, 15 new tests, clippy-clean):\n- extract_from_source / extract_from_dir: pub-fn-only, ambiguity-aware extraction (syn, with lower()-fallback for files using Trust syntax).\n- render_manifest / parse_manifest: name:p1,p2 format shared with trust-std/std-signatures.txt (runtime parser is lenient; build.rs stays strict).\n- merge: union of indices, drops conflicting names (degrades to positional fallback, never a wrong reorder).\n- load_paths / load_from_env: reads TRUST_SIGNATURE_PATH (platform-split list of manifests/dirs).\n\nWiring:\n- trust index <src|file|-> [-o file]  (new CLI subcommand) — auto-extracts a crate's public API.\n- trust check/lower/build + the trust-rustc wrapper seed the CalleeRegistry from TRUST_SIGNATURE_PATH; the wrapper merges it with the crate-wide extras.\n\nProof (acceptance criterion met): a positional swap into a third-party fn (producer::make_rect(1080,1920) where params are width,height) is SILENTLY ACCEPTED with no index and REJECTED with R0042 once the auto-extracted index is loaded; a named cross-crate call reorders to declared order and a full cargo build through the wrapper compiles+runs (1920*1080=2073600). Checked-in fixture: examples/cross-crate-index/ + CI step + 15 unit tests.\n\nRemaining (NOT in this story's acceptance): zero-config discovery of dependency indices from cargo's build graph — you still generate indices and name them via the env var. Docs (WHY/SPEC/README/AGENTS) updated to reflect this honestly."
+  }
+}

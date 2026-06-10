@@ -1,0 +1,20 @@
+# REFERENCE SOLUTION — never shown to the agent. run_agent_eval.py excludes
+# `reference-solution/` when copying the fixture into the work directory.
+# Fix per R0019 `instead:` guidance — make the empty-frame choice explicit.
+
+# Standalone workspace (own [workspace] so this crate doesn't attach to the
+# fixture's workspace one directory up).
+[workspace]
+
+[package]
+name = "fixture-r0019-len-arith"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.trust]
+strict = true
+
+[[bin]]
+name = "fixture-r0019-len-arith"
+path = "src/main.rs"

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSPAR8TSDXGQ0HGPY5B1J7GC",
+  "ts": "2026-05-28T03:41:21.113Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR726",
+    "number": 50,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "RT Restore dogfooding on trust, trust-rustc, xtask binaries",
+    "description": "Dropped strict markers from these 3 bin crates during the RT-47 rename due to attribute parsing + qualified-path matching bugs (filed separately). Restore after those land. Should be a one-line per crate.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KSTN6T51HYACZ9TJTMVAVGA9",
+  "ts": "2026-05-29T20:01:01.089Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72S",
+    "number": 69,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Lightweight requires/ensures contracts",
+    "description": "Precondition/postcondition syntax that lowers to debug_assert! + a doc line. Agents state intent well in prose; capturing it as a checkable assertion at the boundary catches the gap between stated and actual behavior.\n\nWATCH THE SCOPE: keep opt-in, lowering-only, zero new type machinery. The moment it wants a solver or dataflow, it IS the effects mistake again — cut it there. This is the riskiest item in the tier for exactly that reason.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72K",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "frontend",
+      "watch-scope"
+    ]
+  }
+}

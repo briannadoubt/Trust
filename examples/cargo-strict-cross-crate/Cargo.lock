@@ -6,14 +6,9 @@ version = 4
 name = "cargo-strict-cross-crate"
 version = "0.1.0"
 dependencies = [
- "rustricted-attrs",
- "rustricted-std",
+ "trust-std",
 ]
 
 [[package]]
-name = "rustricted-attrs"
-version = "0.1.0"
-
-[[package]]
-name = "rustricted-std"
+name = "trust-std"
 version = "0.1.0"

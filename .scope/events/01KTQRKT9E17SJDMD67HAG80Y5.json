@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQRKT9E17SJDMD67HAG80Y5",
+  "ts": "2026-06-10T03:18:31.470Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5Z2",
+    "commentId": "01KTQRKT9E17SJDMD67HAG80Y4",
+    "author": "claude",
+    "body": "Erratum for the previous comment: the elided fragment is \"mod foo; -> foo.rs resolution\" (shell ate the backticks)."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTJXTNCHXB6C9K28S36QZTHE",
+  "ts": "2026-06-08T06:13:26.545Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "number": 79,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Frictionless adoption — one command, zero ceremony",
+    "description": "Collapse the getting-started story from the README's multi-step env-var + dual-activation dance down to: install one tool, build with one command. Key insight grounding this epic: Trust has NO custom compiler — trust-rustc/trust-rustdoc are thin RUSTC_WRAPPER/RUSTDOC shims that lower source-to-source (syn rewrite) and exec stock rustc (see crates/trust-rustc/src/lib.rs). So all current friction is activation + wiring ceremony, not an essential toolchain dependency, and can be hidden. Today's friction: (1) two ways to activate strict mode (#![strict] for single files vs trust_attrs::strict!{} for cargo crates), (2) manual export RUSTC_WRAPPER + RUSTDOC, (3) a trust-attrs path dependency. Target end state: `cargo install cargo-trust` + `strict = true` in Cargo.toml + `cargo trust build`.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

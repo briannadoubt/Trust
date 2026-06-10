@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS7F0SS58FJV2CWXE141NRM",
+  "ts": "2026-05-29T06:41:35.545Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72G",
+    "number": 60,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Polish WHY.md into a public-facing essay (eval numbers + neighbors)",
+    "description": "WHY.md was published in RT-38 as a rationale doc, but it was written before the eval numbers existed and before cross-provider validation. Polish into a publication-ready essay.\n\nTasks:\n- Add a 'The numbers' section near the top with the 3-vendor table (Haiku / GPT-4o / Gemini 2.5 Flash, vanilla vs trust ship rates). Link runs 005 and 006.\n- Add a 'Compared to neighbors' section: Sorbet (Ruby strict-mode lints), ReasonML / OCaml (syntax extensions over a base language), Mypy (gradual typing), Flow→TS history (typed dialect that won out over time). Short — 2-3 sentences each. Show Trust is a familiar pattern, not a moonshot.\n- Audit existing text for claims that are now overstated/understated given the eval. e.g. 'we believe' lines that can be hardened to 'evals show'; speculative effects-system content that was dropped in RT-10.\n- Trim. WHY.md as published is dense. The target audience is skeptical-but-curious — 8-12 minutes to read, not 25.\n\nDone when: a Rust-aware developer can read it cover-to-cover and decide whether the idea is worth a try. Ready to link from the README and the launch posts.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

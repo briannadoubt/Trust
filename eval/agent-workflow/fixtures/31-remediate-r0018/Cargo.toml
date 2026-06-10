@@ -1,0 +1,19 @@
+# Eval fixture (RT-97 / RT-68 validation debt): fails `cargo trust build`
+# with exactly R0018 (error-context-dropped).
+
+# Standalone workspace — keep out of the main workspace (same pattern as
+# examples/cargo-strict-config).
+[workspace]
+
+[package]
+name = "fixture-r0018-context"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[package.metadata.trust]
+strict = true
+
+[[bin]]
+name = "fixture-r0018-context"
+path = "src/main.rs"

@@ -44,6 +44,131 @@ mod tests {
         diags_for(rule, src).iter().any(|d| d.rule == rule.code())
     }
 
+    // RT-89/RT-91: `#[allow(trust::Rxxxx, reason = "...")]` is
+    // self-justifying — R0006 must not also demand a `// reason:` comment
+    // (which can't survive the lowering pipeline anyway).
+    #[test]
+    fn inline_reason_allow_satisfies_justify_allow() {
+        let src =
+            "#![strict]\n#[allow(trust::R0017, reason = \"fixture\")]\npub fn f(a: u32, b: u32) {}";
+        assert!(
+            !fires(Rule::JustifyAllow, src),
+            "inline reason must satisfy R0006"
+        );
+        let bare = "#![strict]\n#[allow(dead_code)]\nfn g() {}";
+        assert!(
+            fires(Rule::JustifyAllow, bare),
+            "bare allow still needs a comment"
+        );
+    }
+
+    // RT-91 regression: window-rule offsets must come from the ORIGINAL
+    // source, not the lowered AST. The lowered text has comments stripped,
+    // so its offsets drift backwards — pre-fix, justifications that were
+    // plainly present went unseen.
+    #[test]
+    fn window_rules_survive_offset_drift_between_lowered_and_original() {
+        // "original": a fat comment block shifts all later offsets right.
+        let original = "#![strict]\n\
+            // A long leading comment that exists only in the original\n\
+            // source and is stripped by prettyplease during lowering,\n\
+            // pushing every later byte offset out of alignment.\n\
+            // reason: tracked upstream\n\
+            #[allow(dead_code)]\n\
+            fn quiet() {}\n\
+            // safety: the pointer is checked two lines above\n\
+            fn touch() { unsafe { core::ptr::null::<u8>().read_volatile(); } }\n\
+            fn main() {}\n";
+        // "lowered": comments gone, same items (what the linter's AST sees).
+        let lowered = "#![strict]\n#[allow(dead_code)]\nfn quiet() {}\nfn touch() { unsafe { core::ptr::null::<u8>().read_volatile(); } }\nfn main() {}\n";
+        let report = lint_strict(&parse(lowered), original, true);
+        let fired_window_rule = report
+            .diagnostics
+            .iter()
+            .any(|d| d.rule == "R0005" || d.rule == "R0006");
+        assert!(
+            !fired_window_rule,
+            "justified sites must not fire through drift: {:?}",
+            report.diagnostics
+        );
+    }
+
+    // ── RT-68/72/73/74 Tier 1/3 rules ────────────────────────────────────
+
+    #[test]
+    fn r0018_fires_on_wildcard_map_err_and_ok_expect() {
+        let m = "#![strict]\nfn f() -> Result<u32, String> { \"3\".parse::<u32>().map_err(|_| \"bad\".to_string()) }";
+        assert!(fires(Rule::NoErrorContextDrop, m), "map_err(|_|) must fire");
+        let o = "#![strict]\nfn g() -> u32 { \"3\".parse::<u32>().ok().expect(\"parse\") }";
+        assert!(
+            fires(Rule::NoErrorContextDrop, o),
+            ".ok().expect() must fire"
+        );
+        let kept = "#![strict]\nfn h() -> Result<u32, MyErr> { \"3\".parse::<u32>().map_err(|e| MyErr::Parse(e)) }";
+        assert!(
+            !fires(Rule::NoErrorContextDrop, kept),
+            "carrying the source is fine"
+        );
+        let test_scoped = "#![strict]\n#[cfg(test)]\nmod t { fn f() { let _ = \"3\".parse::<u32>().map_err(|_| ()); } }";
+        assert!(
+            !fires(Rule::NoErrorContextDrop, test_scoped),
+            "exempt in cfg(test)"
+        );
+    }
+
+    #[test]
+    fn r0019_fires_on_bare_len_arithmetic() {
+        let sub = "#![strict]\nfn f(v: &[u32]) -> usize { v.len() - 1 }";
+        assert!(fires(Rule::NoUncheckedLenArith, sub), "len() - 1 must fire");
+        let add = "#![strict]\nfn g(v: &[u32], n: usize) -> usize { n + v.len() }";
+        assert!(fires(Rule::NoUncheckedLenArith, add), "n + len() must fire");
+        let checked = "#![strict]\nfn h(v: &[u32]) -> Option<usize> { v.len().checked_sub(1) }";
+        assert!(
+            !fires(Rule::NoUncheckedLenArith, checked),
+            "checked_sub is the fix"
+        );
+        let unrelated = "#![strict]\nfn k(a: usize, b: usize) -> usize { a.saturating_add(b) }";
+        assert!(!fires(Rule::NoUncheckedLenArith, unrelated));
+    }
+
+    #[test]
+    fn r0020_fires_on_guard_held_across_await() {
+        let bad = "#![strict]\nasync fn f(m: &std::sync::Mutex<u32>) { let g = m.lock().unwrap(); tokio::task::yield_now().await; drop(g); }";
+        assert!(
+            fires(Rule::NoLockAcrossAwait, bad),
+            "guard across await must fire"
+        );
+        let scoped = "#![strict]\nasync fn g(m: &std::sync::Mutex<u32>) { { let g = m.lock().unwrap(); drop(g); } tokio::task::yield_now().await; }";
+        assert!(
+            !fires(Rule::NoLockAcrossAwait, scoped),
+            "guard dropped in its own block is fine"
+        );
+        let async_lock = "#![strict]\nasync fn h(m: &tokio::sync::Mutex<u32>) { let g = m.lock().await; tokio::task::yield_now().await; drop(g); }";
+        assert!(
+            !fires(Rule::NoLockAcrossAwait, async_lock),
+            "async-aware locks are the fix"
+        );
+    }
+
+    #[test]
+    fn r0021_fires_on_capacity_as_bound() {
+        let idx = "#![strict]\nfn f(v: &Vec<u32>) -> u32 { v[v.capacity() - 1] }";
+        assert!(
+            fires(Rule::NoCapacityAsLen, idx),
+            "capacity as index must fire"
+        );
+        let range = "#![strict]\nfn g(v: &Vec<u32>) { for i in 0..v.capacity() { let _ = i; } }";
+        assert!(
+            fires(Rule::NoCapacityAsLen, range),
+            "capacity as range bound must fire"
+        );
+        let fine = "#![strict]\nfn h(v: &Vec<u32>) -> usize { v.capacity() }";
+        assert!(
+            !fires(Rule::NoCapacityAsLen, fine),
+            "reporting capacity itself is fine"
+        );
+    }
+
     #[test]
     fn clean_program_has_no_diagnostics() {
         let src = "#![strict]\nfn main() { let x: u32 = 1; println!(\"{x}\"); }";
@@ -59,7 +184,11 @@ mod tests {
         for r in all_rules() {
             assert!(!r.code().is_empty(), "rule has empty code");
             assert!(!r.name().is_empty(), "{} has empty name", r.code());
-            assert!(!r.rationale().is_empty(), "{} has empty rationale", r.code());
+            assert!(
+                !r.rationale().is_empty(),
+                "{} has empty rationale",
+                r.code()
+            );
             assert!(!r.instead().is_empty(), "{} has empty `instead`", r.code());
             assert_eq!(
                 Rule::from_code(r.code()),
@@ -430,7 +559,11 @@ mod tests {
         // x,y,w,h all f64 → adjacent pairs (x,y),(y,w),(w,h) → 3 diagnostics.
         let src = "#![strict]\npub fn rect(x: f64, y: f64, w: f64, h: f64) {}";
         let d = diags_for(Rule::NoSameTypeParams, src);
-        assert_eq!(d.len(), 3, "expected one diag per adjacent same-type pair: {d:?}");
+        assert_eq!(
+            d.len(),
+            3,
+            "expected one diag per adjacent same-type pair: {d:?}"
+        );
     }
 
     #[test]
@@ -548,8 +681,7 @@ mod tests {
 
     #[test]
     fn rt46_missing_reason_rejected() {
-        let src =
-            "#![strict]\n#[allow(trust::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        let src = "#![strict]\n#[allow(trust::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
         assert!(
             fires(Rule::AllowMissingReason, src),
             "missing reason must emit R0015"
@@ -578,8 +710,7 @@ mod tests {
     fn rt46_malformed_allow_does_not_suppress() {
         // No reason → the malformed allow MUST NOT silence R0014; user has
         // to fix the attribute before the lint shuts up.
-        let src =
-            "#![strict]\n#[allow(trust::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        let src = "#![strict]\n#[allow(trust::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
         assert!(
             fires(Rule::NoBareIndex, src),
             "R0014 must keep firing when the allow is malformed"

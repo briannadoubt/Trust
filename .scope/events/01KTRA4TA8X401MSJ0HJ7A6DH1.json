@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTRA4TA8X401MSJ0HJ7A6DH1",
+  "ts": "2026-06-10T08:24:54.344Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DH0",
+    "number": 98,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Distribution: plugin packaging + marketplace listing for the skill set",
+    "description": "Once the writing-trust skill stabilizes: package as an installable Claude Code plugin (skill + optional hooks that swap cargo->cargo trust suggestions), decide repo layout (in-tree skills/ vs separate repo), and list wherever bri distributes (marketplace, README install snippet). Sequenced last — content before packaging.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KTRA4TA7EF6F4VHFW4YY2687",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

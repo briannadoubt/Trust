@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT86Y5JEGMS66D87103800",
+  "ts": "2026-05-27T22:52:57.669Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71Q",
+    "number": 35,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Editor experience: LSP and daily usability",
+    "description": "Real LSP server, quick-eval path for snippets, and a publishable spec. Prerequisite: language completeness epic should be mostly done first so the LSP isn't implementing a moving target.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

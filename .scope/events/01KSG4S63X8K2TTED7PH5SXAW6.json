@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4S63X8K2TTED7PH5SXAW6",
+  "ts": "2026-05-25T18:01:33.053Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70Y",
+    "number": 10,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Decision: invest in real effect inference OR remove R4001",
+    "description": "Codex called the effect system vestigial and said half-shipped is worse than either path. Two options: (1) build inter-procedural analysis with trait dispatch + meaningful seed table — real engineering, multiple sessions; or (2) remove R4001 from the catalogue, mark the effect machinery 'design sketch / unimplemented', simplify rustricted-effects accordingly. Pick one and ship it. Blocked by RT-9 (the honest audit).",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70P",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

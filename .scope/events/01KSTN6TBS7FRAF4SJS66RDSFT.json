@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KSTN6TBS7FRAF4SJS66RDSFT",
+  "ts": "2026-05-29T20:01:01.305Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72V",
+    "number": 71,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "trust fix — whole-crate vanilla→strict rewrite",
+    "description": "A 'trust fix' command that rewrites a whole vanilla crate into strict form — auto-inserting named args from the CalleeRegistry, itemising globs, etc. — so an agent onboards a codebase in one command.\n\nReuses the registry from Tier 0. Pairs with the structured-fix story: same edit engine, batch-applied across a crate.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72M",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "cli",
+      "onboarding"
+    ]
+  }
+}

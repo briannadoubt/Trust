@@ -19,8 +19,6 @@
 //! delegates to a one-field [`Located`] helper rather than calling a 2-arg
 //! free fn.
 
-trust_attrs::strict! {}
-
 use std::ops::Range;
 
 pub use ariadne;
@@ -150,14 +148,25 @@ impl Diagnostic {
     }
 }
 
-/// Render diagnostics to a writer using `ariadne`. `filename` is shown in
+/// A named source text. Bundles the filename and contents every renderer
+/// needs — and keeps an adjacent same-typed `(&str, &str)` pair out of the
+/// public signatures (R0017, surfaced by this crate's own strict dogfood).
+#[derive(Clone, Copy)]
+pub struct NamedSource<'a> {
+    /// Display name for the source-position banner (a path, or `<stdin>`).
+    pub name: &'a str,
+    /// The source text the diagnostic spans index into.
+    pub text: &'a str,
+}
+
+/// Render diagnostics to a writer using `ariadne`. `src.name` is shown in
 /// the source-position banner.
 pub fn render<W: std::io::Write>(
     diagnostics: &[Diagnostic],
-    filename: &str,
-    source: &str,
+    src: NamedSource<'_>,
     writer: &mut W,
 ) -> std::io::Result<()> {
+    let (filename, source) = (src.name, src.text);
     use ariadne::{Color, Label, Report, ReportKind, Source};
 
     for diag in diagnostics {
@@ -256,9 +265,9 @@ impl Located<'_> {
 ///
 /// `why`, `help`, and `fix` are emitted as `null` when absent. The emitter is
 /// hand-rolled (no serde dependency) and escapes strings per RFC 8259.
-pub fn to_json(diagnostics: &[Diagnostic], filename: &str, source: &str) -> String {
-    let mut writer = JsonWriter::new(source);
-    writer.document(diagnostics, filename);
+pub fn to_json(diagnostics: &[Diagnostic], src: NamedSource<'_>) -> String {
+    let mut writer = JsonWriter::new(src.text);
+    writer.document(diagnostics, src.name);
     writer.into_string()
 }
 
@@ -298,7 +307,8 @@ impl<'a> JsonWriter<'a> {
     }
 
     fn document(&mut self, diagnostics: &[Diagnostic], filename: &str) {
-        self.out.push_str("{\n  \"version\": \"0.1\",\n  \"file\": ");
+        self.out
+            .push_str("{\n  \"version\": \"0.1\",\n  \"file\": ");
         self.string(filename);
         self.out.push_str(",\n  \"diagnostics\": [");
         for (i, diag) in diagnostics.iter().enumerate() {
@@ -336,8 +346,14 @@ impl<'a> JsonWriter<'a> {
     }
 
     fn span(&mut self, span: &Range<usize>) {
-        let (start_line, start_col) = Located { source: self.source }.at(span.start);
-        let (end_line, end_col) = Located { source: self.source }.at(span.end);
+        let (start_line, start_col) = Located {
+            source: self.source,
+        }
+        .at(span.start);
+        let (end_line, end_col) = Located {
+            source: self.source,
+        }
+        .at(span.end);
         self.out.push('{');
         self.out.push_str("\"start\": ");
         self.out.push_str(&span.start.to_string());
@@ -383,9 +399,9 @@ impl<'a> JsonWriter<'a> {
                 '\t' => self.out.push_str("\\t"),
                 '\u{08}' => self.out.push_str("\\b"),
                 '\u{0c}' => self.out.push_str("\\f"),
-                c if (c as u32) < 0x20 => {
+                c if u32::from(c) < 0x20 => {
                     self.out.push_str("\\u");
-                    let code = c as u32;
+                    let code = u32::from(c);
                     for shift in [12, 8, 4, 0] {
                         let nibble = (code >> shift) & 0xf;
                         self.out.push(char::from_digit(nibble, 16).unwrap_or('0'));

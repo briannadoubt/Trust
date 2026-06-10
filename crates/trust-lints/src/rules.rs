@@ -1,8 +1,6 @@
 //! Rule registry. Each entry is a stable code (`R0001`, `R0002`, …), a short
 //! name, and a one-sentence rationale. The runner dispatches by `Rule`.
 
-trust_attrs::strict! {}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Rule {
     /// `.unwrap()` used outside `#[cfg(test)]`.
@@ -36,6 +34,17 @@ pub enum Rule {
     AllowMissingReason,
     /// `#[allow(trust::Rxxxx)]` with an unknown rule code.
     AllowUnknownCode,
+    /// `.map_err(|_| …)` or `.ok().expect(…)` discarding the source error.
+    NoErrorContextDrop,
+    /// Bare `+`/`-`/`*` where an operand is a `.len()` call — debug panics,
+    /// release silently wraps.
+    NoUncheckedLenArith,
+    /// A sync lock guard (`.lock().unwrap()` et al) bound before an
+    /// `.await` in the same async block.
+    NoLockAcrossAwait,
+    /// `.capacity()` used as an index or range bound where `.len()` is
+    /// almost certainly meant.
+    NoCapacityAsLen,
     /// Positional argument to a locally-defined function with arity > 1.
     /// Emission lives in `trust-lower::named_args` because the lint
     /// must fire before lowering strips argument names; this catalogue
@@ -61,6 +70,10 @@ impl Rule {
             Rule::NoSameTypeParams => "R0017",
             Rule::AllowMissingReason => "R0015",
             Rule::AllowUnknownCode => "R0016",
+            Rule::NoErrorContextDrop => "R0018",
+            Rule::NoUncheckedLenArith => "R0019",
+            Rule::NoLockAcrossAwait => "R0020",
+            Rule::NoCapacityAsLen => "R0021",
             Rule::NoPositionalArgs => "R0042",
         }
     }
@@ -88,6 +101,10 @@ impl Rule {
             Rule::NoSameTypeParams => "no-same-type-params",
             Rule::AllowMissingReason => "allow-missing-reason",
             Rule::AllowUnknownCode => "allow-unknown-code",
+            Rule::NoErrorContextDrop => "error-context-dropped",
+            Rule::NoUncheckedLenArith => "no-unchecked-len-arith",
+            Rule::NoLockAcrossAwait => "no-lock-across-await",
+            Rule::NoCapacityAsLen => "no-capacity-as-len",
             Rule::NoPositionalArgs => "no-positional-args",
         }
     }
@@ -110,6 +127,10 @@ impl Rule {
         matches!(
             self,
             Rule::NoUnwrap
+                | Rule::NoErrorContextDrop
+                | Rule::NoUncheckedLenArith
+                | Rule::NoLockAcrossAwait
+                | Rule::NoCapacityAsLen
                 | Rule::NoGlobImport
                 | Rule::NoUserMacros
                 | Rule::NoTodoMacro
@@ -137,6 +158,10 @@ impl Rule {
             Rule::NoSameTypeParams => "adjacent same-type parameters are silently swappable; named args fix the call site but not values built into the wrong variable — distinct newtypes make a swap a type error",
             Rule::AllowMissingReason => "every `#[allow(trust::Rxxxx)]` must include a `reason = \"...\"` justification",
             Rule::AllowUnknownCode => "`#[allow(trust::Rxxxx)]` references a rule code that is not in the registry",
+            Rule::NoErrorContextDrop => "`.map_err(|_| …)` and `.ok().expect(…)` discard the source error agents need to debug the failure; the chain is the context",
+            Rule::NoUncheckedLenArith => "bare arithmetic on `.len()`-derived values panics in debug and silently wraps in release; the underflow of `len() - 1` on empty input is a classic agent bug",
+            Rule::NoLockAcrossAwait => "holding a sync `MutexGuard` across `.await` blocks every task on that lock and can deadlock single-threaded runtimes",
+            Rule::NoCapacityAsLen => "`.capacity()` is allocation size, not element count; using it as a bound reads uninitialized slots or panics",
             Rule::NoPositionalArgs => "positional argument ordering is the largest LLM-authored bug class in Rust; named args eliminate it",
         }
     }
@@ -148,27 +173,57 @@ impl Rule {
     pub fn instead(self) -> &'static str {
         match self {
             Rule::NoUnwrap => "propagate with `?`, or `.expect(\"why this can't fail\")`",
-            Rule::EmptyExpect => "give `.expect(\"…\")` a real message explaining why it can't fail",
+            Rule::EmptyExpect => {
+                "give `.expect(\"…\")` a real message explaining why it can't fail"
+            }
             Rule::NoAsCast => "use `T::try_from(x)?` for fallible casts, or `.into()` for widening",
             Rule::NoGlobImport => "import the specific items: `use foo::{A, B};`",
             Rule::JustifyUnsafe => "precede the `unsafe` block with a `// safety: …` comment",
             Rule::JustifyAllow => "precede the `#[allow(…)]` with a `// reason: …` comment",
-            Rule::NoImplTraitReturn => "name the type with a `type Alias = …;` and return the alias",
+            Rule::NoImplTraitReturn => {
+                "name the type with a `type Alias = …;` and return the alias"
+            }
             Rule::NoUserMacros => "inline the logic, or opt in with `#[strict::macros_ok]`",
             Rule::NoTodoMacro => "finish the implementation, or return a typed `Err`",
             Rule::NoPanic => "return a typed `Err` and let the caller decide whether to abort",
-            Rule::NoBoolParam => "replace the `bool` with a named enum, e.g. `enum Mode { On, Off }`",
+            Rule::NoBoolParam => {
+                "replace the `bool` with a named enum, e.g. `enum Mode { On, Off }`"
+            }
             Rule::NoBareIndex => "use `.get(i)` and handle the `Option`",
-            Rule::NoSameTypeParams => "wrap each in a distinct newtype — `trust_std::newtype!(pub Width(u32));`",
-            Rule::AllowMissingReason => "add a `reason = \"…\"` argument to the `#[allow(trust::…)]`",
-            Rule::AllowUnknownCode => "use a real rule code (run `trust explain` for the catalogue)",
-            Rule::NoPositionalArgs => "name the arguments — `f(width: …, height: …)` — or run `trust fix`",
+            Rule::NoSameTypeParams => {
+                "wrap each in a distinct newtype — `trust_std::newtype!(pub Width(u32));`"
+            }
+            Rule::AllowMissingReason => {
+                "add a `reason = \"…\"` argument to the `#[allow(trust::…)]`"
+            }
+            Rule::AllowUnknownCode => {
+                "use a real rule code (run `trust explain` for the catalogue)"
+            }
+            Rule::NoErrorContextDrop => {
+                "carry the source: `.map_err(|e| MyError::Io(e))`, or use `?` with a `From` impl"
+            }
+            Rule::NoUncheckedLenArith => {
+                "make the choice explicit: `.checked_sub(1)?`, `.saturating_sub(1)`, or `.wrapping_*` if wrap is intended"
+            }
+            Rule::NoLockAcrossAwait => {
+                "drop the guard before awaiting (scope it in a block), or use an async-aware lock like `tokio::sync::Mutex`"
+            }
+            Rule::NoCapacityAsLen => {
+                "use `.len()` for element counts; `.capacity()` only sizes future allocations"
+            }
+            Rule::NoPositionalArgs => {
+                "name the arguments — `f(width: …, height: …)` — or run `trust fix`"
+            }
         }
     }
 }
 
 pub const ALL: &[Rule] = &[
     Rule::NoUnwrap,
+    Rule::NoErrorContextDrop,
+    Rule::NoUncheckedLenArith,
+    Rule::NoLockAcrossAwait,
+    Rule::NoCapacityAsLen,
     Rule::EmptyExpect,
     Rule::NoAsCast,
     Rule::NoGlobImport,

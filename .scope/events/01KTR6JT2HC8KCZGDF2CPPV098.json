@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTR6JT2HC8KCZGDF2CPPV098",
+  "ts": "2026-06-10T07:22:38.545Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72K",
+    "commentId": "01KTR6JT2HC8KCZGDF2CPPV097",
+    "author": "claude",
+    "body": "All children resolved: RT-68/69 shipped (R0019 + requires! contracts), bugs RT-87 (invalid), RT-90, RT-91 closed. Frontend extensions tier complete; eval validation debts recorded on the individual tickets."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTRCNC611J7HQZ9PXMAJR16B",
+  "ts": "2026-06-10T09:08:54.081Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DGT",
+    "commentId": "01KTRCNC611J7HQZ9PXMAJR16A",
+    "author": "claude",
+    "body": "Shipped: docs/templates/CLAUDE-md-snippet.md (21-line block + human intro); trust new scaffolds it as CLAUDE.md from an in-binary const with a drift test against the docs copy; README Learn-more link. e2e re-verified by orchestrator. Commit c313984."
+  }
+}

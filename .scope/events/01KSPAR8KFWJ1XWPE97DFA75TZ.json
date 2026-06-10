@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSPAR8KFWJ1XWPE97DFA75TZ",
+  "ts": "2026-05-28T03:41:20.879Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR724",
+    "number": 48,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "RT Lowering: attribute-internal call-like syntax matched as fn call",
+    "description": "clap derive's #[command(subcommand)] attribute syntax is parsed as a fn call by trust-lower's named-arg pass, matching trust_std::process::command and demanding named-arg form. Surfaced during the RT-47 rename when trust-std signature index had . Fix: lowering pass must skip token streams inside #[...] / #![...] attributes.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

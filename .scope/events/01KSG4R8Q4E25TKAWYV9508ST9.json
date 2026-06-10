@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4R8Q4E25TKAWYV9508ST9",
+  "ts": "2026-05-25T18:01:02.948Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70T",
+    "number": 6,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Re-attempt rustricted CLI dogfood",
+    "description": "Once RT-5 (multi-module) lands: add rustricted_attrs::strict!{} to crates/rustricted/src/main.rs, fix the R0042 violations the prior attempt found (build, run_pipeline calls), verify cargo build + tests pass via the wrapper. See case-studies/rustricted-cli-strict-failed.md for the prior writeup.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70N",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

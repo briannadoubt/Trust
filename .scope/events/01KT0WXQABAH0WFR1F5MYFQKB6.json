@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KT0WXQABAH0WFR1F5MYFQKB6",
+  "ts": "2026-06-01T06:11:18.475Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR732",
+    "number": 78,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "trust explain + WRITING-TRUST.md — proactive agent rule contract",
+    "description": "The reactive loop (RT-70 structured diagnostics/fixes, RT-71 trust fix) tells an agent how to FIX a violation. The proactive half is missing: a single, authoritative, machine-GENERATED 'how to write Trust' an agent loads into context to write compliant code first-try. Prevention beats correction; every check→fix cycle is expensive.\n\nDeliver:\n1. Rule::instead() — the canonical one-line compliant idiom per rule, as DATA in the registry (today it's buried in visitor help-strings).\n2. trust explain [<code>] [--format human|json] — on-demand rule reference (one rule or the full catalogue), agent-consumable via JSON.\n3. docs/WRITING-TRUST.md — generated from the registry via cargo xtask gen-docs (always fresh), the loadable agent contract: every rule as ❌ don't / ✅ do / why.\n\nThis is the proactive complement to Tier 2's agent action stream — the most on-thesis 'for the agent' lever left.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "agent-experience",
+      "docs"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KSVTABK0X1PHVDS1AHHHP3MW",
+  "ts": "2026-05-30T06:49:34.560Z",
+  "actor": "agent",
+  "kind": "ticket.set_field",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72V",
+    "field": "status",
+    "value": "done"
+  }
+}

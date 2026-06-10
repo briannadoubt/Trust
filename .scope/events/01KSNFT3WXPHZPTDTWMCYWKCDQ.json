@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNFT3WXPHZPTDTWMCYWKCDQ",
+  "ts": "2026-05-27T19:50:30.045Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR719",
+    "number": 21,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "RUSTC_WRAPPER: multi-file crates break — module files loaded from original path, not temp dir",
+    "description": "When rustricted-rustc lowers lib.rs to a temp dir and rustc is invoked on the temp file, rustc looks for submodule files (mod foo;) relative to the temp dir. Since only lib.rs is copied, all mod declarations fail with E0583. Documented as a known limitation in rustricted-rustc/src/main.rs. Fix options: (a) copy all sibling .rs files to the temp dir, (b) add --remap-path-prefix for source dir so module resolution works, (c) document that multi-file crates should be single-file or use include!() for strict mode. Discovered during RT-12 heck case study (had to flatten 9-file crate into single lib.rs to make build work).",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

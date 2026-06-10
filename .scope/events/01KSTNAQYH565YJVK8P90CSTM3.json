@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KSTNAQYH565YJVK8P90CSTM3",
+  "ts": "2026-05-29T20:03:09.905Z",
+  "actor": "migration",
+  "kind": "relation.add",
+  "payload": {
+    "fromId": "01KT3SXZSFD74BV8HEBN8PR72V",
+    "toId": "01KT3SXZSFD74BV8HEBN8PR72T",
+    "type": "relates_to"
+  }
+}

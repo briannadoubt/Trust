@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNWXBRYP40JH58X12JZ6REX",
+  "ts": "2026-05-27T23:39:27.902Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR720",
+    "number": 44,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Dogfooding: strict-marking rustricted-std breaks build.rs (syn can't parse named args)",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

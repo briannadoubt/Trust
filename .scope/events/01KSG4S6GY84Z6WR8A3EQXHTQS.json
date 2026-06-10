@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4S6GY84Z6WR8A3EQXHTQS",
+  "ts": "2026-05-25T18:01:33.470Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR713",
+    "number": 15,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "R0004 refinement: exempt 'use super::*;' inside #[cfg(test)] mod",
+    "description": "FP audit: 11 of 12 R0004 hits against anyhow were 'use super::*;' inside #[cfg(test)] mod tests {}, which is the universal Rust test idiom. Either exempt that specific pattern, or extend the test-scope exemption metadata (Rule::is_exempt_in_cfg_test, added in RT-35-era work) to cover R0004 as a config option.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70R",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

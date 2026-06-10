@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4R8MC8DW9EPVM1KX4YHV2",
+  "ts": "2026-05-25T18:01:02.860Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70S",
+    "number": 5,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Wrapper: multi-module support",
+    "description": "rustricted-rustc currently only lowers the single .rs file rustc is invoked with. Child modules loaded via 'mod foo;' read from the original on-disk path and skip lowering, so any multi-file strict crate fails on extension syntax. Walk the crate's src tree, lower every strict-marked file to a parallel temp directory, point rustc at the temp root. This is the gate to dogfooding any real internal crate.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70N",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

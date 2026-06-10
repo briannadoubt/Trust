@@ -1,5 +1,3 @@
-trust_attrs::strict!{}
-
 use clap::{ArgEnum, Parser};
 
 #[derive(ArgEnum, Clone, Debug, PartialEq)]

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTJXTNCJWF7EGV46GE12R5YX",
+  "ts": "2026-06-08T06:13:26.546Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5YW",
+    "number": 80,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "cargo trust build/run/test — set the wrappers internally, zero env vars",
+    "description": "Biggest single win. cargo-trust (crates/cargo-trust/src/main.rs) currently just forwards args to the `trust` CLI. Extend it so `cargo trust build|run|test` sets RUSTC_WRAPPER and RUSTDOC to the bundled shim paths itself and shells out to the corresponding cargo command. Deletes the entire 'Using strict source from cargo' section of the README — no realpath, no export, no remembering that rustdoc ignores RUSTC_WRAPPER. Pure plumbing: no new concepts, no compiler work. Needs to locate the shim binaries reliably (alongside the cargo-trust binary, or via a known install layout). Acceptance: a fresh strict crate builds and runs green via `cargo trust run` with no env vars touched.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

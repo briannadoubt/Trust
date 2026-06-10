@@ -49,17 +49,17 @@ impl<T: AsRef<str>> fmt::Display for AsLowerCamelCase<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut first = true;
         transform(
-            self.0.as_ref(),
-            |s, f| {
+            s: self.0.as_ref(),
+            with_word: |s, f| {
                 if first {
                     first = false;
-                    lowercase(s, f)
+                    lowercase(s: s, f: f)
                 } else {
-                    capitalize(s, f)
+                    capitalize(s: s, f: f)
                 }
             },
-            |_| Ok(()),
-            f,
+            boundary: |_| Ok(()),
+            f: f,
         )
     }
 }

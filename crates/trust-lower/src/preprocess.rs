@@ -69,6 +69,135 @@ pub fn strip_strict_attrs(tokens: TokenStream) -> TokenStream {
     out.into_iter().collect()
 }
 
+/// Strip `trust::Rxxxx` items out of `#[allow(...)]` / `#[expect(...)]`
+/// attributes (RT-89). The `#[allow(trust::R0017, reason = "…")]` escape
+/// hatch is consumed by the Trust linter, but stock rustc rejects the
+/// `trust::` tool path (E0710 unknown tool name), so it must not survive
+/// lowering. Non-trust lint paths in the same attribute are kept; if nothing
+/// but trust items (and their `reason`) remain, the whole attribute is
+/// dropped.
+pub fn strip_trust_allow_items(tokens: TokenStream) -> TokenStream {
+    let trees: Vec<TokenTree> = tokens.into_iter().collect();
+    let mut out: Vec<TokenTree> = Vec::with_capacity(trees.len());
+    let mut i = 0;
+    while i < trees.len() {
+        if let Some((replacement, consumed)) = try_rewrite_allow_at(&trees, i) {
+            out.extend(replacement);
+            i += consumed;
+            continue;
+        }
+        match &trees[i] {
+            TokenTree::Group(g) => {
+                let mut new = Group::new(g.delimiter(), strip_trust_allow_items(g.stream()));
+                new.set_span(g.span());
+                out.push(TokenTree::Group(new));
+            }
+            other => out.push(other.clone()),
+        }
+        i += 1;
+    }
+    out.into_iter().collect()
+}
+
+/// If `trees[i..]` starts with an `#[allow(...)]`-shaped attribute containing
+/// a `trust::` item, return the rewritten attribute tokens (possibly empty)
+/// and how many input tokens were consumed.
+fn try_rewrite_allow_at(trees: &[TokenTree], i: usize) -> Option<(Vec<TokenTree>, usize)> {
+    let TokenTree::Punct(hash) = trees.get(i)? else {
+        return None;
+    };
+    if hash.as_char() != '#' {
+        return None;
+    }
+    let mut j = i + 1;
+    if let Some(TokenTree::Punct(bang)) = trees.get(j) {
+        if bang.as_char() == '!' {
+            j += 1;
+        }
+    }
+    let TokenTree::Group(bracket) = trees.get(j)? else {
+        return None;
+    };
+    if bracket.delimiter() != Delimiter::Bracket {
+        return None;
+    }
+    let inner: Vec<TokenTree> = bracket.stream().into_iter().collect();
+    let [TokenTree::Ident(name), TokenTree::Group(list)] = inner.as_slice() else {
+        return None;
+    };
+    if *name != "allow" && *name != "expect" {
+        return None;
+    }
+    if list.delimiter() != Delimiter::Parenthesis {
+        return None;
+    }
+
+    // Split the list on top-level commas; keep items that are not
+    // `trust::...` and not `reason = ...`.
+    let items = split_top_commas(list.stream());
+    let has_trust = items.iter().any(|seg| starts_with_trust_path(seg));
+    if !has_trust {
+        return None; // plain rustc/clippy allow — leave untouched
+    }
+    let kept: Vec<Vec<TokenTree>> = items
+        .into_iter()
+        .filter(|seg| !starts_with_trust_path(seg) && !is_reason_item(seg))
+        .collect();
+
+    if kept.is_empty() {
+        // Nothing rustc-meaningful left: drop the whole attribute.
+        return Some((Vec::new(), j + 1 - i));
+    }
+
+    // Rebuild `#[allow(<kept...>)]` preserving the original shape.
+    let mut list_tokens: Vec<TokenTree> = Vec::new();
+    for (idx, seg) in kept.into_iter().enumerate() {
+        if idx > 0 {
+            list_tokens.push(TokenTree::Punct(proc_macro2::Punct::new(
+                ',',
+                proc_macro2::Spacing::Alone,
+            )));
+        }
+        list_tokens.extend(seg);
+    }
+    let mut new_list = Group::new(Delimiter::Parenthesis, list_tokens.into_iter().collect());
+    new_list.set_span(list.span());
+    let mut new_bracket = Group::new(
+        Delimiter::Bracket,
+        vec![TokenTree::Ident(name.clone()), TokenTree::Group(new_list)]
+            .into_iter()
+            .collect(),
+    );
+    new_bracket.set_span(bracket.span());
+
+    let mut replacement: Vec<TokenTree> = trees[i..j].to_vec(); // `#` and optional `!`
+    replacement.push(TokenTree::Group(new_bracket));
+    Some((replacement, j + 1 - i))
+}
+
+fn split_top_commas(tokens: TokenStream) -> Vec<Vec<TokenTree>> {
+    let mut out: Vec<Vec<TokenTree>> = vec![Vec::new()];
+    for tt in tokens {
+        if let TokenTree::Punct(p) = &tt {
+            if p.as_char() == ',' {
+                out.push(Vec::new());
+                continue;
+            }
+        }
+        out.last_mut().expect("non-empty").push(tt);
+    }
+    out.retain(|seg| !seg.is_empty());
+    out
+}
+
+fn starts_with_trust_path(seg: &[TokenTree]) -> bool {
+    matches!(seg.first(), Some(TokenTree::Ident(id)) if *id == "trust")
+}
+
+fn is_reason_item(seg: &[TokenTree]) -> bool {
+    matches!(seg.first(), Some(TokenTree::Ident(id)) if *id == "reason")
+}
+
 /// If `trees[i..]` starts with a `#[strict...]` or `#![strict...]` attribute,
 /// return how many tokens it consumed. Otherwise return `None`.
 fn try_strip_at(trees: &[TokenTree], i: usize) -> Option<usize> {

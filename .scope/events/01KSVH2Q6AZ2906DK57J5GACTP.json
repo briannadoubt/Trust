@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSVH2Q6AZ2906DK57J5GACTP",
+  "ts": "2026-05-30T04:08:07.114Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72Q",
+    "commentId": "01KT3T33TFR5X645BERY2KBVPE",
+    "author": "agent",
+    "body": "Delivered the lint (the Clippy-proof bug-catching core). R0017 no-same-type-params: a visible fn/method with two ADJACENT parameters of the same concrete type is flagged — wrap each in a distinct newtype so a swap is a type error.\n\nThis is the class R0042 can't reach: named args fix the call SITE, but make_rect(width: w, height: h) still accepts two raw u32s, so a value built into the wrong variable upstream ships the swap with correct-looking names. Distinct newtypes (Width/Height) make it a type error.\n\n- trust-lints: Rule::NoSameTypeParams (R0017) + NoSameTypeParamsVisitor. Syntactic (syn PartialEq, no type inference): visible fns/methods only, adjacent pairs, generic type params exempt (max<T>(a,b)), cfg(test) exempt, #[allow(trust::R0017, reason=...)] escape hatch. 10 tests.\n- SPEC prose + regenerated catalogue table; examples/01-lints/same-type-params-fail.rs fixture + CI lint-demo step.\n\nValidation: R0017 found real swap-prone signatures in the project's OWN std-mirror shims (copy(from,to), rename(from,to), set_var(name,value)) and trust-diag render(filename,source). The wrapper runs only lowering (not AST lints), so these surface via 'trust check', not the dogfood build — no CI breakage.\n\nFollow-on (not blocking, candidate for its own story): the newtype ergonomic helper (a 'newtype!' one-liner / derive) from the ticket. The lint is the moat; the sugar can land separately."
+  }
+}

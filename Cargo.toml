@@ -21,10 +21,10 @@ quote = "1"
 syn = { version = "2", features = ["full", "extra-traits", "visit"] }
 tempfile = "3"
 thiserror = "1"
+toml = "0.8"
 
 # Internal crates — version + path so cargo publish accepts them while
 # local dev still uses the path. crates.io ignores `path` for resolution.
-trust-attrs = { version = "0.1.0", path = "crates/trust-attrs" }
 trust-diag = { version = "0.1.0", path = "crates/trust-diag" }
 trust-lints = { version = "0.1.0", path = "crates/trust-lints" }
 trust-lower = { version = "0.1.0", path = "crates/trust-lower" }

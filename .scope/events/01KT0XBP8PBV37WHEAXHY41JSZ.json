@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KT0XBP8PBV37WHEAXHY41JSZ",
+  "ts": "2026-06-01T06:18:56.150Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR732",
+    "commentId": "01KT3T33TFVA4R72JCJ5QX599R",
+    "author": "agent",
+    "body": "Delivered the proactive agent contract.\n\n- trust-lints: Rule::instead() — the canonical one-line compliant idiom per rule, as DATA in the registry (lifted from buried visitor help-strings). Companion to rationale() (the why).\n- trust CLI: 'trust explain [<code>] [--format human|json]' — on-demand rule reference (one rule or the full 16-rule catalogue), agent-consumable JSON. Unknown codes fail cleanly.\n- docs/WRITING-TRUST.md: GENERATED from the registry via 'cargo xtask gen-docs' (gen-docs now syncs SPEC.md + the guide; --check enforces both fresh). The loadable agent contract: intro + every rule as why/instead.\n- trust-diag: pub json_escape() so explain reuses one JSON escaper (no dup).\n- Tests: every_rule_has_guidance_and_round_trips (no rule can ship blank guidance / unround-trippable code). CI: explain smoke (json valid, all instead non-empty, unknown→nonzero).\n\nWhy this was the pick: the reactive loop (RT-70 JSON/fixes, RT-71 trust fix) tells an agent how to FIX a violation; this is the proactive half — agents are context-steered, every check→fix cycle is expensive, so an always-fresh 'how to write Trust' loaded into context lets them comply first-try. Verified: fmt/clippy/test/gen-docs --check all green."
+  }
+}

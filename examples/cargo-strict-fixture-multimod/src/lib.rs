@@ -1,3 +1,3 @@
-trust_attrs::strict! {}
+#![strict]
 
 pub mod geom;

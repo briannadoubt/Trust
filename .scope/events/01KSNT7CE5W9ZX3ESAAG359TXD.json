@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT7CE5W9ZX3ESAAG359TXD",
+  "ts": "2026-05-27T22:52:30.533Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71E",
+    "number": 26,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Run cross-provider eval: GPT-4o and Gemini baselines",
+    "description": "eval/runs/005/NOTES.md has instructions. Need OPENAI_API_KEY and GEMINI_API_KEY. Run run_cross_provider.py for all tasks, both conditions, 3+ trials. Compare against Claude baseline from runs/001-004 using score.py + summarize.py.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71D",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

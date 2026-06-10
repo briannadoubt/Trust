@@ -58,7 +58,7 @@ pub struct AsSnakeCase<T: AsRef<str>>(pub T);
 
 impl<T: AsRef<str>> fmt::Display for AsSnakeCase<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        transform(self.0.as_ref(), lowercase, |f| write!(f, "_"), f)
+        transform(s: self.0.as_ref(), with_word: lowercase, boundary: |f| write!(f, "_"), f: f)
     }
 }
 

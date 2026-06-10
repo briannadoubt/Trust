@@ -10,5 +10,9 @@ repository.workspace = true
 keywords = ["trust", "strict", "rust", "stdlib", "named-arguments"]
 categories = ["development-tools"]
 
+# NOT metadata-strict (RT-88): R0008 fires on the macro_rules! this crate
+# exists to export (newtype!), and R0017 on the std-mirroring shims
+# (copy/rename take two same-typed paths by design). The stock-safe
+# escape hatches don't exist yet — #[allow(trust::…)] / #[strict::…]
+# are rejected by stock rustc, which this published crate must support.
 [dependencies]
-trust-attrs.workspace = true

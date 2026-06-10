@@ -107,6 +107,16 @@ enum Cmd {
         #[arg(short, long)]
         write: bool,
     },
+    /// Scaffold a new strict Trust project (RT-94).
+    ///
+    /// Creates `<name>/` with a `Cargo.toml` that opts into strict mode via
+    /// `[package.metadata.trust] strict = true`, a hello `src/main.rs` that
+    /// exercises named-argument syntax, a `.gitignore`, and a `README.md`.
+    /// Build it with `cargo trust build` (not plain cargo).
+    New {
+        /// Name of the project (and the directory to create)
+        name: String,
+    },
     /// Explain Trust's rules — the proactive agent contract (RT-78).
     ///
     /// With a rule code, explains that rule; with no code, lists the whole
@@ -157,6 +167,7 @@ fn main() -> Result<()> {
         Cmd::Lower { input } => lower_to_stdout(&input),
         Cmd::Index { input, out } => index(&input, out.as_deref()),
         Cmd::Fix { input, write } => fix(&input, write),
+        Cmd::New { name } => scaffold_new(&name),
         Cmd::Explain { code, format } => explain(code.as_deref(), format),
     }
 }
@@ -273,6 +284,124 @@ fn fix(input: &Path, write: bool) -> Result<()> {
     Ok(())
 }
 
+/// The drop-in agent-instructions block (RT-95) written to a scaffolded
+/// project's `CLAUDE.md`. Kept in the binary (installed copies don't have the
+/// repo); a unit test asserts docs/templates/CLAUDE-md-snippet.md contains it
+/// verbatim so the two can't drift.
+const CLAUDE_MD_BLOCK: &str = r#"## Trust (strict Rust dialect)
+
+This project uses Trust, a strict Rust dialect that lowers to plain Rust.
+Build, run, and test with `cargo trust build|run|test` — NEVER plain `cargo`:
+named-argument syntax won't parse under stock cargo, and that's expected.
+
+- Calls with more than one argument use named arguments:
+  `make_rect(width: 1920, height: 1080)`. Also available: the pipe operator
+  `e |> f(args)` and `requires!(cond)` preconditions.
+- Build errors with R-codes (R0001, R0042, …) are Trust teaching errors:
+  read the `why:` and `help:`/`instead:` text, apply it, then rebuild.
+  - `trust explain <CODE>` — detail on one rule.
+  - `trust fix <file> --write` — auto-inserts argument names.
+  - `cargo trust build --message-format json` — machine-readable diagnostics.
+- `#[cfg(test)]` code is exempt — write tests in plain Rust; don't convert them.
+- Don't suppress rules without a `reason`. Suppression via
+  `#[allow(trust::R0xxx, reason = "…")]` only compiles under cargo trust,
+  never stock cargo.
+
+Docs: https://github.com/briannadoubt/Trust — see `docs/WRITING-TRUST.md`
+for the full agent guide.
+"#;
+
+/// Scaffold a new strict Trust project (RT-94): a standalone cargo package
+/// with `[package.metadata.trust] strict = true` and a hello `main.rs` that
+/// uses named-argument syntax, proving the toolchain works on first run.
+fn scaffold_new(name: &str) -> Result<()> {
+    validate_project_name(name)?;
+
+    let root = Path::new(name);
+    if root.exists() {
+        bail!(
+            "destination `{}` already exists — pick another name or remove it first",
+            root.display()
+        );
+    }
+
+    let cargo_toml = format!(
+        "[package]\n\
+         name = \"{name}\"\n\
+         version = \"0.1.0\"\n\
+         edition = \"2021\"\n\
+         \n\
+         # Strict mode is enforced by `cargo trust` (build/run/test); stock cargo\n\
+         # ignores this metadata table entirely.\n\
+         [package.metadata.trust]\n\
+         strict = true\n"
+    );
+
+    let main_rs = "\
+// Named-argument call syntax below only compiles via `cargo trust build` —
+// plain `cargo build` will reject it.
+
+fn make_point(x: i32, y: i32) -> (i32, i32) {
+    (x, y)
+}
+
+fn main() {
+    let point = make_point(x: 1, y: 2);
+    println!(\"point = {point:?}\");
+}
+";
+
+    let readme = format!(
+        "# {name}\n\
+         \n\
+         A [Trust](https://github.com/briannadoubt/Trust) project — a strict Rust\n\
+         dialect that lowers to plain Rust at build time.\n\
+         \n\
+         Build and run with `cargo trust` (NOT plain cargo):\n\
+         \n\
+         ```sh\n\
+         cargo trust build\n\
+         cargo trust run\n\
+         ```\n"
+    );
+
+    let src = root.join("src");
+    std::fs::create_dir_all(&src)
+        .with_context(|| format!("creating directory {}", src.display()))?;
+
+    let write = |path: PathBuf, contents: &str| -> Result<()> {
+        std::fs::write(&path, contents).with_context(|| format!("writing {}", path.display()))
+    };
+    write(root.join("Cargo.toml"), &cargo_toml)?;
+    write(src.join("main.rs"), main_rs)?;
+    write(root.join(".gitignore"), "/target\n")?;
+    write(root.join("README.md"), &readme)?;
+    write(root.join("CLAUDE.md"), CLAUDE_MD_BLOCK)?;
+
+    eprintln!("created strict project `{name}` — try `cd {name} && cargo trust run`");
+    Ok(())
+}
+
+/// A plausible crate name: non-empty, only `[a-zA-Z0-9_-]`, and not starting
+/// with a digit.
+fn validate_project_name(name: &str) -> Result<()> {
+    let valid_char = |c: char| c.is_ascii_alphanumeric() || c == '_' || c == '-';
+    match name.chars().next() {
+        None => bail!("project name must not be empty"),
+        Some(c) if c.is_ascii_digit() => {
+            bail!("invalid project name `{name}`: must not start with a digit")
+        }
+        _ => {}
+    }
+    if let Some(bad) = name.chars().find(|&c| !valid_char(c)) {
+        bail!(
+            "invalid project name `{name}`: character `{bad}` is not allowed \
+             (use letters, digits, `_`, or `-`)"
+        );
+    }
+    Ok(())
+}
+
 /// Explain Trust's rules (RT-78) — the proactive agent contract. With a code,
 /// explains one rule; otherwise lists the whole catalogue. `--format json`
 /// yields a machine-readable catalogue an agent can load into context.
@@ -348,7 +477,10 @@ fn run_pipeline(
     all_diagnostics.extend(lower_out.diagnostics);
 
     // Parse lowered source for the linters.
-    let file: syn::File = syn::parse_str(&lower_out.source)
+    // lint_source, not source: the linter's allow map is built from the
+    // `#[allow(trust::…)]` attributes, which are stripped from the
+    // rustc-facing `source` (RT-89).
+    let file: syn::File = syn::parse_str(&lower_out.lint_source)
         .with_context(|| format!("re-parsing lowered source from {label}"))?;
 
     // Lints (only fire in `#![strict]` files; safe to skip on bootstrap).
@@ -374,11 +506,27 @@ fn run_pipeline(
         OutputFormat::Human => {
             if !all_diagnostics.is_empty() {
                 let mut stderr = std::io::stderr();
-                let _ = trust_diag::render(&all_diagnostics, label, source, &mut stderr);
+                let _ = trust_diag::render(
+                    &all_diagnostics,
+                    trust_diag::NamedSource {
+                        name: label,
+                        text: source,
+                    },
+                    &mut stderr,
+                );
             }
         }
         OutputFormat::Json => {
-            print!("{}", trust_diag::to_json(&all_diagnostics, label, source));
+            print!(
+                "{}",
+                trust_diag::to_json(
+                    &all_diagnostics,
+                    trust_diag::NamedSource {
+                        name: label,
+                        text: source
+                    },
+                )
+            );
         }
     }
 
@@ -389,4 +537,24 @@ fn run_pipeline(
     Ok(PipelineOutput {
         lowered: lower_out.source,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    /// RT-95 drift guard: the agent-instructions block baked into the binary
+    /// must appear verbatim in docs/templates/CLAUDE-md-snippet.md.
+    #[test]
+    fn claude_md_block_matches_docs_template() {
+        let docs_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/templates/CLAUDE-md-snippet.md"
+        );
+        let docs = std::fs::read_to_string(docs_path)
+            .unwrap_or_else(|e| panic!("reading {docs_path}: {e}"));
+        assert!(
+            docs.contains(super::CLAUDE_MD_BLOCK),
+            "docs/templates/CLAUDE-md-snippet.md no longer contains the \
+             CLAUDE_MD_BLOCK const verbatim — update one to match the other"
+        );
+    }
 }

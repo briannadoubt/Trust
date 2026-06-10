@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTR6J5SHB2PCVVKW416K1PX9",
+  "ts": "2026-06-10T07:22:17.777Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72S",
+    "commentId": "01KTR6J5SHB2PCVVKW416K1PX8",
+    "author": "claude",
+    "body": "Shipped as requires!(COND) -> debug_assert!(COND, \"requires violated: ...\") in trust-lower/src/contracts.rs. Scope held exactly at the ticket's line: lowering-only, strict-mode-only, bare invocations only; ensures! cut (would need return-path wrapping). No solver, no dataflow."
+  }
+}

@@ -5,7 +5,7 @@
 //! the wrapper lowers the file into plain positional Rust before
 //! handing it to the real rustc, and the build succeeds.
 
-trust_attrs::strict! {}
+#![strict]
 
 fn make_point(x: i32, y: i32, z: i32) -> (i32, i32, i32) {
     (x, y, z)

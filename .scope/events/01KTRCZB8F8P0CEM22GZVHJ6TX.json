@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTRCZB8F8P0CEM22GZVHJ6TX",
+  "ts": "2026-06-10T09:14:20.815Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DH0",
+    "commentId": "01KTRCZB8EYQ6D6JPW4XK3BQYN",
+    "author": "claude",
+    "body": "Shipped: repo doubles as plugin (name 'trust') and marketplace ('trust-plugins', source ./). claude plugin validate passes both modes (CLI v2.1.153). Install: /plugin marketplace add briannadoubt/Trust; /plugin install trust@trust-plugins; invoke /trust:writing-trust. Bonus: validator caught RT-93's unquoted YAML description (metadata would have silently dropped) — fixed. Community-marketplace submission (platform.claude.com/plugins/submit) left for launch alongside RT-58. Commit 706a863."
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT6QY7SV3DBCBVES766V4M",
+  "ts": "2026-05-27T22:52:09.543Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71C",
+    "number": 24,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Update memory files: remove effects, reflect current state",
+    "description": "project_rustricted.md still lists effect tracking as a third syntax extension and references rustricted-effects as a live crate. Update to reflect: two extensions (named args + pipe), effects removed in RT-10, current phase/status.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

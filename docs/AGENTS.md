@@ -33,9 +33,11 @@ docs/
   AGENTS.md                # this file
 ```
 
-`cargo-trust` is a one-file binary that strips the `trust` argv
-prefix cargo prepends and execs the `trust` binary on `PATH`. You will
-rarely need to touch it.
+`cargo-trust` is a one-file binary that strips the `trust` argv prefix cargo
+prepends, then either runs `cargo` with the `trust-rustc`/`trust-rustdoc` shims
+wired in (for `build`/`run`/`test`/… — so users need no `RUSTC_WRAPPER` env
+setup) or forwards the rest to the `trust` CLI (for `lower`/`explain`/…). See
+SPEC.md § `cargo trust`. You will rarely need to touch it.
 
 Examples and tests live at the workspace root, not per-crate, on purpose:
 they exercise the full pipeline.

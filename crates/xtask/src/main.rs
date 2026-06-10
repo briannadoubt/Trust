@@ -301,10 +301,10 @@ iterating against the checker.
 - **A pipe operator** for chaining free functions onto a receiver — see
   `docs/SPEC.md` for the grammar.
 
-**Activation:** `#![strict]` for single-file `trust check`; the
-`trust_attrs::strict!{}` marker for cargo crates (set `RUSTC_WRAPPER` to the
-`trust-rustc` shim for the syntax extensions). See `docs/SPEC.md` for the full
-grammar and per-rule detail.";
+**Activation:** `[package.metadata.trust] strict = true` in `Cargo.toml` for
+whole crates built with `cargo trust build`; `#![strict]` at the top of a file
+for single-file `trust check` or per-file opt-in. See `docs/SPEC.md` for the
+full grammar and per-rule detail.";
 
 /// Build `docs/WRITING-TRUST.md` from the rule registry (RT-78).
 fn build_writing_trust() -> String {

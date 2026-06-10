@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG5YMH986WZRFYBG216A742",
+  "ts": "2026-05-25T18:22:00.233Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR714",
+    "number": 16,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Rustfmt support: nightly opt-in or alternative formatter",
+    "description": "rustfmt parses with rustc, so it rejects the dialect's syntax extensions (named args, pipe, effect keyword). On stable, the 'ignore' config in rustfmt.toml is unsupported (warns + does nothing). Workaround landed in CI: explicit -p list of every non-strict crate, auto-derived via cargo metadata. Real fix options: (a) require nightly rustfmt for strict crates (rustfmt.toml ignore works there); (b) add a 'rustricted fmt' subcommand that lowers + invokes rustfmt + un-lowers; (c) restrict the workspace to one rustfmt config and keep strict files out of cargo fmt --all entirely. Surfaced by RT-6.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70N",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

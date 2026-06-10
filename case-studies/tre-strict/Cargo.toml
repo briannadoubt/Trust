@@ -16,7 +16,11 @@ description = "tre v0.4.0 vendored for Trust strict-mode case study (RT-29)"
 #    which conflicts with per-file strict markers).
 #  - Removed [[bin]] override; using default src/main.rs auto-discovery.
 #  - Pinned `lscolors` to 0.7.1 (matches upstream Cargo.toml).
-#  - Added trust-attrs dep + strict!{} marker in each .rs file.
+#  - Whole-package strict via [package.metadata.trust] (originally
+#    per-file strict!{} markers; migrated in RT-82).
+
+[package.metadata.trust]
+strict = true
 
 [dependencies]
 atty = "0.2"
@@ -31,7 +35,6 @@ slab = "0.4.2"
 termcolor = "1"
 walkdir = "2"
 
-trust-attrs = { path = "../../crates/trust-attrs" }
 
 [[bin]]
 name = "tre"

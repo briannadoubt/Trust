@@ -1,0 +1,25 @@
+{
+  "v": 1,
+  "id": "01KSTN6SY82T72ZJH0J5AQGEYX",
+  "ts": "2026-05-29T20:01:00.872Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72Q",
+    "number": 67,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Nominal newtypes at API boundaries",
+    "description": "Forbid more than one adjacent same-typed parameter on a pub fn unless wrapped in distinct newtypes (Width(u32), PostId(u64)); provide a lowering/derive that makes a newtype a one-liner.\n\nWhy frontend-only / Clippy-proof: named args fix swap VISIBILITY at the call site, but area(width: w, height: h) still accepts two raw u32s — an agent that computed the values into the wrong variables upstream is not caught. This kills the units / ID-mixup class (post_id passed where user_id expected, both u64) — value constructed wrong, not ordered wrong. Most named-args-shaped idea in the tier.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72K",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": [
+      "lint",
+      "frontend"
+    ]
+  }
+}

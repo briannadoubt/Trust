@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSS7FDDTTZ3D4HZRNVMHW8TP",
+  "ts": "2026-05-29T06:41:48.474Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72H",
+    "number": 61,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Launch comms — draft HN/Reddit/Lobsters/X posts",
+    "description": "Prepare launch comms. Don't fire — that's bri's call on timing. This ticket prepares the assets.\n\nDeliverables (one file each under docs/launch/ or similar):\n- HN post: Title under 80 chars, opening that leads with the eval headline, link to repo. Pre-empt the obvious 'why not just clippy' / 'why not rust-analyzer' questions in the first comment from bri.\n- r/rust: more technical tone, shows code samples in the post, mentions the audit'd ruleset.\n- Lobsters: short, link-only with one paragraph of context. Lobsters readers prefer brevity.\n- X/Twitter thread: 5-7 posts. Hook → number → before/after → install → repo link.\n\nConstraints:\n- All copy should be defensible against 'show me' — link the eval directory in every channel.\n- No marketing-speak. Trust's audience is technical; overclaiming will be punished.\n- Pre-write the response to the 3 most likely critiques: (1) why not contribute lints to clippy upstream, (2) sample size N=15 per provider, (3) why named-args instead of using struct-args.\n\nBlocked by RT-56 (README), RT-57 (public repo exists), RT-58 (install works), RT-60 (WHY is essay-grade). Don't fire until all four are done.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTQPJ31QRK7ZWRAM9M31QVV2",
+  "ts": "2026-06-10T02:42:37.751Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTQPJ31PWR60R5Z6DBZANF0B",
+    "number": 85,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "Callee registry collects phantom fns from macro_rules! bodies",
+    "description": "",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTJXTNCHXB6C9K28S36QZTHD",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

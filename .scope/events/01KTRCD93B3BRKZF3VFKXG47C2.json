@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTRCD93B3BRKZF3VFKXG47C2",
+  "ts": "2026-06-10T09:04:28.779Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTRA4TA8X401MSJ0HJ7A6DGR",
+    "commentId": "01KTRCD93B3BRKZF3VFKXG47C1",
+    "author": "claude",
+    "body": "Shipped (subagent + orchestrator verification): trust new <name> scaffolds Cargo.toml with the metadata opt-in, a named-arg hello, .gitignore, README pointing at cargo trust. cargo trust new works via existing forwarding. Verified: scaffold runs green under cargo trust, FAILS under plain cargo (named args), 3 integration tests drive the real binary. Commit b760941."
+  }
+}

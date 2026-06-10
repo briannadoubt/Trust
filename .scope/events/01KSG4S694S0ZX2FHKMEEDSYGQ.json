@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4S694S0ZX2FHKMEEDSYGQ",
+  "ts": "2026-05-25T18:01:33.220Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR710",
+    "number": 12,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Convert a small external crate via the wrapper",
+    "description": "After RT-5 (multi-module): pick a real external crate (~500-1500 LOC, MIT/Apache), vendor it into case-studies/, add rustricted_attrs::strict!{} per file, build via RUSTC_WRAPPER, fix violations honestly, write up the experience. Different signal from internal dogfood (different idioms, different bug surface).",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70Q",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

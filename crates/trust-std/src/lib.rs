@@ -16,8 +16,6 @@
 //! parses), and `trust-lower/build.rs` reads that manifest. CI
 //! enforces freshness with `cargo xtask gen-std-signatures --check`.
 
-trust_attrs::strict! {}
-
 /// Declare a distinct newtype in one line — the ergonomic fix for R0017
 /// (`no-same-type-params`). Wrapping each same-typed parameter in its own
 /// newtype turns a silent argument swap into a compile error.

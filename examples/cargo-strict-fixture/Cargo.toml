@@ -14,4 +14,3 @@ name = "cargo-strict-fixture"
 path = "src/main.rs"
 
 [dependencies]
-trust-attrs = { path = "../../crates/trust-attrs" }

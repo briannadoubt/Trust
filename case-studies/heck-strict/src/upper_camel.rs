@@ -60,7 +60,7 @@ pub struct AsUpperCamelCase<T: AsRef<str>>(pub T);
 
 impl<T: AsRef<str>> fmt::Display for AsUpperCamelCase<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        transform(self.0.as_ref(), capitalize, |_| Ok(()), f)
+        transform(s: self.0.as_ref(), with_word: capitalize, boundary: |_| Ok(()), f: f)
     }
 }
 

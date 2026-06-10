@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KTJXV2M2Y7V47XZD62BCECPE",
+  "ts": "2026-06-08T06:13:40.098Z",
+  "actor": "unknown",
+  "kind": "relation.add",
+  "payload": {
+    "fromId": "01KTJXTNCJWF7EGV46GE12R5Z4",
+    "toId": "01KTJXTNCJWF7EGV46GE12R5YW",
+    "type": "blocked_by"
+  }
+}

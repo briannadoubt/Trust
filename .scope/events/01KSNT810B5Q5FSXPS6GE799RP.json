@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT810B5Q5FSXPS6GE799RP",
+  "ts": "2026-05-27T22:52:51.595Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71N",
+    "number": 33,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Expand rustricted-std: net, sync, process, collections",
+    "description": "Current shims cover fs, time, env, thread, and a few collection methods. Missing: std::net (TcpListener, TcpStream), std::sync (Mutex::new, Arc::new), std::process::Command builder, HashMap/BTreeMap insert/get, String/Vec common methods. Add named-arg wrappers for each.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

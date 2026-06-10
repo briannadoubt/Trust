@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT813P3HXA04QFSMMC23HW",
+  "ts": "2026-05-27T22:52:51.702Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71P",
+    "number": 34,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Lint gap audit: rules that dogfooding exposes as missing",
+    "description": "Placeholder: file child bugs here as dogfooding (RT-31) surfaces missing or misfiring rules. Expected candidates: R0003 (as-cast) false positives on safe numeric contexts, R0009 (must_use) gaps on pub fns returning Result in lib crates.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTJY7566F7PTJK4T528QQN7E",
+  "ts": "2026-06-08T06:20:15.942Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTJXTNCJWF7EGV46GE12R5YW",
+    "commentId": "01KTJY7566F7PTJK4T528QQN7D",
+    "author": null,
+    "body": "Implemented: cargo-trust now dispatches cargo lifecycle commands (build/run/test/check/clippy/doc/bench/install) through cargo with RUSTC_WRAPPER+RUSTDOC set to the bundled trust-rustc/trust-rustdoc shims, located via TRUST_RUSTC/TRUST_RUSTDOC override -> sibling-of-self -> PATH. Trust-native helpers (lower/index/fix/explain) still forward to the trust CLI. Verified e2e: named-arg fixture builds+runs and doc-tests pass via 'cargo trust run/test --doc' with ZERO env vars. Added 6 unit tests (prefix strip + dispatch), a CI step, and updated SPEC.md/AGENTS.md. Full workspace test suite green. Branch feat/cargo-trust-wrapper, not yet committed."
+  }
+}

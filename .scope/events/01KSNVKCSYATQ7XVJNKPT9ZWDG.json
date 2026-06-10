@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNVKCSYATQ7XVJNKPT9ZWDG",
+  "ts": "2026-05-27T23:16:32.702Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71X",
+    "number": 41,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "R0042: method calls match free-fn signatures by short name (HashMap::insert vs rustricted_std::insert)",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

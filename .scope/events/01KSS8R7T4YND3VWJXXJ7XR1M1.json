@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KSS8R7T4YND3VWJXXJ7XR1M1",
+  "ts": "2026-05-29T07:04:06.212Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR728",
+    "commentId": "01KT3T33TFE6FRGR981Z6CBJ16",
+    "author": "claude",
+    "body": "Fixed: runner tracks succeeded/failed/skipped, prints 'N succeeded, M failed (of T planned)' summary always, and exits 1 if any call errored (no scoring instructions emitted for partial runs). Verified: all-errored run exits 1."
+  }
+}

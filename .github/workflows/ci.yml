@@ -76,11 +76,6 @@ jobs:
           ! cargo run -p trust -- check examples/01-lints/same-type-params-fail.rs 2>&1 | tee /tmp/p1s.log
           grep -q R0017 /tmp/p1s.log
 
-      - name: example — cargo-style activation (must fail with R0001)
-        run: |
-          ! cargo run -p trust -- check examples/01-lints/cargo-strict-unwrap-fail.rs 2>&1 | tee /tmp/p1cs.log
-          grep -q R0001 /tmp/p1cs.log
-
       - name: rustc wrapper — named args via cargo build
         run: |
           # Negative: cargo build without the wrapper must fail because
@@ -96,6 +91,63 @@ jobs:
           (cd examples/cargo-strict-fixture && RUSTC_WRAPPER="$WRAPPER" cargo build)
           out=$(examples/cargo-strict-fixture/target/debug/cargo-strict-fixture)
           test "$out" = "(1, 2, 3)"
+
+      - name: cargo trust — one command, zero env vars (RT-80)
+        run: |
+          # `cargo trust build/run` must wire the shims itself: no RUSTC_WRAPPER,
+          # no RUSTDOC, no realpath. cargo-trust locates trust-rustc/trust-rustdoc
+          # as siblings in the same dir, so put all three on PATH and invoke it.
+          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          export PATH="$(realpath target/debug):$PATH"
+          (cd examples/cargo-strict-fixture && cargo clean >/dev/null)
+          # No RUSTC_WRAPPER/RUSTDOC in the env here — cargo-trust sets them.
+          out=$(cd examples/cargo-strict-fixture && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust run 2>/dev/null | tail -1)
+          test "$out" = "(1, 2, 3)"
+
+      - name: cargo trust — project-level strict, no per-file marker (RT-81)
+        run: |
+          # `[package.metadata.trust] strict = true` activates strict mode for
+          # the whole crate; src/ has NO #![strict] / strict!{} marker.
+          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          export PATH="$(realpath target/debug):$PATH"
+          FIX=examples/cargo-strict-config
+          # Negative: plain cargo build rejects the named-arg syntax (no wrapper).
+          # Clean first so cargo can't report a stale artifact as up-to-date.
+          (cd "$FIX" && cargo clean >/dev/null)
+          if (cd "$FIX" && cargo build 2>/dev/null); then
+            echo "FAIL: expected plain cargo build to reject named-arg syntax"
+            exit 1
+          fi
+          # Positive: cargo trust run lowers the whole crate from the manifest
+          # opt-in alone — zero env vars, zero markers.
+          (cd "$FIX" && cargo clean >/dev/null)
+          out=$(cd "$FIX" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust run 2>/dev/null | tail -1)
+          test "$out" = "(4, 5, 6)"
+          # Enforcement: a positional same-typed call must trip R0042 crate-wide,
+          # proving the opt-in turns on the lints, not just syntax lowering.
+          tmp=$(mktemp -d); mkdir -p "$tmp/src"; cp "$FIX/Cargo.toml" "$tmp/"
+          printf 'fn make_point(x: i32, y: i32, z: i32) -> (i32, i32, i32) { (x, y, z) }\nfn main() { let p = make_point(4, 5, 6); println!("{p:?}"); }\n' > "$tmp/src/main.rs"
+          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust build 2>/dev/null); then
+            echo "FAIL: expected R0042 to reject positional same-typed call under project strict"
+            exit 1
+          fi
+          rm -rf "$tmp"
+
+      - name: cargo trust — full lint set enforced at build (RT-89)
+        run: |
+          # The wrapper runs the same rules as `trust check`: an .unwrap()
+          # in a strict crate must fail `cargo trust build` with R0001.
+          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          export PATH="$(realpath target/debug):$PATH"
+          tmp=$(mktemp -d); mkdir -p "$tmp/src"
+          cp examples/cargo-strict-config/Cargo.toml "$tmp/"
+          printf 'fn main() { let v: Option<i32> = Some(1); let _ = v.unwrap(); }\n' > "$tmp/src/main.rs"
+          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust build 2>/tmp/rt89.log); then
+            echo "FAIL: expected R0001 to reject .unwrap() under cargo trust build"
+            exit 1
+          fi
+          grep -q R0001 /tmp/rt89.log
+          rm -rf "$tmp"
 
       - name: example — Phase 2 pipe
         run: |
@@ -228,20 +280,24 @@ jobs:
             echo "FAIL: expected non-zero exit on unknown rule code"; exit 1
           fi
 
-      - name: dogfood — build strict library crates under wrapper
+      - name: dogfood — strict library crates via cargo trust (RT-82)
         run: |
-          # The strict LIBRARY crates use `#![strict]` for lint dogfooding and
-          # build cleanly under RUSTC_WRAPPER. The binary crates trust /
-          # trust-rustc / xtask are stage-0 plain Rust (RT-76): they build
-          # under stock cargo and are NOT routed through the wrapper — a
-          # wrapper cannot self-host. See case-studies/dogfooding.md.
-          cargo build -p trust-rustc --release
-          WRAPPER=$(realpath target/release/trust-rustc)
-          RUSTC_WRAPPER="$WRAPPER" cargo build \
-            -p trust-diag \
-            -p trust-lsp \
-            -p trust-std \
-            -p trust-syntax
+          # Crates with `[package.metadata.trust] strict = true` build
+          # whole-package strict through `cargo trust`, which discovers the
+          # opt-in by scanning workspace members. trust-syntax and trust-diag
+          # qualify (RT-88's cfg(test) exemption keeps their test files plain);
+          # the binary crates trust / trust-rustc / xtask are stage-0 plain
+          # Rust (RT-76), and trust-std / trust-lsp / trust-lints stay out —
+          # R0008/R0017 fire on code that is those crates' actual design
+          # (macro-exporting, std-mirroring shims, visitor internals). See
+          # case-studies/dogfooding.md.
+          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          export PATH="$(realpath target/debug):$PATH"
+          # Force a real recompile: cargo fingerprints the rustc *version
+          # string*, which the wrapper passes through unchanged — a cached
+          # crate would otherwise skip the wrapper and make this step hollow.
+          cargo clean -p trust-syntax -p trust-diag
+          cargo-trust trust build -p trust-syntax -p trust-diag
 
       - name: std-signatures manifest up-to-date (RT-44)
         run: |
@@ -251,10 +307,7 @@ jobs:
           # itself regenerated from `crates/trust-std/src/lib.rs` by
           # `cargo xtask gen-std-signatures`. CI verifies the checked-in
           # manifest is fresh — stale manifests would silently break
-          # cross-crate named-arg lowering.
-          #
-          # xtask is strict-marked (RT-31), so this step runs under the
-          # wrapper built by the dogfood step above.
-          WRAPPER=$(realpath target/release/trust-rustc)
-          RUSTC_WRAPPER="$WRAPPER" cargo xtask gen-std-signatures --check
+          # cross-crate named-arg lowering. xtask is stage-0 plain Rust
+          # (RT-76), so no wrapper is needed to build it.
+          cargo xtask gen-std-signatures --check
 

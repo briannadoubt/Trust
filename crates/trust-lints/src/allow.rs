@@ -16,11 +16,11 @@
 
 use crate::Rule;
 use proc_macro2::Span;
-use trust_diag::Diagnostic;
 use std::collections::HashSet;
 use std::ops::Range;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
+use trust_diag::Diagnostic;
 
 /// A single allow-scope: while the cursor is inside `range`, every rule in
 /// `rules` is suppressed for that span.

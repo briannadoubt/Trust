@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4S66GKFH8VT7BBWV6SWKA",
+  "ts": "2026-05-25T18:01:33.136Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70Z",
+    "number": 11,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Cross-provider eval — GPT and Gemini on the same task suite",
+    "description": "Same five tasks (11-pipeline, 12-result-chain, 13-numeric, 14-imports, 15-many-points) and the run 002/004 harness, but with GPT-4 / Gemini agents. Hypothesis: vanilla ship rate drops for stronger models but the dialect still catches whatever bugs do ship. Needs API access to non-Anthropic providers.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70Q",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

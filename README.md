@@ -5,8 +5,8 @@
 Agents write Rust that compiles, type-checks, and reviews clean — then ships a
 small, predictable set of bugs: positional arguments in the wrong order,
 `.unwrap()` in production paths, `as` casts that silently truncate, glob
-imports. Add `#![strict]` and those become compile errors with a fix in the
-message. In our eval, **60% of agent-authored files shipped one of these bugs
+imports. Add `strict = true` to `Cargo.toml` (or `#![strict]` to a file) and
+those become compile errors with a fix in the message. In our eval, **60% of agent-authored files shipped one of these bugs
 in plain Rust; 0% shipped under Trust** — across four models from three
 vendors.
 
@@ -17,12 +17,32 @@ vendors.
 ## Install
 
 ```sh
-cargo install trust        # the CLI: `trust check`, `trust build`, `trust lower`
+cargo install cargo-trust trust   # `cargo trust build/run/test` + the `trust` CLI
 ```
 
 > **0.1 is not on crates.io yet** (publishing is the last launch step, RT-58).
 > Until then, build from source — see [From source](#from-source) below. The
 > command above is what `cargo install` will look like the day 0.1 lands.
+
+## Use it in a project — two steps
+
+```toml
+# Cargo.toml
+[package.metadata.trust]
+strict = true
+```
+
+```sh
+cargo trust build    # also: run, test, check, clippy, doc, bench
+```
+
+That's the whole setup. `cargo trust` wires the lowering shims into cargo
+itself — no environment variables, no per-file markers, no extra
+dependencies — and enforces the full rule set at build time: the syntax
+extensions lower, and every strict lint (`.unwrap()`, `as`-casts, positional
+args, …) is a build error with a fix in the message. Dependencies are never
+touched. `[workspace.metadata.trust] strict = true` opts in a whole
+workspace at once.
 
 ## What it looks like
 
@@ -103,6 +123,13 @@ cargo test --workspace
 
 cargo run -p trust -- build examples/00-hello.rs --out /tmp/hello && /tmp/hello
 cargo run -p trust -- check examples/01-lints/positional-fail.rs   # fails with R0042
+
+# the two-step cargo flow, against this checkout:
+export PATH="$PWD/target/debug:$PATH"     # cargo-trust + shims
+(cd examples/cargo-strict-config && cargo trust run)   # zero markers, zero env vars
+
+# or scaffold a fresh strict project in one command:
+cargo trust new demo && (cd demo && cargo trust run)
 ```
 
 The `check`, `build`, and `lower` subcommands accept `-` in place of a path to
@@ -115,26 +142,22 @@ printf '#![strict]\nfn main() { println!("hi"); }\n' | trust check -
 (`build -` additionally needs `--out PATH`, since there's no filename to derive
 the binary name from.)
 
-## Using strict source from `cargo`
+## How `cargo trust` works
 
-The lints work on any toolchain. The **syntax extensions** (named args, pipe)
-need a wrapper, because the rewrite has to run before `rustc` sees the file and
-`cargo build` calls `rustc` directly:
+`cargo trust build` is exactly `cargo build` with `RUSTC_WRAPPER` and
+`RUSTDOC` pointed at two thin shims (`trust-rustc`, `trust-rustdoc`) that
+lower each strict file to plain positional Rust — and run the lints — before
+the real compiler sees it. `RUSTDOC` matters because rustdoc ignores
+`RUSTC_WRAPPER`; without the second shim, doc-tests using named-arg syntax
+would fail to parse under `cargo trust test --doc`. There is no custom
+compiler anywhere: stop using Trust tomorrow and the lowered output still
+builds on stock rustc.
 
-```sh
-cargo build -p trust-rustc -p trust-rustdoc
-export RUSTC_WRAPPER=$(realpath target/debug/trust-rustc)
-export RUSTDOC=$(realpath target/debug/trust-rustdoc)
-cargo build         # lowers .rs files before rustc
-cargo test --doc    # also lowers code inside doc comments
-```
-
-`RUSTC_WRAPPER` covers ordinary builds and unit/integration tests. `RUSTDOC` is
-needed separately because rustdoc does not honour `RUSTC_WRAPPER` — without it,
-doc-tests using named-arg syntax fail to parse. Activation differs by build
-mode: single-file inputs use the inner attribute `#![strict]`; cargo-built
-crates use the `trust_attrs::strict!{}` marker macro (stock `rustc` rejects
-`#![strict]`). See [docs/SPEC.md § Activation](docs/SPEC.md).
+Prefer file-by-file adoption over the project-wide key? Put `#![strict]` at
+the top of just the files you want checked — `cargo trust` handles either
+form. See [docs/SPEC.md § Activation](docs/SPEC.md). If you need raw
+`cargo`, the wrapper env vars still work
+(`RUSTC_WRAPPER=…/trust-rustc RUSTDOC=…/trust-rustdoc cargo build`).
 
 ## Editor integration (LSP)
 
@@ -164,6 +187,8 @@ A dedicated VS Code extension lives in [`editors/vscode/`](editors/vscode/).
 - **[docs/SPEC.md](docs/SPEC.md)** — the full rule catalogue (R0001…R0042) and grammar for the two syntax extensions.
 - **[docs/RATIONALE.md](docs/RATIONALE.md)** — phase-by-phase reasoning for each rule.
 - **[docs/AGENTS.md](docs/AGENTS.md)** — the teaching-error contract every diagnostic follows.
+- **[docs/templates/CLAUDE-md-snippet.md](docs/templates/CLAUDE-md-snippet.md)** — drop-in agent instructions for projects that adopt Trust.
+- **[skills/](skills/README.md)** — agent skills for writing Trust, installable via the Claude Code plugin marketplace.
 
 ### Case studies
 

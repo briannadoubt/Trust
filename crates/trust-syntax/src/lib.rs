@@ -4,8 +4,6 @@
 //! extend the grammar with named arguments, the pipe operator, and the
 //! `effect` keyword, and lower those forms back to plain Rust here.
 
-trust_attrs::strict! {}
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]

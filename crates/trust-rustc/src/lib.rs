@@ -20,13 +20,44 @@ use std::path::{Path, PathBuf};
 /// a way that would invalidate previously-cached files.
 const LOWERING_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// FNV-1a 64-bit hash of the lowering-version string concatenated with the
-/// source bytes. Fast, no deps, deterministic across processes and OSes.
+/// Fingerprint of the running wrapper binary (length ⊕ mtime), mixed into
+/// the cache key (RT-86). The package version alone is constant across a
+/// whole dev cycle, so a rebuilt wrapper with changed lowering code would
+/// happily reuse lowered output produced by the previous build — which is
+/// exactly the kind of stale-cache haunting that makes verification results
+/// flip between runs. A new binary now always means a fresh cache namespace.
+fn wrapper_fingerprint() -> u64 {
+    use std::sync::OnceLock;
+    static FP: OnceLock<u64> = OnceLock::new();
+    *FP.get_or_init(|| {
+        let Ok(exe) = env::current_exe() else {
+            return 0;
+        };
+        let Ok(meta) = fs::metadata(&exe) else {
+            return 0;
+        };
+        let mtime = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0);
+        meta.len() ^ mtime
+    })
+}
+
+/// FNV-1a 64-bit hash of the lowering-version string, the wrapper binary's
+/// fingerprint, and the source bytes. Fast, no deps, deterministic per
+/// wrapper build.
 pub fn source_cache_key(source: &str) -> u64 {
     const FNV_OFFSET: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
     let mut hash = FNV_OFFSET;
-    for byte in LOWERING_VERSION.bytes().chain(source.bytes()) {
+    for byte in LOWERING_VERSION
+        .bytes()
+        .chain(wrapper_fingerprint().to_le_bytes())
+        .chain(source.bytes())
+    {
         hash ^= byte as u64;
         hash = hash.wrapping_mul(FNV_PRIME);
     }
@@ -184,8 +215,43 @@ pub fn find_input_rs(args: &[String]) -> Option<usize> {
     })
 }
 
-/// If `input_path` is strict-marked, lower the whole source tree into the
-/// cache and return the new root path + a `--remap-path-prefix` flag.
+/// Whether the crate currently being compiled was opted into strict mode at
+/// the *project* level (`[package.metadata.trust] strict = true`), rather than
+/// per-file with a `#![strict]` marker.
+///
+/// `cargo-trust` passes the set of strict package names in
+/// `TRUST_STRICT_PACKAGES` (comma-separated). Cargo sets `CARGO_PKG_NAME` for
+/// every rustc invocation — including dependencies — so gating on membership
+/// scopes forced lowering to exactly the user's own opted-in package(s) and
+/// never touches third-party crates compiled in the same build.
+pub fn crate_is_force_strict() -> bool {
+    force_strict_for(
+        env::var("TRUST_STRICT_PACKAGES").ok().as_deref(),
+        env::var("CARGO_PKG_NAME").ok().as_deref(),
+    )
+}
+
+/// Pure membership check behind [`crate_is_force_strict`]: is `name` listed in
+/// the comma-separated `pkgs` set? An empty/absent name or list is never a
+/// match — this is what keeps dependencies (which carry their own
+/// `CARGO_PKG_NAME`, not in the user's set) out of forced lowering.
+fn force_strict_for(pkgs: Option<&str>, name: Option<&str>) -> bool {
+    let (Some(pkgs), Some(name)) = (pkgs, name) else {
+        return false;
+    };
+    let name = name.trim();
+    !name.is_empty() && pkgs.split(',').any(|p| p.trim() == name)
+}
+
+/// True if a file should be lowered: either it carries an explicit strict
+/// marker, or its crate was opted in at the project level.
+fn should_lower(source: &str) -> bool {
+    trust_lower::is_strict_source(source) || crate_is_force_strict()
+}
+
+/// If `input_path` is strict (per-file marker or project-level opt-in), lower
+/// the whole source tree into the cache and return the new root path +
+/// a `--remap-path-prefix` flag.
 ///
 /// Returns `Ok(None)` for non-strict sources — the caller should pass the
 /// original args through to the underlying tool unchanged.
@@ -195,56 +261,86 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
         Err(_) => return Ok(None),
     };
 
-    if !trust_lower::is_strict_source(&source) {
+    if !should_lower(&source) {
         return Ok(None);
     }
+    let force_strict = crate_is_force_strict();
 
     let file_name = input_path
         .file_name()
         .context("input path has no file name")?;
 
     let cache_key = source_cache_key(&source);
-    let cache_dir = env::temp_dir()
-        .join("trust-cache")
-        .join(format!("{cache_key:016x}"));
+    let cache_root = env::temp_dir().join("trust-cache");
+    let cache_dir = cache_root.join(format!("{cache_key:016x}"));
     let cached_file = cache_dir.join(file_name);
 
-    if !cached_file.exists() {
-        let src_dir = input_path
-            .parent()
-            .filter(|p| !p.as_os_str().is_empty())
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| PathBuf::from("."));
+    // RT-86: the cache directory's EXISTENCE is the validity marker, so it
+    // must appear atomically. A failed mirror used to leave a partial dir
+    // behind, and the old per-file `cached_file.exists()` check then treated
+    // it as complete on the next run — phantom passes/failures that flip
+    // depending on which run came first. Populate a private staging dir and
+    // rename it into place only after every file lowered clean.
+    if !cache_dir.exists() {
+        let staging = cache_root.join(format!(".staging-{cache_key:016x}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&staging);
 
-        // RT-40: pre-scan the whole `src/` tree for `fn` definitions so
-        // cross-file named-arg call sites resolve. The wrapper is the
-        // first place that has a crate-wide view; individual `lower()`
-        // calls only see one file at a time.
-        let crate_extras = collect_crate_callees(&src_dir);
+        let result = (|| -> Result<()> {
+            let src_dir = input_path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| PathBuf::from("."));
 
-        // RT-66: seed the registry with the public-fn signatures of
-        // dependencies, discovered from the `TRUST_SIGNATURE_PATH`
-        // manifests (`trust index <dep> -o …` produces them). This is what
-        // lets R0042 fire — and named args reorder — on a positional swap
-        // into a *third-party* crate, the dialect's last coverage gap.
-        // `merge` drops any name that conflicts between the crate and a
-        // dependency, so a shadowed name degrades to the positional
-        // fallback rather than a wrong reorder.
-        let dep_extras = trust_lower::sig_index::load_from_env();
-        let extras = trust_lower::sig_index::merge(&[crate_extras, dep_extras]);
+            // RT-40: pre-scan the whole `src/` tree for `fn` definitions so
+            // cross-file named-arg call sites resolve. The wrapper is the
+            // first place that has a crate-wide view; individual `lower()`
+            // calls only see one file at a time.
+            let crate_extras = collect_crate_callees(&src_dir);
 
-        let mut visited = std::collections::HashSet::new();
-        mirror_module_tree_with_extras(&src_dir, &cache_dir, &mut visited, &extras)
-            .with_context(|| format!("mirroring src tree from {}", src_dir.display()))?;
+            // RT-66: seed the registry with the public-fn signatures of
+            // dependencies, discovered from the `TRUST_SIGNATURE_PATH`
+            // manifests (`trust index <dep> -o …` produces them). This is
+            // what lets R0042 fire — and named args reorder — on a
+            // positional swap into a *third-party* crate. `merge` drops any
+            // name that conflicts between the crate and a dependency, so a
+            // shadowed name degrades to the positional fallback rather than
+            // a wrong reorder.
+            let dep_extras = trust_lower::sig_index::load_from_env();
+            let extras = trust_lower::sig_index::merge(&[crate_extras, dep_extras]);
 
-        // Defensive: if the src_dir traversal somehow didn't write the
-        // crate root (e.g. empty dir), do it directly.
-        if !cached_file.exists() {
-            let out = trust_lower::lower_with_extra_callees(&source, &extras)
-                .with_context(|| format!("lowering {}", input_path.display()))?;
-            emit_diagnostics(&out, input_path)?;
-            fs::create_dir_all(&cache_dir)?;
-            fs::write(&cached_file, &out.source)?;
+            let mut visited = std::collections::HashSet::new();
+            mirror_module_tree_with_extras(&src_dir, &staging, &mut visited, &extras)
+                .with_context(|| format!("mirroring src tree from {}", src_dir.display()))?;
+
+            // Defensive: if the src_dir traversal somehow didn't write the
+            // crate root (e.g. empty dir), do it directly.
+            if !staging.join(file_name).exists() {
+                let out =
+                    trust_lower::lower_with_extra_callees_forced(&source, &extras, force_strict)
+                        .with_context(|| format!("lowering {}", input_path.display()))?;
+                emit_diagnostics(&out, &source, input_path)?;
+                fs::create_dir_all(&staging)?;
+                fs::write(staging.join(file_name), &out.source)?;
+            }
+            Ok(())
+        })();
+
+        if let Err(e) = result {
+            let _ = fs::remove_dir_all(&staging);
+            return Err(e);
+        }
+
+        // Atomic publish. If another process won the race, its complete dir
+        // is just as good — discard ours.
+        if fs::rename(&staging, &cache_dir).is_err() {
+            let _ = fs::remove_dir_all(&staging);
+            if !cache_dir.exists() {
+                bail!(
+                    "could not publish lowering cache at {}",
+                    cache_dir.display()
+                );
+            }
         }
     }
 
@@ -264,19 +360,273 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
     }))
 }
 
-fn emit_diagnostics(out: &trust_lower::LowerOutput, path: &Path) -> Result<()> {
-    for diag in &out.diagnostics {
-        eprintln!(
-            "[{}] {}: {}",
-            diag.rule,
-            if diag.is_error() { "error" } else { "warning" },
-            diag.message
-        );
+fn emit_diagnostics(
+    out: &trust_lower::LowerOutput,
+    original_source: &str,
+    path: &Path,
+) -> Result<()> {
+    emit_diagnostics_to(out, original_source, path, &mut std::io::stderr())
+}
+
+/// True when the caller asked for machine-readable diagnostics (RT-96).
+///
+/// `cargo trust build --message-format json` sets this env var on the spawned
+/// cargo process; cargo passes its environment through to every rustc/rustdoc
+/// (and therefore wrapper) invocation. Users may also set
+/// `TRUST_MESSAGE_FORMAT=json` directly — same effect, no flag needed.
+fn message_format_is_json() -> bool {
+    env::var("TRUST_MESSAGE_FORMAT").is_ok_and(|v| v == "json")
+}
+
+/// Testable core of [`emit_diagnostics`]: collects the full `trust check`
+/// rule set for one file and writes it to `writer` — as human `[R0001]`
+/// lines by default, or as one `trust_diag::to_json` document (newline
+/// terminated) when `TRUST_MESSAGE_FORMAT=json` (RT-96). Either way, bails
+/// when any diagnostic is an error.
+fn emit_diagnostics_to(
+    out: &trust_lower::LowerOutput,
+    original_source: &str,
+    path: &Path,
+    writer: &mut impl std::io::Write,
+) -> Result<()> {
+    // RT-89: the wrapper enforces the same rule set as `trust check` — the
+    // lowering diagnostics (R0042 et al) collected in `out`, plus the
+    // AST-level strict lints (R0001 unwrap, R0003 as-cast, ...). The AST
+    // comes from the LOWERED source (plain Rust, always parses); the
+    // ORIGINAL source string is what the linter needs for comment-window
+    // rules (R0005/R0006 justifications) — prettyplease strips comments
+    // from the lowered output. Mirrors `run_pipeline` in the trust CLI.
+    let mut diagnostics = out.diagnostics.clone();
+    if out.strict_mode {
+        // lint_source, not source: the allow map comes from the
+        // `#[allow(trust::…)]` attributes, which are stripped from the
+        // rustc-facing `source`.
+        let file: syn::File = syn::parse_str(&out.lint_source)
+            .with_context(|| format!("re-parsing lowered source from {}", path.display()))?;
+        diagnostics.extend(trust_lints::lint_strict(&file, original_source, true).diagnostics);
     }
-    if out.diagnostics.iter().any(|d| d.is_error()) {
+
+    if message_format_is_json() {
+        // RT-96: one JSON document per file, same shape as
+        // `trust check --format json` (spans index the ORIGINAL source).
+        let name = path.display().to_string();
+        let doc = trust_diag::to_json(
+            &diagnostics,
+            trust_diag::NamedSource {
+                name: &name,
+                text: original_source,
+            },
+        );
+        write!(writer, "{doc}")?;
+        if !doc.ends_with('\n') {
+            writeln!(writer)?;
+        }
+    } else {
+        for diag in &diagnostics {
+            writeln!(
+                writer,
+                "[{}] {}: {}",
+                diag.rule,
+                if diag.is_error() { "error" } else { "warning" },
+                diag.message
+            )?;
+        }
+    }
+    if diagnostics.iter().any(|d| d.is_error()) {
         bail!("trust check failed on {}", path.display());
     }
     Ok(())
+}
+
+/// Files reachable only through a `#[cfg(test)] mod x;` declaration (RT-88).
+///
+/// Project-level force-strict must not apply to these: a stock-buildable
+/// library's tests routinely call its own multi-arg fns positionally, and
+/// the R0042 fix — named-arg syntax — is exactly what stock `cargo test`
+/// cannot parse. Skipping cfg(test)-only files lets such crates opt their
+/// *shipping* code into whole-package strict (trust-diag, trust-std) without
+/// rewriting their test suites in a dialect stock rustc rejects. A file that
+/// carries its own `#![strict]` marker is still lowered — explicit wins.
+///
+/// Detection is token-level (Trust syntax doesn't parse with syn): a file
+/// declares `NAME` test-only via `#[cfg(test)] (pub)? mod NAME ;`, mapping
+/// to `NAME.rs` or `NAME/mod.rs` beside it — and test-only-ness is
+/// transitive through plain `mod` declarations inside test-only files.
+pub fn collect_test_only_files(src_dir: &Path) -> std::collections::HashSet<PathBuf> {
+    use std::collections::HashSet;
+    let mut all_files: Vec<PathBuf> = Vec::new();
+    collect_rs_files(src_dir, &mut all_files);
+
+    // (declaring file, declared name, is_cfg_test)
+    let mut decls: Vec<(PathBuf, String, bool)> = Vec::new();
+    for file in &all_files {
+        let Ok(source) = fs::read_to_string(file) else {
+            continue;
+        };
+        let Ok(tokens) = source.parse::<proc_macro2::TokenStream>() else {
+            continue;
+        };
+        for (name, is_test) in file_mod_declarations(&tokens) {
+            decls.push((file.clone(), name, is_test));
+        }
+    }
+
+    let resolve = |declaring: &Path, name: &str| -> Option<PathBuf> {
+        let dir = declaring.parent()?;
+        let flat = dir.join(format!("{name}.rs"));
+        if flat.is_file() {
+            return flat.canonicalize().ok();
+        }
+        let nested = dir.join(name).join("mod.rs");
+        if nested.is_file() {
+            return nested.canonicalize().ok();
+        }
+        None
+    };
+
+    let mut test_only: HashSet<PathBuf> = HashSet::new();
+    // Seed with direct #[cfg(test)] declarations, then close transitively
+    // over plain mod declarations made from already-test-only files.
+    loop {
+        let mut grew = false;
+        for (declaring, name, is_test) in &decls {
+            let from_test_file = declaring
+                .canonicalize()
+                .map(|c| test_only.contains(&c))
+                .unwrap_or(false);
+            if !is_test && !from_test_file {
+                continue;
+            }
+            if let Some(target) = resolve(declaring, name) {
+                grew |= test_only.insert(target);
+            }
+        }
+        if !grew {
+            break;
+        }
+    }
+    test_only
+}
+
+fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(read) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in read.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_rs_files(&path, out);
+        } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+            out.push(path);
+        }
+    }
+}
+
+/// Does a `cfg(...)` argument list make the item test-only — i.e. is `test`
+/// present as a POSITIVE predicate? `test` and `all(unix, test)` qualify;
+/// `not(test)` and `all(unix, not(test))` do not (those select NON-test
+/// builds, so exempting them would skip lowering/linting in production
+/// compiles — PR #1 review finding). `not(...)` subtrees are never recursed
+/// into; `any(...)`/`all(...)` are.
+fn cfg_args_positively_test(tokens: &proc_macro2::TokenStream) -> bool {
+    use proc_macro2::{Delimiter, TokenTree};
+    let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
+    let mut i = 0;
+    while i < trees.len() {
+        match &trees[i] {
+            TokenTree::Ident(id) if *id == "not" => {
+                // Skip the negated group entirely.
+                if matches!(trees.get(i + 1), Some(TokenTree::Group(g)) if g.delimiter() == Delimiter::Parenthesis)
+                {
+                    i += 2;
+                    continue;
+                }
+                i += 1;
+            }
+            TokenTree::Ident(id) if *id == "any" || *id == "all" => {
+                if let Some(TokenTree::Group(g)) = trees.get(i + 1) {
+                    if g.delimiter() == Delimiter::Parenthesis
+                        && cfg_args_positively_test(&g.stream())
+                    {
+                        return true;
+                    }
+                    i += 2;
+                    continue;
+                }
+                i += 1;
+            }
+            // Bare `test` predicate — not the LHS of `name = "value"` (the
+            // RHS of those is a Literal, so an Ident named test here is the
+            // predicate form).
+            TokenTree::Ident(id) if *id == "test" => {
+                let followed_by_eq = matches!(
+                    trees.get(i + 1),
+                    Some(TokenTree::Punct(p)) if p.as_char() == '='
+                );
+                if !followed_by_eq {
+                    return true;
+                }
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    false
+}
+
+/// Top-level `mod NAME ;` declarations in a token stream, with whether the
+/// directly-preceding attribute run contains a positively-`test` cfg.
+fn file_mod_declarations(tokens: &proc_macro2::TokenStream) -> Vec<(String, bool)> {
+    use proc_macro2::{Delimiter, TokenTree};
+    let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
+    let mut out = Vec::new();
+    let mut i = 0;
+    let mut pending_cfg_test = false;
+    while i < trees.len() {
+        match &trees[i] {
+            // Attribute: `#` `[ ... ]` — note whether it's cfg(test).
+            TokenTree::Punct(p) if p.as_char() == '#' => {
+                if let Some(TokenTree::Group(g)) = trees.get(i + 1) {
+                    if g.delimiter() == Delimiter::Bracket {
+                        let inner: Vec<TokenTree> = g.stream().into_iter().collect();
+                        if let [TokenTree::Ident(name), TokenTree::Group(args)] = inner.as_slice() {
+                            if *name == "cfg" {
+                                pending_cfg_test |= cfg_args_positively_test(&args.stream());
+                            }
+                        }
+                        i += 2;
+                        continue;
+                    }
+                }
+                i += 1;
+            }
+            // `pub` (and `pub(...)`) between attrs and `mod` — skip.
+            TokenTree::Ident(id) if *id == "pub" => {
+                i += 1;
+                if let Some(TokenTree::Group(g)) = trees.get(i) {
+                    if g.delimiter() == Delimiter::Parenthesis {
+                        i += 1;
+                    }
+                }
+            }
+            TokenTree::Ident(id) if *id == "mod" => {
+                if let (Some(TokenTree::Ident(name)), Some(TokenTree::Punct(semi))) =
+                    (trees.get(i + 1), trees.get(i + 2))
+                {
+                    if semi.as_char() == ';' {
+                        out.push((name.to_string(), pending_cfg_test));
+                    }
+                }
+                pending_cfg_test = false;
+                i += 1;
+            }
+            _ => {
+                pending_cfg_test = false;
+                i += 1;
+            }
+        }
+    }
+    out
 }
 
 /// Recursively mirror the source tree rooted at `src_dir` into `dest_dir`,
@@ -299,6 +649,24 @@ pub fn mirror_module_tree_with_extras(
     already_done: &mut std::collections::HashSet<PathBuf>,
     extras: &[(String, Vec<String>)],
 ) -> Result<()> {
+    // RT-88: under project-level force-strict, cfg(test)-only files keep
+    // their plain-Rust form (see collect_test_only_files). Computed once per
+    // mirror at the root call.
+    let test_only = if crate_is_force_strict() {
+        collect_test_only_files(src_dir)
+    } else {
+        std::collections::HashSet::new()
+    };
+    mirror_inner(src_dir, dest_dir, already_done, extras, &test_only)
+}
+
+fn mirror_inner(
+    src_dir: &Path,
+    dest_dir: &Path,
+    already_done: &mut std::collections::HashSet<PathBuf>,
+    extras: &[(String, Vec<String>)],
+    test_only: &std::collections::HashSet<PathBuf>,
+) -> Result<()> {
     if !src_dir.is_dir() {
         return Ok(());
     }
@@ -312,19 +680,28 @@ pub fn mirror_module_tree_with_extras(
         let dest = dest_dir.join(entry.file_name());
 
         let canonical = path.canonicalize().unwrap_or_else(|_| path.clone());
+        let is_test_only = test_only.contains(&canonical);
         if !already_done.insert(canonical) {
             continue;
         }
 
         if path.is_dir() {
-            mirror_module_tree_with_extras(&path, &dest, already_done, extras)?;
+            mirror_inner(&path, &dest, already_done, extras, test_only)?;
         } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
             let source =
                 fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
-            if trust_lower::is_strict_source(&source) {
-                let out = trust_lower::lower_with_extra_callees(&source, extras)
-                    .with_context(|| format!("lowering {}", path.display()))?;
-                emit_diagnostics(&out, &path)?;
+            // Explicit #![strict] always lowers; force-strict lowers
+            // everything except cfg(test)-only files (RT-88).
+            let lower_this = trust_lower::is_strict_source(&source)
+                || (crate_is_force_strict() && !is_test_only);
+            if lower_this {
+                let out = trust_lower::lower_with_extra_callees_forced(
+                    &source,
+                    extras,
+                    crate_is_force_strict(),
+                )
+                .with_context(|| format!("lowering {}", path.display()))?;
+                emit_diagnostics(&out, &source, &path)?;
                 // Also lower any doc-test code blocks embedded in `///` /
                 // `//!` comments. rustdoc extracts these snippets verbatim
                 // and submits them to rustc; if they contain named-arg
@@ -597,6 +974,183 @@ fn strip_hidden_doctest_prefix(s: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Serialises tests that read or write `TRUST_MESSAGE_FORMAT` — the
+    /// process env is shared across parallel test threads.
+    static MESSAGE_FORMAT_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// Scoped env guard: sets (or clears) `TRUST_MESSAGE_FORMAT` and restores
+    /// the previous value on drop, holding [`MESSAGE_FORMAT_LOCK`] throughout
+    /// so the env mutation can't leak into a concurrently-running test.
+    struct MessageFormatGuard<'a> {
+        prev: Option<String>,
+        _lock: std::sync::MutexGuard<'a, ()>,
+    }
+
+    impl MessageFormatGuard<'_> {
+        fn set(value: Option<&str>) -> Self {
+            let lock = MESSAGE_FORMAT_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let prev = env::var("TRUST_MESSAGE_FORMAT").ok();
+            match value {
+                Some(v) => env::set_var("TRUST_MESSAGE_FORMAT", v),
+                None => env::remove_var("TRUST_MESSAGE_FORMAT"),
+            }
+            MessageFormatGuard { prev, _lock: lock }
+        }
+    }
+
+    impl Drop for MessageFormatGuard<'_> {
+        fn drop(&mut self) {
+            match &self.prev {
+                Some(prev) => env::set_var("TRUST_MESSAGE_FORMAT", prev),
+                None => env::remove_var("TRUST_MESSAGE_FORMAT"),
+            }
+        }
+    }
+
+    /// RT-96: with `TRUST_MESSAGE_FORMAT=json`, the wrapper emits one
+    /// machine-parseable JSON document per file (same shape as
+    /// `trust check --format json`) instead of human `[R0001]` lines — and
+    /// still bails because the diagnostic is an error.
+    #[test]
+    fn json_message_format_emits_parseable_document() {
+        let _guard = MessageFormatGuard::set(Some("json"));
+
+        let source =
+            "#![strict]\nfn main() { let v: Option<i32> = Some(1); let _ = v.unwrap(); }\n";
+        let out = trust_lower::lower(source).expect("lowering strict source");
+        let mut buf: Vec<u8> = Vec::new();
+        let result = emit_diagnostics_to(&out, source, Path::new("src/main.rs"), &mut buf);
+        assert!(result.is_err(), "R0001 is an error — must still bail");
+
+        let text = String::from_utf8(buf).expect("utf8 output");
+        let doc: serde_json::Value =
+            serde_json::from_str(text.trim()).expect("output must be valid JSON");
+        assert_eq!(doc["file"], "src/main.rs");
+        let rules: Vec<&str> = doc["diagnostics"]
+            .as_array()
+            .expect("diagnostics array")
+            .iter()
+            .filter_map(|d| d["rule"].as_str())
+            .collect();
+        assert!(rules.contains(&"R0001"), "expected R0001 in {rules:?}");
+    }
+
+    /// Without the env var, output stays in today's human form.
+    #[test]
+    fn default_message_format_is_human_lines() {
+        let _guard = MessageFormatGuard::set(None);
+        let source =
+            "#![strict]\nfn main() { let v: Option<i32> = Some(1); let _ = v.unwrap(); }\n";
+        let out = trust_lower::lower(source).expect("lowering strict source");
+        let mut buf: Vec<u8> = Vec::new();
+        let result = emit_diagnostics_to(&out, source, Path::new("src/main.rs"), &mut buf);
+        assert!(result.is_err());
+        let text = String::from_utf8(buf).expect("utf8 output");
+        assert!(
+            text.contains("[R0001] error:"),
+            "expected human line, got: {text}"
+        );
+    }
+
+    /// RT-88: files reachable only via `#[cfg(test)] mod x;` are exempt from
+    /// force-strict — including transitively through plain `mod` decls in
+    /// test-only files. Explicitly-marked or normally-declared files are not.
+    #[test]
+    fn cfg_test_mod_files_are_detected_transitively() {
+        let base = std::env::temp_dir().join(format!("trust-rt88-{}", std::process::id()));
+        let src = base.join("src");
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("main.rs"),
+            "mod shipping;\n#[cfg(test)]\nmod tests;\nfn main() {}\n",
+        )
+        .unwrap();
+        fs::write(src.join("shipping.rs"), "pub fn ship() {}\n").unwrap();
+        fs::write(src.join("tests.rs"), "mod helpers;\nfn t() {}\n").unwrap();
+        fs::write(src.join("helpers.rs"), "pub fn helper() {}\n").unwrap();
+
+        let test_only = collect_test_only_files(&src);
+        let has = |name: &str| {
+            test_only
+                .iter()
+                .any(|p| p.file_name().and_then(|f| f.to_str()) == Some(name))
+        };
+        assert!(has("tests.rs"), "directly cfg(test)-declared file");
+        assert!(has("helpers.rs"), "transitively reached through tests.rs");
+        assert!(!has("shipping.rs"), "normal mod stays enforced");
+        assert!(!has("main.rs"), "the crate root is never test-only");
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    /// PR #1 review regression: `#[cfg(not(test))]` (and other negated test
+    /// predicates) select PRODUCTION builds and must never be exempted from
+    /// force-strict; positive `test` predicates (bare or inside any/all) are.
+    #[test]
+    fn negated_test_cfgs_are_not_test_only() {
+        let base = std::env::temp_dir().join(format!("trust-pr1-{}", std::process::id()));
+        let src = base.join("src");
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("main.rs"),
+            "#[cfg(not(test))]\nmod prod;\n\
+             #[cfg(all(unix, not(test)))]\nmod prod_unix;\n\
+             #[cfg(all(unix, test))]\nmod unix_tests;\n\
+             #[cfg(test)]\nmod tests;\n\
+             #[cfg(feature = \"test\")]\nmod feature_named_test;\n\
+             fn main() {}\n",
+        )
+        .unwrap();
+        for name in [
+            "prod.rs",
+            "prod_unix.rs",
+            "unix_tests.rs",
+            "tests.rs",
+            "feature_named_test.rs",
+        ] {
+            fs::write(src.join(name), "pub fn x() {}\n").unwrap();
+        }
+
+        let test_only = collect_test_only_files(&src);
+        let has = |name: &str| {
+            test_only
+                .iter()
+                .any(|p| p.file_name().and_then(|f| f.to_str()) == Some(name))
+        };
+        assert!(!has("prod.rs"), "cfg(not(test)) is a production module");
+        assert!(!has("prod_unix.rs"), "all(unix, not(test)) is production");
+        assert!(has("unix_tests.rs"), "all(unix, test) is test-only");
+        assert!(has("tests.rs"), "plain cfg(test) is test-only");
+        assert!(
+            !has("feature_named_test.rs"),
+            "feature = \"test\" is a feature gate, not the test predicate"
+        );
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    /// RT-81: project-level strict applies only to packages the user opted in,
+    /// never to dependencies compiled by the same wrapper.
+    #[test]
+    fn force_strict_is_scoped_by_package_name() {
+        // The user's own crate is in the set → forced strict.
+        assert!(force_strict_for(Some("my-app"), Some("my-app")));
+        // A dependency built in the same `cargo trust build` carries its own
+        // CARGO_PKG_NAME, which is NOT in the set → never force-lowered.
+        assert!(!force_strict_for(Some("my-app"), Some("serde")));
+        // Multi-package set, with whitespace.
+        assert!(force_strict_for(Some("a, b ,c"), Some("b")));
+        // Absent set or name is never a match.
+        assert!(!force_strict_for(None, Some("my-app")));
+        assert!(!force_strict_for(Some("my-app"), None));
+        // Empty name must not match an empty element from a trailing comma.
+        assert!(!force_strict_for(Some("a,"), Some("")));
+    }
 
     /// RT-75 regression: the cache mirror must COPY non-strict files, not
     /// hard-link them. A hard link shares the inode, so clobbering the cached

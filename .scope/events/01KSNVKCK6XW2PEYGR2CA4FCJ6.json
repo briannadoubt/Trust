@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNVKCK6XW2PEYGR2CA4FCJ6",
+  "ts": "2026-05-27T23:16:32.486Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71V",
+    "number": 39,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "R0042: generic type with comma in params is parsed as multiple params",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

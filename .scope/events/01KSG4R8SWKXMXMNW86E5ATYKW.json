@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSG4R8SWKXMXMNW86E5ATYKW",
+  "ts": "2026-05-25T18:01:03.036Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR70V",
+    "number": 7,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Wrapper: incremental cache / per-file caching",
+    "description": "Today every rustc invocation re-lowers the input file. For large workspaces this multiplies cargo's incremental rebuild times. Hash the input source + lowering version and cache the lowered output keyed by that hash.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KT3SXZSFD74BV8HEBN8PR70N",
+    "branch": null,
+    "prUrl": null,
+    "assignee": "claude",
+    "labels": []
+  }
+}

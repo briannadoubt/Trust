@@ -1,4 +1,4 @@
-trust_attrs::strict! {}
+#![strict]
 
 mod geom;
 

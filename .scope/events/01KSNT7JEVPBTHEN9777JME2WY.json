@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KSNT7JEVPBTHEN9777JME2WY",
+  "ts": "2026-05-27T22:52:36.699Z",
+  "actor": "migration",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR71J",
+    "number": 30,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Language completeness: eat your own cooking",
+    "description": "Dogfood the toolchain on the rustricted-* crates themselves, fill cross-crate named-arg gaps, and expand rustricted-std coverage. The dogfooding pass will surface real gaps that synthetic examples can't.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}
