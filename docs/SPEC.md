@@ -841,9 +841,27 @@ cross-crate calls get the same R0042 / named-arg treatment as in-crate ones.
 
 ### `cargo trust`
 
-`cargo-trust` is a thin subcommand wrapper. When `cargo trust <args>`
-is invoked, cargo prepends the literal `trust` to argv; the wrapper strips
-it and execs `trust` with the remainder. The binary must be on `PATH`.
+`cargo-trust` is the cargo bridge. When `cargo trust <args>` is invoked, cargo
+prepends the literal `trust` to argv; the wrapper strips it and dispatches on
+the first argument:
+
+- **Cargo lifecycle commands** (`build`, `run`, `test`, `check`, `clippy`,
+  `doc`, `bench`, `install`) run the real `cargo` with `RUSTC_WRAPPER` and
+  `RUSTDOC` set to the bundled `trust-rustc` / `trust-rustdoc` shims — so a
+  cargo crate gets the syntax extensions with **one command and no environment
+  setup**. `cargo trust build` is exactly `RUSTC_WRAPPER=… RUSTDOC=… cargo
+  build`, without the `export $(realpath …)` dance.
+- **Everything else** (`lower`, `index`, `fix`, `explain`, …) is forwarded
+  verbatim to the `trust` CLI.
+
+`check` resolves to **`cargo check`** under `cargo trust` (whole-crate). For a
+single-file lint, call `trust check foo.rs` directly.
+
+The shims are located, in order: the `TRUST_RUSTC` / `TRUST_RUSTDOC` env
+overrides; a sibling of the `cargo-trust` binary (covers a `cargo install`ed
+`~/.cargo/bin` layout and a dev `target/debug/` checkout); then `PATH`. A
+missing shim is a hard error with a fix hint, never a silent fall-through to an
+un-lowered build.
 
 ### `trust-lsp`
 

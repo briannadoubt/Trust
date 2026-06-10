@@ -97,6 +97,18 @@ jobs:
           out=$(examples/cargo-strict-fixture/target/debug/cargo-strict-fixture)
           test "$out" = "(1, 2, 3)"
 
+      - name: cargo trust — one command, zero env vars (RT-80)
+        run: |
+          # `cargo trust build/run` must wire the shims itself: no RUSTC_WRAPPER,
+          # no RUSTDOC, no realpath. cargo-trust locates trust-rustc/trust-rustdoc
+          # as siblings in the same dir, so put all three on PATH and invoke it.
+          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          export PATH="$(realpath target/debug):$PATH"
+          (cd examples/cargo-strict-fixture && cargo clean >/dev/null)
+          # No RUSTC_WRAPPER/RUSTDOC in the env here — cargo-trust sets them.
+          out=$(cd examples/cargo-strict-fixture && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust run 2>/dev/null | tail -1)
+          test "$out" = "(1, 2, 3)"
+
       - name: example — Phase 2 pipe
         run: |
           cargo run -p trust -- build examples/02-pipe/chain.rs --out /tmp/p2
