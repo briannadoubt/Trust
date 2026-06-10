@@ -66,7 +66,7 @@ pub fn lower_with_extra_callees(
 }
 
 /// As [`lower_with_extra_callees`], but `force_strict` activates strict mode
-/// even when the source carries no `#![strict]` / `strict!{}` marker. Used by
+/// even when the source carries no `#![strict]` marker. Used by
 /// the `trust-rustc` wrapper for project-level opt-in
 /// (`[package.metadata.trust] strict = true`), where strictness is declared
 /// once in the manifest rather than per file (RT-81).
@@ -122,15 +122,15 @@ pub fn promote_named_args(source: &str, extras: &[(String, Vec<String>)]) -> Res
     Ok(out)
 }
 
-/// Scan a token stream for Trust activation. Two forms are recognised:
+/// Scan a token stream for the per-file Trust activation marker: the
+/// `#![strict]` inner attribute. Stock `rustc` rejects this attribute, so a
+/// file carrying it only compiles through the Trust toolchain (`trust
+/// check`/`build` for single files, the `trust-rustc` wrapper — i.e. `cargo
+/// trust` — for cargo crates, which strips it during lowering).
 ///
-/// 1. `#![strict]` inner attribute — used by single-file inputs sent through
-///    `trust check`. Stock `rustc` rejects this attribute, so it cannot
-///    appear in a file that will also be built by `cargo build`.
-///
-/// 2. `strict!{}` (or `trust_attrs::strict!{}`) function-like macro
-///    invocation at item position — the cargo-friendly activation. The
-///    `trust-attrs` crate exports the macro as a no-op for `rustc`.
+/// Whole crates can skip the marker entirely and opt in at the project level
+/// via `[package.metadata.trust] strict = true` — see `cargo-trust`, which
+/// threads that through `lower_with_extra_callees_forced`.
 ///
 /// Detection runs at the token level so it works on the *original* Trust
 /// source before any pass strips the marker, and so it doesn't depend on syn
@@ -138,7 +138,7 @@ pub fn promote_named_args(source: &str, extras: &[(String, Vec<String>)]) -> Res
 /// extensions).
 fn detect_strict_mode(tokens: &TokenStream) -> bool {
     let trees: Vec<proc_macro2::TokenTree> = tokens.clone().into_iter().collect();
-    detect_strict_inner_attr(&trees) || detect_strict_macro_call(&trees)
+    detect_strict_inner_attr(&trees)
 }
 
 /// Cheap source-level strict-mode detection. Used by the `trust-rustc`
@@ -193,67 +193,6 @@ fn detect_strict_inner_attr(trees: &[proc_macro2::TokenTree]) -> bool {
     false
 }
 
-/// Match `strict ! GROUP` (bare) or `<allowed-prefix> :: strict ! GROUP`
-/// at top level. The path prefix must be either absent or one of the
-/// known activation crates (`trust_attrs` or `trust`) — a
-/// permissive match (any prefix) would let an unrelated `wibble::strict!{}`
-/// silently activate the dialect, which the FP audit flagged as a real
-/// concern.
-fn detect_strict_macro_call(trees: &[proc_macro2::TokenTree]) -> bool {
-    use proc_macro2::TokenTree;
-
-    const ALLOWED_PREFIXES: &[&str] = &["trust_attrs", "trust"];
-
-    for i in 0..trees.len() {
-        let TokenTree::Ident(id) = &trees[i] else {
-            continue;
-        };
-        if *id != "strict" {
-            continue;
-        }
-        let Some(TokenTree::Punct(bang)) = trees.get(i + 1) else {
-            continue;
-        };
-        if bang.as_char() != '!' {
-            continue;
-        }
-        if !matches!(trees.get(i + 2), Some(TokenTree::Group(_))) {
-            continue;
-        }
-
-        // Path-prefix check. Two cases:
-        //  - bare: token immediately before `strict` is NOT `:` → accept.
-        //  - qualified: the preceding tokens are `IDENT :: strict` → the
-        //    ident must be in ALLOWED_PREFIXES.
-        let preceded_by_colon = matches!(
-            trees.get(i.wrapping_sub(1)),
-            Some(TokenTree::Punct(p)) if i > 0 && p.as_char() == ':'
-        );
-        if !preceded_by_colon {
-            return true;
-        }
-        if i >= 3 {
-            if let (
-                Some(TokenTree::Ident(prefix)),
-                Some(TokenTree::Punct(c1)),
-                Some(TokenTree::Punct(c2)),
-            ) = (trees.get(i - 3), trees.get(i - 2), trees.get(i - 1))
-            {
-                if c1.as_char() == ':'
-                    && c2.as_char() == ':'
-                    && ALLOWED_PREFIXES.iter().any(|p| prefix == p)
-                {
-                    return true;
-                }
-            }
-        }
-        // Otherwise: qualified by something we don't recognise — keep
-        // scanning. (Don't return false; another valid invocation may
-        // appear later in the file.)
-    }
-    false
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -272,39 +211,36 @@ mod tests {
         assert!(out.diagnostics.is_empty());
     }
 
-    // Codex feedback: detect_strict_macro_call used to accept any
-    // `<anything>::strict!{}` path. That meant an unrelated crate's
-    // `wibble::strict!{}` could silently activate the dialect.
     #[test]
-    fn detect_strict_rejects_unrecognised_path_prefix() {
-        let src = "wibble::strict!{}\nfn main() { let x: Option<u32> = None; x.unwrap(); }";
-        let out = lower(src).expect("should still parse");
-        assert!(
-            !out.strict_mode,
-            "wibble::strict!{{}} must NOT activate strict mode"
-        );
-    }
-
-    #[test]
-    fn detect_strict_accepts_bare_macro() {
-        let src = "strict!{}\nfn main() {}";
+    fn detect_strict_accepts_inner_attr() {
+        let src = "#![strict]\nfn main() {}";
         let out = lower(src).expect("should parse");
         assert!(out.strict_mode);
+        // The marker must be stripped from the lowered output — stock rustc
+        // rejects it.
+        assert!(!out.source.contains("strict"));
+    }
+
+    // RT-82: the strict!{} macro marker was removed along with the
+    // trust-attrs crate. A leftover invocation must NOT activate strict
+    // mode — activation is #![strict] (per file) or
+    // [package.metadata.trust] strict = true (per project) only.
+    #[test]
+    fn detect_strict_ignores_legacy_macro_marker() {
+        for src in [
+            "strict!{}\nfn main() {}",
+            "trust_attrs::strict!{}\nfn main() {}",
+            "trust::strict!{}\nfn main() {}",
+        ] {
+            let out = lower(src).expect("should parse");
+            assert!(!out.strict_mode, "macro marker must be inert: {src}");
+        }
     }
 
     #[test]
-    fn detect_strict_accepts_trust_attrs_macro() {
-        let src = "trust_attrs::strict!{}\nfn main() {}";
-        let out = lower(src).expect("should parse");
-        assert!(out.strict_mode);
-    }
-
-    #[test]
-    fn detect_strict_accepts_trust_macro() {
-        // Short-form (`trust::strict`) is also on the allowlist for
-        // crates that re-export the macro under the umbrella crate.
-        let src = "trust::strict!{}\nfn main() {}";
-        let out = lower(src).expect("should parse");
+    fn forced_strict_activates_without_marker() {
+        let src = "fn main() {}";
+        let out = lower_with_extra_callees_forced(src, &[], true).expect("should parse");
         assert!(out.strict_mode);
     }
 }

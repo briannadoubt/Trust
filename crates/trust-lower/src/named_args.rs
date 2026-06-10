@@ -11,8 +11,8 @@
 //! so syn and rustc can take it from there.
 
 use proc_macro2::{Delimiter, Group, Punct, Spacing, Span, TokenStream, TokenTree};
-use trust_diag::{Applicability, Diagnostic, Fix};
 use std::collections::{HashMap, HashSet};
+use trust_diag::{Applicability, Diagnostic, Fix};
 
 use crate::preprocess::from_vec;
 use crate::std_signatures::STD_SIGNATURES;
@@ -62,10 +62,7 @@ impl CalleeRegistry {
     /// Names that are *locally ambiguous* (two definitions in this file
     /// with different param lists) are excluded from every layer — we'd
     /// rather fall back to cross-crate behaviour than guess.
-    pub fn collect_with_extras(
-        tokens: &TokenStream,
-        extras: &[(String, Vec<String>)],
-    ) -> Self {
+    pub fn collect_with_extras(tokens: &TokenStream, extras: &[(String, Vec<String>)]) -> Self {
         let mut fns: HashMap<String, Vec<String>> = HashMap::new();
         let mut ambiguous: HashSet<String> = HashSet::new();
         walk_for_fns(tokens.clone(), &mut fns, &mut ambiguous);
@@ -132,11 +129,32 @@ fn walk_for_fns(
             }
         }
     }
-    for tree in &trees {
+    for (i, tree) in trees.iter().enumerate() {
         if let TokenTree::Group(g) = tree {
+            // RT-85: don't descend into `macro_rules! name { ... }` bodies.
+            // A `fn` token in there is a *template*, not a module-level
+            // callee — collecting it registers a phantom (e.g. the
+            // `fn new(value: ...)` inside trust_std::newtype! shadowed every
+            // `Type::new(...)` call in the crate and made R0042 fire on them).
+            if g.delimiter() == Delimiter::Brace && is_macro_rules_body(&trees, i) {
+                continue;
+            }
             walk_for_fns(g.stream(), fns, ambiguous);
         }
     }
+}
+
+/// Do `trees[..i]` end with `macro_rules ! IDENT`, making `trees[i]` the
+/// definition body of a `macro_rules!` item?
+fn is_macro_rules_body(trees: &[TokenTree], i: usize) -> bool {
+    if i < 3 {
+        return false;
+    }
+    matches!(
+        (&trees[i - 3], &trees[i - 2], &trees[i - 1]),
+        (TokenTree::Ident(kw), TokenTree::Punct(bang), TokenTree::Ident(_))
+            if *kw == "macro_rules" && bang.as_char() == '!'
+    )
 }
 
 fn find_first_paren_after(trees: &[TokenTree], start: usize) -> Option<Group> {
@@ -242,7 +260,9 @@ fn rewrite_stream(
             // looks like a call but isn't one — recursing into it would
             // strip param names from token-tree syntax that downstream
             // macros need verbatim. Pass through untouched.
-            TokenTree::Group(g) if g.delimiter() == Delimiter::Bracket && attr_brackets.contains(&i) => {
+            TokenTree::Group(g)
+                if g.delimiter() == Delimiter::Bracket && attr_brackets.contains(&i) =>
+            {
                 out.push(TokenTree::Group(g));
             }
             TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis => {
@@ -914,6 +934,32 @@ mod tests {
         );
     }
 
+    // RT-85: a `fn` template inside a macro_rules! body is not a callee.
+    // The phantom `fn new(value: ...)` inside trust_std::newtype! used to
+    // register and make every `Type::new(...)` call in the crate fire R0042.
+    #[test]
+    fn macro_rules_body_fns_are_not_callees() {
+        let src = "macro_rules! newtype {\n\
+                       ($name:ident, $inner:ty) => {\n\
+                           pub struct $name($inner);\n\
+                           impl $name { pub fn new(value: $inner) -> Self { Self(value) } }\n\
+                       };\n\
+                   }\n\
+                   fn main() { let _ = std::time::Duration::new(1, 500); }";
+        let tokens: TokenStream = src.parse().unwrap();
+        let reg = CalleeRegistry::collect_with_extras(&tokens, &[]);
+        assert!(
+            !reg.fns.contains_key("new"),
+            "macro_rules template fn must not register: {:?}",
+            reg.fns.keys().collect::<Vec<_>>()
+        );
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R0042"),
+            "Duration::new must not fire R0042 via a phantom callee: {diags:?}"
+        );
+    }
+
     #[test]
     fn r0042_silent_on_unregistered_callee() {
         let src = "fn main() { let _ = upstream::area(4, 6); }";
@@ -1000,8 +1046,7 @@ mod tests {
     // mis-lowering bug).
     #[test]
     fn cross_crate_std_seed_reorders_named_args() {
-        let src =
-            "fn main() { let _ = trust_std::fs::write_text(contents: \"hi\", path: \"x\"); }";
+        let src = "fn main() { let _ = trust_std::fs::write_text(contents: \"hi\", path: \"x\"); }";
         let (out, diags) = lower_strict(src);
         assert!(diags.is_empty(), "expected no diags: {diags:?}");
         // After reorder, declared param order is (path, contents), so
@@ -1015,8 +1060,7 @@ mod tests {
     fn cross_crate_std_seed_emits_r3001_on_unknown_param() {
         // `write_text` is in the std index — supplying a name it doesn't
         // declare should fire R3001 just like a local-fn unknown name.
-        let src =
-            "fn main() { let _ = trust_std::fs::write_text(path: \"x\", body: \"hi\"); }";
+        let src = "fn main() { let _ = trust_std::fs::write_text(path: \"x\", body: \"hi\"); }";
         let (_out, diags) = lower_strict(src);
         assert!(
             diags.iter().any(|d| d.rule == "R3001"),
@@ -1143,7 +1187,10 @@ mod tests {
             vec!["width".to_string(), "height".to_string()],
         )];
         let reg = CalleeRegistry::collect_with_extras(&tokens, &extras);
-        let params = reg.fns.get("make_rect").expect("extras should seed registry");
+        let params = reg
+            .fns
+            .get("make_rect")
+            .expect("extras should seed registry");
         assert_eq!(params, &vec!["width".to_string(), "height".to_string()]);
     }
 
@@ -1273,7 +1320,10 @@ mod tests {
         let out = promote(src);
         assert!(out.contains("// keep me"), "comment preserved: {out}");
         assert!(out.contains("add(a: 1, b: 2)"), "names inserted: {out}");
-        assert!(out.starts_with("fn add(a: u32, b: u32)"), "prefix preserved: {out}");
+        assert!(
+            out.starts_with("fn add(a: u32, b: u32)"),
+            "prefix preserved: {out}"
+        );
     }
 
     #[test]
@@ -1292,7 +1342,10 @@ mod tests {
                    fn main() { let _ = double(5); let _ = upstream::f(1, 2); }";
         let out = promote(src);
         assert!(out.contains("double(5)"), "arity-1 untouched: {out}");
-        assert!(out.contains("upstream::f(1, 2)"), "unregistered untouched: {out}");
+        assert!(
+            out.contains("upstream::f(1, 2)"),
+            "unregistered untouched: {out}"
+        );
     }
 
     #[test]
@@ -1301,7 +1354,10 @@ mod tests {
                    fn main() { let mut m = std::collections::HashMap::new(); m.insert(1, 2); }";
         let out = promote(src);
         // Method call must NOT be matched against the free fn `insert`.
-        assert!(out.contains("m.insert(1, 2)"), "method call untouched: {out}");
+        assert!(
+            out.contains("m.insert(1, 2)"),
+            "method call untouched: {out}"
+        );
     }
 
     #[test]
@@ -1324,7 +1380,8 @@ mod tests {
         let promoted = promote(src);
         let lowered = crate::lower(&promoted).expect("lowered").source;
         assert!(
-            lowered.contains("make_rect(1920, 1080)") || lowered.contains("make_rect (1920 , 1080)"),
+            lowered.contains("make_rect(1920, 1080)")
+                || lowered.contains("make_rect (1920 , 1080)"),
             "round-trip back to positional failed: {lowered}"
         );
     }

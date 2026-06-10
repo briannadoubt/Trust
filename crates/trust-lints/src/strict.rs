@@ -10,32 +10,18 @@
 
 use crate::Rule;
 use proc_macro2::Span;
-use trust_diag::Diagnostic;
 use std::ops::Range;
 use syn::spanned::Spanned;
 use syn::visit::{self, Visit};
+use trust_diag::Diagnostic;
 
-/// Returns `true` if the file is in Trust strict mode. Two activation
-/// forms are recognised:
-///
-/// - `#![strict]` inner attribute (single-file `trust check` input).
-/// - A top-level `strict!{}` or `trust_attrs::strict!{}` macro
-///   invocation (cargo-built crates).
+/// Returns `true` if the file is in Trust strict mode: a `#![strict]` inner
+/// attribute at the crate root. (The `strict!{}` macro marker was removed in
+/// RT-82; project-level `[package.metadata.trust] strict = true` activation
+/// never reaches this detector — `cargo trust` threads it through as a
+/// forced flag instead.)
 pub fn detect_strict(file: &syn::File) -> bool {
-    if file.attrs.iter().any(|attr| attr.path().is_ident("strict")) {
-        return true;
-    }
-    file.items.iter().any(|item| {
-        let syn::Item::Macro(m) = item else {
-            return false;
-        };
-        m.mac
-            .path
-            .segments
-            .last()
-            .map(|seg| seg.ident == "strict")
-            .unwrap_or(false)
-    })
+    file.attrs.iter().any(|attr| attr.path().is_ident("strict"))
 }
 
 /// Run a single rule against the parsed file, appending diagnostics.

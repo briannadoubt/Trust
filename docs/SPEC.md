@@ -27,32 +27,14 @@ the final Rust. The driver lives in `crates/trust`; the orchestration is
 
 ## Activation
 
-Trust is opt-in per file. Two activation forms are accepted; pick the
-one that matches your build setup.
+Trust is opt-in. Two activation forms exist (the `trust_attrs::strict!{}`
+marker macro was removed in RT-82): a per-project key in `Cargo.toml`, and a
+per-file inner attribute.
 
-### Single-file mode: `#![strict]`
+### Project mode: `[package.metadata.trust] strict = true` (recommended)
 
-For files run through `trust check` directly (no cargo build of the
-file is required), an inner attribute at the crate root activates strict
-mode:
-
-```rust
-#![strict]
-
-fn main() { /* ... */ }
-```
-
-This is the form used by `examples/01-lints/*.rs` and the eval tasks. Stock
-`rustc` rejects `#![strict]` because it is not a registered attribute —
-which is fine for single-file inputs the Trust toolchain handles
-end-to-end, but unsuitable for files that need to compile under
-`cargo build`.
-
-### Project mode: `[package.metadata.trust] strict = true` (RT-81)
-
-The least-ceremony activation: declare strictness once in `Cargo.toml` and
-build with `cargo trust`. No per-file marker, no `trust-attrs` dependency, no
-environment setup.
+Declare strictness once in `Cargo.toml` and build with `cargo trust`. No
+per-file marker, no extra dependency, no environment setup.
 
 ```toml
 [package.metadata.trust]
@@ -63,57 +45,48 @@ strict = true
 cargo trust build    # lowers + checks the whole crate
 ```
 
-`cargo trust` reads the key and passes the opted-in package name to the
-lowering shims in `TRUST_STRICT_PACKAGES`. The shims then treat every file in
-**that package** as strict — exactly as if each carried a marker — while
-leaving dependencies (compiled by the same wrapper, but with their own
-`CARGO_PKG_NAME`) untouched. This is the recommended activation for a Trust
-project; the two markers below remain for single files and for mixed crates
-that opt in file-by-file.
+`cargo trust` reads the key — from the package manifest, or by scanning
+member manifests when invoked from a workspace root
+(`[workspace.metadata.trust] strict = true` opts in every member at once) —
+and passes the opted-in package names to the lowering shims in
+`TRUST_STRICT_PACKAGES`. The shims then treat every file in those packages
+as strict, while leaving dependencies (compiled by the same wrapper, but
+with their own `CARGO_PKG_NAME`) untouched.
 
-> Scope note: the opt-in currently applies to the package named in the invoked
-> manifest. Whole-workspace activation (`[workspace.metadata.trust]`) is a
-> follow-up.
+One structural caveat: whole-package strict applies to `#[cfg(test)]`
+sources too. A library that must also stay buildable by *stock* cargo
+(stage-0 toolchains, published crates) cannot satisfy R0042 with named-arg
+syntax, so its tests must already be R0042-clean — see
+`case-studies/dogfooding.md` and RT-88.
 
-### Cargo mode: `trust_attrs::strict!{}` (lints only by default)
+### Per-file mode: `#![strict]`
 
-For files that participate in a `cargo build` (e.g. crates written in
-Trust), use the marker macro from the `trust-attrs` crate
-instead:
+An inner attribute at the top of a file activates strict mode for that file:
 
 ```rust
-trust_attrs::strict! {}
+#![strict]
 
 fn main() { /* ... */ }
 ```
 
-Add `trust-attrs = "0.1"` to `[dependencies]`. The macro expands to
-nothing for `rustc`, so cargo builds are unaffected; the Trust
-toolchain detects the invocation and activates the **lints** that work
-at the AST level (R0001 unwrap, R0003 as-cast, R0004 glob, R0007
-impl-trait, R0010 todo, R0011 panic, R0012 bool-param, R0014 bare-index,
-R0005/R0006 justify-{unsafe,allow}, R0008 user-macros).
+This is the form used by `examples/01-lints/*.rs`, the eval tasks, and the
+cargo fixtures. Stock `rustc` rejects `#![strict]` (it is not a registered
+attribute), so a marked file only compiles through the Trust toolchain:
+`trust check`/`trust build` for single files, or the `trust-rustc` wrapper —
+i.e. `cargo trust` — for cargo crates, which strips the marker during
+lowering before the real rustc ever sees it. Use this form for single files
+and for mixed crates that opt in file-by-file under `cargo trust`.
 
-**Caveat — syntax extensions need the wrapper.** The marker alone does
-not enable the syntax extensions (named arguments, pipe, `effect`). Those
-are token-level rewrites that must run *before* rustc sees the file, and
-`cargo build` invokes rustc directly. To make cargo crates accept the
-extensions, set `RUSTC_WRAPPER` to the `trust-rustc` binary
-(`crates/trust-rustc/`):
+### How the wrapper applies activation
 
-```sh
-cargo build -p trust-rustc -p trust-rustdoc
-RUSTC_WRAPPER=$(realpath target/debug/trust-rustc) \
-RUSTDOC=$(realpath target/debug/trust-rustdoc) \
-  cargo build
-```
-
-The wrapper detects strict-marked input files, runs the lowering pass,
-substitutes the lowered source into the rustc invocation, and exec's the
-real rustc with `--remap-path-prefix` set so diagnostics still point at
-the original source. See `examples/cargo-strict-fixture/` for an
-end-to-end demo (the file uses `make_point(x: 1, y: 2, z: 3)` named-arg
-syntax which stock rustc rejects).
+The wrapper detects strict input files (per-file marker, or any file of a
+`TRUST_STRICT_PACKAGES` package), runs the lowering pass over the source
+tree, substitutes the lowered source into the rustc invocation, and exec's
+the real rustc with `--remap-path-prefix` set so diagnostics still point at
+the original source. See `examples/cargo-strict-fixture/` (per-file
+`#![strict]`) and `examples/cargo-strict-config/` (project metadata, zero
+markers) for end-to-end demos — both use `make_point(x: 1, y: 2, z: 3)`
+named-arg syntax which stock rustc rejects.
 
 **Why both `RUSTC_WRAPPER` and `RUSTDOC`?** `rustdoc` does NOT honour
 `RUSTC_WRAPPER` — it invokes rustc directly when compiling each doc-test
@@ -129,25 +102,19 @@ shim). See `examples/cargo-strict-fixture-multimod/src/geom.rs` for a
 doc-test that uses named-arg syntax — `cargo test --doc` fails without
 the shim and passes with it.
 
-**Current wrapper limitation.** Only the input `.rs` file passed to rustc
-is lowered. Child modules referenced by `mod foo;` are read by rustc from
-the original on-disk paths and are NOT lowered. A multi-file strict crate
-must either keep all extension syntax in the crate root, or pre-lower its
-sources manually. Generalising to a recursive walk of the crate's module
-tree is a Phase 1 item.
-
 ### Detection rules
 
-Both `trust_lower::detect_strict_mode` (token-level, runs before
-parsing) and `trust_lints::detect_strict` (AST-level, runs after
-lowering) accept either form. The lints crate returns an empty report
-when neither is present; the lowering passes run unconditionally because
-they are pure rewrites, but in a file without an activation marker they
-have nothing to rewrite — pipe and `effect` are syntax errors in vanilla
-Rust, and positional calls remain positional.
+`trust_lower::detect_strict_mode` (token-level, runs before parsing)
+recognises the `#![strict]` inner attribute; project-level activation
+bypasses detection entirely — `cargo trust` threads it through as a forced
+flag (`lower_with_extra_callees_forced`). The lints crate returns an empty
+report when strict mode is off; the lowering passes run unconditionally
+because they are pure rewrites, but in a non-strict file they have nothing
+to rewrite — pipe and `effect` are syntax errors in vanilla Rust, and
+positional calls remain positional.
 
-In practice: files without either activation marker round-trip through the
-driver unchanged.
+In practice: files without activation round-trip through the driver
+unchanged.
 
 ## Lints
 

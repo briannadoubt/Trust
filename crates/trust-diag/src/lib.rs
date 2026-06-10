@@ -19,8 +19,6 @@
 //! delegates to a one-field [`Located`] helper rather than calling a 2-arg
 //! free fn.
 
-trust_attrs::strict! {}
-
 use std::ops::Range;
 
 pub use ariadne;
@@ -298,7 +296,8 @@ impl<'a> JsonWriter<'a> {
     }
 
     fn document(&mut self, diagnostics: &[Diagnostic], filename: &str) {
-        self.out.push_str("{\n  \"version\": \"0.1\",\n  \"file\": ");
+        self.out
+            .push_str("{\n  \"version\": \"0.1\",\n  \"file\": ");
         self.string(filename);
         self.out.push_str(",\n  \"diagnostics\": [");
         for (i, diag) in diagnostics.iter().enumerate() {
@@ -336,8 +335,14 @@ impl<'a> JsonWriter<'a> {
     }
 
     fn span(&mut self, span: &Range<usize>) {
-        let (start_line, start_col) = Located { source: self.source }.at(span.start);
-        let (end_line, end_col) = Located { source: self.source }.at(span.end);
+        let (start_line, start_col) = Located {
+            source: self.source,
+        }
+        .at(span.start);
+        let (end_line, end_col) = Located {
+            source: self.source,
+        }
+        .at(span.end);
         self.out.push('{');
         self.out.push_str("\"start\": ");
         self.out.push_str(&span.start.to_string());

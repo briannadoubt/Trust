@@ -10,10 +10,14 @@ repository.workspace = true
 keywords = ["trust", "strict", "rust", "parser", "syntax"]
 categories = ["parser-implementations"]
 
+# Whole-crate strict dogfood: enforced when built via `cargo trust`
+# (or RUSTC_WRAPPER + TRUST_STRICT_PACKAGES); invisible to stock cargo.
+[package.metadata.trust]
+strict = true
+
 [dependencies]
 prettyplease.workspace = true
 proc-macro2.workspace = true
 quote.workspace = true
-trust-attrs.workspace = true
 syn.workspace = true
 thiserror.workspace = true

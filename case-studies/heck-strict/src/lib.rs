@@ -43,9 +43,6 @@
 #![no_std]
 
 extern crate alloc;
-extern crate trust_attrs;
-
-trust_attrs::strict! {}
 
 use alloc::string::{String, ToString};
 use core::fmt;

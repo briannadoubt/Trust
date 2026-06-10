@@ -1038,7 +1038,6 @@ dependencies = [
  "proc-macro2",
  "syn",
  "tempfile",
- "trust-attrs",
  "trust-diag",
  "trust-lints",
  "trust-lower",
@@ -1046,15 +1045,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "trust-attrs"
-version = "0.1.0"
-
-[[package]]
 name = "trust-diag"
 version = "0.1.0"
 dependencies = [
  "ariadne",
- "trust-attrs",
 ]
 
 [[package]]
@@ -1064,7 +1058,6 @@ dependencies = [
  "insta",
  "proc-macro2",
  "syn",
- "trust-attrs",
  "trust-diag",
 ]
 
@@ -1091,7 +1084,6 @@ dependencies = [
  "syn",
  "tokio",
  "tower-lsp",
- "trust-attrs",
  "trust-diag",
  "trust-lints",
  "trust-lower",
@@ -1103,7 +1095,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "syn",
- "trust-attrs",
  "trust-lower",
 ]
 
@@ -1119,9 +1110,6 @@ dependencies = [
 [[package]]
 name = "trust-std"
 version = "0.1.0"
-dependencies = [
- "trust-attrs",
-]
 
 [[package]]
 name = "trust-syntax"
@@ -1132,7 +1120,6 @@ dependencies = [
  "quote",
  "syn",
  "thiserror",
- "trust-attrs",
 ]
 
 [[package]]
@@ -1360,7 +1347,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "syn",
- "trust-attrs",
  "trust-lints",
  "trust-lower",
 ]

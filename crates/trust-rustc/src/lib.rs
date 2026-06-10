@@ -186,7 +186,7 @@ pub fn find_input_rs(args: &[String]) -> Option<usize> {
 
 /// Whether the crate currently being compiled was opted into strict mode at
 /// the *project* level (`[package.metadata.trust] strict = true`), rather than
-/// per-file with a `#![strict]` / `strict!{}` marker.
+/// per-file with a `#![strict]` marker.
 ///
 /// `cargo-trust` passes the set of strict package names in
 /// `TRUST_STRICT_PACKAGES` (comma-separated). Cargo sets `CARGO_PKG_NAME` for

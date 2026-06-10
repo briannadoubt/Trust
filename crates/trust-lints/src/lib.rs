@@ -59,7 +59,11 @@ mod tests {
         for r in all_rules() {
             assert!(!r.code().is_empty(), "rule has empty code");
             assert!(!r.name().is_empty(), "{} has empty name", r.code());
-            assert!(!r.rationale().is_empty(), "{} has empty rationale", r.code());
+            assert!(
+                !r.rationale().is_empty(),
+                "{} has empty rationale",
+                r.code()
+            );
             assert!(!r.instead().is_empty(), "{} has empty `instead`", r.code());
             assert_eq!(
                 Rule::from_code(r.code()),
@@ -430,7 +434,11 @@ mod tests {
         // x,y,w,h all f64 → adjacent pairs (x,y),(y,w),(w,h) → 3 diagnostics.
         let src = "#![strict]\npub fn rect(x: f64, y: f64, w: f64, h: f64) {}";
         let d = diags_for(Rule::NoSameTypeParams, src);
-        assert_eq!(d.len(), 3, "expected one diag per adjacent same-type pair: {d:?}");
+        assert_eq!(
+            d.len(),
+            3,
+            "expected one diag per adjacent same-type pair: {d:?}"
+        );
     }
 
     #[test]
@@ -548,8 +556,7 @@ mod tests {
 
     #[test]
     fn rt46_missing_reason_rejected() {
-        let src =
-            "#![strict]\n#[allow(trust::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        let src = "#![strict]\n#[allow(trust::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
         assert!(
             fires(Rule::AllowMissingReason, src),
             "missing reason must emit R0015"
@@ -578,8 +585,7 @@ mod tests {
     fn rt46_malformed_allow_does_not_suppress() {
         // No reason → the malformed allow MUST NOT silence R0014; user has
         // to fix the attribute before the lint shuts up.
-        let src =
-            "#![strict]\n#[allow(trust::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
+        let src = "#![strict]\n#[allow(trust::R0014)]\nfn f(v: &[u32], i: usize) -> u32 { v[i] }";
         assert!(
             fires(Rule::NoBareIndex, src),
             "R0014 must keep firing when the allow is malformed"

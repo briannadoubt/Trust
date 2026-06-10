@@ -1,5 +1,3 @@
-trust_attrs::strict!{}
-
 use clap::Parser;
 
 mod cli;

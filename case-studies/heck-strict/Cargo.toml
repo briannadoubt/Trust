@@ -13,5 +13,7 @@ description = "heck vendored for Trust strict-mode case study (RT-12)"
 # syntax in the lowered source is not pre-processed before doc compilation.
 doctest = false
 
+[package.metadata.trust]
+strict = true
+
 [dependencies]
-trust-attrs = { path = "../../crates/trust-attrs" }

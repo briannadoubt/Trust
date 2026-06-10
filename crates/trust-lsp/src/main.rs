@@ -2,10 +2,8 @@
 //!
 //! Speaks LSP over stdio. Wire your editor to this binary; see README.
 
-trust_attrs::strict! {}
-
-use trust_lsp::Backend;
 use tower_lsp::{LspService, Server};
+use trust_lsp::Backend;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {

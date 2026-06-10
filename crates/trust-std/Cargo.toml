@@ -11,4 +11,3 @@ keywords = ["trust", "strict", "rust", "stdlib", "named-arguments"]
 categories = ["development-tools"]
 
 [dependencies]
-trust-attrs.workspace = true

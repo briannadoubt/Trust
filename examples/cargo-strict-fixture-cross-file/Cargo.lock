@@ -5,10 +5,3 @@ version = 4
 [[package]]
 name = "cargo-strict-fixture-cross-file"
 version = "0.1.0"
-dependencies = [
- "trust-attrs",
-]
-
-[[package]]
-name = "trust-attrs"
-version = "0.1.0"

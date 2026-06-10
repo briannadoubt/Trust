@@ -222,7 +222,12 @@ fn parse_file_lenient(source: &str) -> Option<syn::File> {
     })
 }
 
-fn walk_dir(dir: &Path, sigs: &mut SigMap, ambiguous: &mut NameSet, visited: &mut HashSet<PathBuf>) {
+fn walk_dir(
+    dir: &Path,
+    sigs: &mut SigMap,
+    ambiguous: &mut NameSet,
+    visited: &mut HashSet<PathBuf>,
+) {
     if !dir.is_dir() {
         // Allow passing a single `.rs` file too.
         if dir.extension().and_then(|e| e.to_str()) == Some("rs") {
@@ -273,7 +278,12 @@ fn walk_items(items: &[syn::Item], sigs: &mut SigMap, ambiguous: &mut NameSet) {
     }
 }
 
-fn record_fn(sig: &syn::Signature, vis: &syn::Visibility, sigs: &mut SigMap, ambiguous: &mut NameSet) {
+fn record_fn(
+    sig: &syn::Signature,
+    vis: &syn::Visibility,
+    sigs: &mut SigMap,
+    ambiguous: &mut NameSet,
+) {
     // Only `pub` fns are nameable by a downstream crate's call sites.
     if !matches!(vis, syn::Visibility::Public(_)) {
         return;
@@ -314,7 +324,10 @@ mod tests {
     use super::*;
 
     fn sig(name: &str, params: &[&str]) -> Signature {
-        (name.to_string(), params.iter().map(|s| s.to_string()).collect())
+        (
+            name.to_string(),
+            params.iter().map(|s| s.to_string()).collect(),
+        )
     }
 
     #[test]
@@ -363,7 +376,10 @@ mod tests {
     fn drops_fns_with_destructuring_params() {
         let src = "pub fn f((a, b): (u32, u32), c: u32) {}";
         let idx = extract_from_source(src);
-        assert!(idx.is_empty(), "destructuring param can't be named: {idx:?}");
+        assert!(
+            idx.is_empty(),
+            "destructuring param can't be named: {idx:?}"
+        );
     }
 
     #[test]
@@ -386,7 +402,8 @@ mod tests {
 
     #[test]
     fn parse_manifest_is_lenient() {
-        let text = "# comment\n\n  make_rect : width, height \nbad line without colon\n:no_name\nnow:\n";
+        let text =
+            "# comment\n\n  make_rect : width, height \nbad line without colon\n:no_name\nnow:\n";
         let parsed = parse_manifest(text);
         assert_eq!(
             parsed,

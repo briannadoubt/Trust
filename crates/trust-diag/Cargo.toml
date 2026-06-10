@@ -12,4 +12,3 @@ categories = ["development-tools"]
 
 [dependencies]
 ariadne.workspace = true
-trust-attrs.workspace = true

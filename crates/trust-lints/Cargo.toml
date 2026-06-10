@@ -13,7 +13,6 @@ categories = ["development-tools"]
 [dependencies]
 proc-macro2 = { workspace = true, features = ["span-locations"] }
 syn.workspace = true
-trust-attrs.workspace = true
 trust-diag.workspace = true
 
 [dev-dependencies]

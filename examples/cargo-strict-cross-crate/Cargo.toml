@@ -14,5 +14,4 @@ name = "cargo-strict-cross-crate"
 path = "src/main.rs"
 
 [dependencies]
-trust-attrs = { path = "../../crates/trust-attrs" }
 trust-std = { path = "../../crates/trust-std" }

@@ -21,7 +21,6 @@ path = "src/lib.rs"
 anyhow.workspace = true
 syn.workspace = true
 proc-macro2.workspace = true
-trust-attrs.workspace = true
 trust-diag.workspace = true
 trust-lower.workspace = true
 trust-lints.workspace = true

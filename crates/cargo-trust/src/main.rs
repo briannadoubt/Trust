@@ -137,35 +137,113 @@ fn run_cargo(args: &[String]) -> Result<i32> {
 /// Names of packages that opted into strict mode at the project level via
 /// `[package.metadata.trust] strict = true`. Reads the manifest cargo would
 /// use: `--manifest-path` if given, else the nearest `Cargo.toml` walking up
-/// from the current directory. Best-effort — a missing/unparseable manifest
-/// yields an empty set (per-file markers still work).
+/// from the current directory. For a workspace manifest, every member's
+/// manifest is read too (glob entries like `crates/*` are expanded), so the
+/// opt-in works from the workspace root — and
+/// `[workspace.metadata.trust] strict = true` opts in every member at once.
+/// Best-effort — a missing/unparseable manifest yields an empty set
+/// (per-file `#![strict]` markers still work).
 fn strict_packages(args: &[String]) -> Vec<String> {
     let Some(manifest) = manifest_path(args) else {
         return Vec::new();
     };
-    let Ok(text) = std::fs::read_to_string(&manifest) else {
+    let Some(value) = read_manifest(&manifest) else {
         return Vec::new();
     };
-    let Ok(value) = text.parse::<toml::Value>() else {
-        return Vec::new();
-    };
-    parse_strict_package(&value).into_iter().collect()
+
+    let mut out = Vec::new();
+    out.extend(parse_strict_package(&value));
+
+    if let Some(workspace) = value.get("workspace") {
+        let all_members_strict = metadata_trust_strict(workspace);
+        let root = manifest.parent().unwrap_or(Path::new("."));
+        for member_dir in workspace_member_dirs(workspace, root) {
+            let Some(member) = read_manifest(&member_dir.join("Cargo.toml")) else {
+                continue;
+            };
+            if all_members_strict {
+                // Workspace-wide opt-in: every member with a [package] name.
+                if let Some(name) = member
+                    .get("package")
+                    .and_then(|p| p.get("name"))
+                    .and_then(|n| n.as_str())
+                {
+                    out.push(name.to_string());
+                }
+            } else {
+                out.extend(parse_strict_package(&member));
+            }
+        }
+    }
+
+    out.sort();
+    out.dedup();
+    out
+}
+
+fn read_manifest(path: &Path) -> Option<toml::Value> {
+    std::fs::read_to_string(path)
+        .ok()?
+        .parse::<toml::Value>()
+        .ok()
 }
 
 /// Extract the package name from a parsed manifest iff it declares
 /// `[package.metadata.trust] strict = true`.
 fn parse_strict_package(manifest: &toml::Value) -> Option<String> {
     let package = manifest.get("package")?;
-    let strict = package
-        .get("metadata")?
-        .get("trust")?
-        .get("strict")?
-        .as_bool()
-        .unwrap_or(false);
-    if !strict {
+    if !metadata_trust_strict(package) {
         return None;
     }
     package.get("name")?.as_str().map(str::to_string)
+}
+
+/// `<table>.metadata.trust.strict == true` — shared between the package and
+/// workspace forms of the opt-in.
+fn metadata_trust_strict(table: &toml::Value) -> bool {
+    table
+        .get("metadata")
+        .and_then(|m| m.get("trust"))
+        .and_then(|t| t.get("strict"))
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(false)
+}
+
+/// Resolve a workspace's `members` list to directories, expanding a trailing
+/// `/*` glob (the only glob form cargo commonly uses) via read_dir. Members
+/// listed in `exclude` are skipped.
+fn workspace_member_dirs(workspace: &toml::Value, root: &Path) -> Vec<PathBuf> {
+    let list = |key: &str| -> Vec<String> {
+        workspace
+            .get(key)
+            .and_then(|m| m.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let excluded: Vec<PathBuf> = list("exclude").iter().map(|e| root.join(e)).collect();
+
+    let mut dirs = Vec::new();
+    for entry in list("members") {
+        if let Some(prefix) = entry.strip_suffix("/*") {
+            let Ok(read) = std::fs::read_dir(root.join(prefix)) else {
+                continue;
+            };
+            for e in read.flatten() {
+                let p = e.path();
+                if p.is_dir() && p.join("Cargo.toml").is_file() {
+                    dirs.push(p);
+                }
+            }
+        } else {
+            dirs.push(root.join(entry));
+        }
+    }
+    dirs.retain(|d| !excluded.contains(d));
+    dirs
 }
 
 /// Resolve the manifest path: `--manifest-path <p>` / `--manifest-path=<p>` if
@@ -380,5 +458,64 @@ mod tests {
             manifest_path(&v(&["build", "--manifest-path=/y/Cargo.toml"])),
             Some(PathBuf::from("/y/Cargo.toml"))
         );
+    }
+
+    /// Build a throwaway workspace on disk: root manifest + one member per
+    /// (name, strict) pair under `crates/`, listed via the `crates/*` glob.
+    fn temp_workspace(tag: &str, root_extra: &str, members: &[(&str, bool)]) -> PathBuf {
+        let root = env::temp_dir().join(format!("cargo-trust-ws-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        for (name, strict) in members {
+            let dir = root.join("crates").join(name);
+            std::fs::create_dir_all(&dir).unwrap();
+            let meta = if *strict {
+                "\n[package.metadata.trust]\nstrict = true\n"
+            } else {
+                ""
+            };
+            std::fs::write(
+                dir.join("Cargo.toml"),
+                format!("[package]\nname = \"{name}\"\nversion = \"0.1.0\"\n{meta}"),
+            )
+            .unwrap();
+        }
+        std::fs::write(
+            root.join("Cargo.toml"),
+            format!("[workspace]\nmembers = [\"crates/*\"]\n{root_extra}"),
+        )
+        .unwrap();
+        root
+    }
+
+    #[test]
+    fn workspace_glob_members_with_package_optins() {
+        let root = temp_workspace(
+            "pkg",
+            "",
+            &[("alpha", true), ("beta", false), ("gamma", true)],
+        );
+        let strict = strict_packages(&v(&[
+            "build",
+            "--manifest-path",
+            root.join("Cargo.toml").to_str().unwrap(),
+        ]));
+        assert_eq!(strict, vec!["alpha".to_string(), "gamma".to_string()]);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn workspace_metadata_opts_in_every_member() {
+        let root = temp_workspace(
+            "ws",
+            "[workspace.metadata.trust]\nstrict = true\n",
+            &[("alpha", false), ("beta", false)],
+        );
+        let strict = strict_packages(&v(&[
+            "build",
+            "--manifest-path",
+            root.join("Cargo.toml").to_str().unwrap(),
+        ]));
+        assert_eq!(strict, vec!["alpha".to_string(), "beta".to_string()]);
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

@@ -1,5 +1,3 @@
-trust_attrs::strict!{}
-
 use crate::cli;
 use crate::diagram_formatting;
 use crate::file_tree::FileType;

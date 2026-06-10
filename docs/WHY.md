@@ -155,16 +155,16 @@ Honestly:
 - **Verbose call sites.** `make_rect(width: 10, height: 5)` is longer
   than `make_rect(10, 5)`. Most engineers feel this most on the first
   day. The agent does not feel it at all.
-- **Activation per file or per crate.** Single-file inputs use
-  `#![strict]` at the crate root. Crates built through cargo use the
-  `trust_attrs::strict!{}` marker macro instead, because stock
-  `rustc` does not recognise `#![strict]`. See
+- **Activation per crate or per file.** Crates opt in once with
+  `[package.metadata.trust] strict = true` in `Cargo.toml` and build with
+  `cargo trust build`; single files (and file-by-file opt-ins) use
+  `#![strict]` at the top. See
   [SPEC.md § Activation](SPEC.md#activation).
 - **Cargo needs a wrapper for the syntax extensions.** The named-arg
   rewrite has to run before `rustc` sees the file, and `cargo build`
-  invokes `rustc` directly. You set
-  `RUSTC_WRAPPER=$(realpath target/debug/trust-rustc)` for the
-  build. The lints alone work without the wrapper; the syntax
+  invokes `rustc` directly. `cargo trust` sets the wrapper up for you;
+  only bare `cargo build` needs manual `RUSTC_WRAPPER` wiring.
+  The lints alone work without the wrapper; the syntax
   extensions do not.
 - **Cross-crate enforcement needs a generated index.** In-crate callees
   are automatic. For calls into a dependency, run `trust index <dep-src>

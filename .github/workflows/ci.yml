@@ -76,11 +76,6 @@ jobs:
           ! cargo run -p trust -- check examples/01-lints/same-type-params-fail.rs 2>&1 | tee /tmp/p1s.log
           grep -q R0017 /tmp/p1s.log
 
-      - name: example — cargo-style activation (must fail with R0001)
-        run: |
-          ! cargo run -p trust -- check examples/01-lints/cargo-strict-unwrap-fail.rs 2>&1 | tee /tmp/p1cs.log
-          grep -q R0001 /tmp/p1cs.log
-
       - name: rustc wrapper — named args via cargo build
         run: |
           # Negative: cargo build without the wrapper must fail because
@@ -269,20 +264,23 @@ jobs:
             echo "FAIL: expected non-zero exit on unknown rule code"; exit 1
           fi
 
-      - name: dogfood — build strict library crates under wrapper
+      - name: dogfood — strict library crates via cargo trust (RT-82)
         run: |
-          # The strict LIBRARY crates use `#![strict]` for lint dogfooding and
-          # build cleanly under RUSTC_WRAPPER. The binary crates trust /
-          # trust-rustc / xtask are stage-0 plain Rust (RT-76): they build
-          # under stock cargo and are NOT routed through the wrapper — a
-          # wrapper cannot self-host. See case-studies/dogfooding.md.
-          cargo build -p trust-rustc --release
-          WRAPPER=$(realpath target/release/trust-rustc)
-          RUSTC_WRAPPER="$WRAPPER" cargo build \
-            -p trust-diag \
-            -p trust-lsp \
-            -p trust-std \
-            -p trust-syntax
+          # Crates with `[package.metadata.trust] strict = true` build
+          # whole-package strict through `cargo trust`, which discovers the
+          # opt-in by scanning workspace members. Only trust-syntax qualifies:
+          # the binary crates trust / trust-rustc / xtask are stage-0 plain
+          # Rust (RT-76), and trust-diag / trust-std / trust-lsp / trust-lints
+          # can't be whole-package strict while their tests call own fns
+          # positionally yet must stay stock-compilable (RT-88 tracks
+          # restoring that coverage). See case-studies/dogfooding.md.
+          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          export PATH="$(realpath target/debug):$PATH"
+          # Force a real recompile: cargo fingerprints the rustc *version
+          # string*, which the wrapper passes through unchanged — a cached
+          # crate would otherwise skip the wrapper and make this step hollow.
+          cargo clean -p trust-syntax
+          cargo-trust trust build -p trust-syntax
 
       - name: std-signatures manifest up-to-date (RT-44)
         run: |
@@ -292,10 +290,7 @@ jobs:
           # itself regenerated from `crates/trust-std/src/lib.rs` by
           # `cargo xtask gen-std-signatures`. CI verifies the checked-in
           # manifest is fresh — stale manifests would silently break
-          # cross-crate named-arg lowering.
-          #
-          # xtask is strict-marked (RT-31), so this step runs under the
-          # wrapper built by the dogfood step above.
-          WRAPPER=$(realpath target/release/trust-rustc)
-          RUSTC_WRAPPER="$WRAPPER" cargo xtask gen-std-signatures --check
+          # cross-crate named-arg lowering. xtask is stage-0 plain Rust
+          # (RT-76), so no wrapper is needed to build it.
+          cargo xtask gen-std-signatures --check
 

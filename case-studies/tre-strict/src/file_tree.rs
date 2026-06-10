@@ -1,5 +1,3 @@
-trust_attrs::strict!{}
-
 use slab::Slab;
 use indexmap::IndexMap;
 use std::fs::{self, Metadata};

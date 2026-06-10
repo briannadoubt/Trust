@@ -1,4 +1,4 @@
-trust_attrs::strict! {}
+#![strict]
 
 // RT-32 regression fixture: named-arg call to a function defined in another
 // crate (`trust-std`). Without cross-crate seeding the call site

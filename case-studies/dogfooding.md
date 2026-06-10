@@ -200,3 +200,34 @@ under `RUSTC_WRAPPER` (after RT-44). The remaining 4 are blocked by:
 Most of those gaps were known going in (RT-40, RT-41 pre-existed). RT-44
 was shipped as part of this case-study iteration; RT-46 is still
 outstanding. RT-39 was caught and fixed in passing during RT-31.
+
+## Update (RT-82) — `strict!{}` removed; dogfood moves to project-level opt-in
+
+The `trust_attrs::strict!{}` per-file marker (and the whole `trust-attrs`
+crate) was removed in RT-82. Activation is now `#![strict]` per file
+(wrapper-built code only — stock rustc rejects it) or
+`[package.metadata.trust] strict = true` per package, discovered by
+`cargo trust` from the workspace manifest.
+
+That trade has a real cost recorded here honestly: per-file granularity for
+**stock-buildable library crates** is gone. A library that must keep
+compiling under plain `cargo test` (stage-0 CI, downstream consumers)
+cannot satisfy whole-package R0042 when any of its files — in practice the
+`#[cfg(test)]` siblings — call its own multi-arg fns positionally, because
+the fix (named args) is syntax stock rustc can't parse.
+
+Post-RT-82 status:
+
+| Crate | Whole-package strict? | Blocker |
+| ----- | --------------------- | ------- |
+| `trust-syntax` | **YES** — `[package.metadata.trust]`, enforced in CI | — |
+| `trust-diag`   | no | `tests.rs` calls `line_col(src, 0)` positionally |
+| `trust-std`    | no | `tests.rs` calls `duration`/`hashmap_insert` positionally |
+| `trust-lsp`    | no | lib internals: positional calls to `compute_hover` etc. |
+| `trust-lints`  | no | lib internals + test helpers |
+| `trust`, `trust-rustc`, `xtask` | no (by design) | stage-0 bootstrap (RT-76) |
+
+RT-88 tracks restoring the lost coverage (cfg(test)-aware force-strict, a
+publish-lowered pipeline, or R0042-clean refactors). RT-87 (closure args
+break named-arg call parsing) currently blocks `heck-strict` regardless of
+activation mechanism.

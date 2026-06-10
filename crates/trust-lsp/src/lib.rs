@@ -11,12 +11,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
-use trust_diag::{Diagnostic as RtDiag, Severity};
-use trust_lower::named_args::CalleeRegistry;
 use tokio::sync::Mutex;
 use tower_lsp::jsonrpc::Result as LspResult;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer};
+use trust_diag::{Diagnostic as RtDiag, Severity};
+use trust_lower::named_args::CalleeRegistry;
 
 /// Holds source text per Uri.
 #[derive(Default)]
