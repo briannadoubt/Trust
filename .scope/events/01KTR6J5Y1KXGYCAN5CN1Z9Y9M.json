@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTR6J5Y1KXGYCAN5CN1Z9Y9M",
+  "ts": "2026-06-10T07:22:17.921Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72W",
+    "commentId": "01KTR6J5Y1KXGYCAN5CN1Z9Y9K",
+    "author": "claude",
+    "body": "Shipped as R0018 error-context-dropped: .map_err(|_| ...) wildcard closures + .ok().expect(...). cfg(test)-exempt. EVAL VALIDATION OWED (ungated by owner decision)."
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQTZVM85JMPKFK01FVP1H3X",
+  "ts": "2026-06-10T04:00:03.208Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72C",
+    "commentId": "01KTQTZVM85JMPKFK01FVP1H3W",
+    "author": "claude",
+    "body": "Completed via RT-84's rewrite plus this session's activation updates: headline carries the eval number, install + two-step setup lead, before/after code sample, the 3-vendor table with eval links, why-with-link, honest status, learn-more links. Claims stay narrow ('on the audited bug classes... catches 100%')."
+  }
+}

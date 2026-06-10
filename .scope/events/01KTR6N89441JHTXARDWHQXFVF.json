@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTR6N89441JHTXARDWHQXFVF",
+  "ts": "2026-06-10T07:23:58.628Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "commentId": "01KTR6N89441JHTXARDWHQXFVE",
+    "author": "claude",
+    "body": "Epic status after the board-completion session: every child done except RT-58 (crates.io publish) — runbook in the ticket, blocked solely on bri's token and launch timing. PR #1 carries the entire body of work with CI green (https://github.com/briannadoubt/Trust/pull/1). Merge + publish are the two remaining human actions for v0.1."
+  }
+}

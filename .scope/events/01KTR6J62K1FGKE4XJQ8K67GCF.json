@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTR6J62K1FGKE4XJQ8K67GCF",
+  "ts": "2026-06-10T07:22:18.067Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72X",
+    "commentId": "01KTR6J62K1FGKE4XJQ8K67GCE",
+    "author": "claude",
+    "body": "Shipped as R0020 no-lock-across-await. Clippy delta, confirmed before building: await_holding_lock is type-aware and rustc-resident; R0020 is syntax-level (the .lock().unwrap()/.expect suffix discriminates sync guards from tokio's .lock().await) and fires in the same teaching-error pass as every other Trust rule, pre-typecheck. Statement-level only — no dataflow; block-scoped guards never flag. EVAL OWED."
+  }
+}

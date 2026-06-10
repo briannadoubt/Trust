@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQV73T9108KEQH4VMC8EEF7",
+  "ts": "2026-06-10T04:04:00.969Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72E",
+    "commentId": "01KTQV73T9108KEQH4VMC8EEF6",
+    "author": "claude",
+    "body": "Publish prep complete (RT-79 session). cargo package --no-verify passes for every leaf crate (trust-diag 6.6KiB, trust-syntax 2.3KiB, trust-std 6.4KiB, cargo-trust 7.8KiB); the rest fail only on 'no matching package on crates.io' for their internal deps, which resolves when publishing in dependency order. RUNBOOK (needs bri's crates.io token — agent cannot do this): cargo login, then publish in order: 1) trust-diag, 2) trust-lower, 3) trust-lints + trust-syntax + trust-std, 4) trust-rustc, 5) trust-rustdoc, 6) trust + trust-lsp, 7) cargo-trust. Wait ~1min between tiers for index propagation. Note: trust-attrs no longer exists (RT-82) — nothing references it. After publish: update README install note (remove the 'not on crates.io yet' caveat) and add badges (RT-57/58 placeholder in README line ~14)."
+  }
+}

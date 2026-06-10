@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTQT6Q86SH734K4FC6EVW0J5",
+  "ts": "2026-06-10T03:46:19.526Z",
+  "actor": "unknown",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTQQ6GMYGC0NSDP3WF1DEJTH",
+    "commentId": "01KTQT6Q86SH734K4FC6EVW0J4",
+    "author": null,
+    "body": "RESOLVED INVALID after deep investigation: split_by_top_comma already treats closure |params| atomically (the toggle predates this ticket; two targeted repros of heck's exact call shapes pass trust check clean). The R0042s attributed to closures were really (1) heck's module files carrying their ORIGINAL positional transform() calls — the RT-12 conversion predated RT-40 cross-file resolution, so R0042 couldn't see them at conversion time — and (2) RT-90: the splitter's Alone-only angle tracking truncating registry signatures after any generic-typed param. Both fixed; heck-strict and tre-strict now build and test green under cargo trust. Session lesson also recorded: the mirror aborts at the FIRST failing file in read_dir order, so visible diagnostics shift as upstream files get fixed — that masking drove the misdiagnosis."
+  }
+}
