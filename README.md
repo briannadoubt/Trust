@@ -187,6 +187,7 @@ A dedicated VS Code extension lives in [`editors/vscode/`](editors/vscode/).
 - **[docs/SPEC.md](docs/SPEC.md)** — the full rule catalogue (R0001…R0042) and grammar for the two syntax extensions.
 - **[docs/RATIONALE.md](docs/RATIONALE.md)** — phase-by-phase reasoning for each rule.
 - **[docs/AGENTS.md](docs/AGENTS.md)** — the teaching-error contract every diagnostic follows.
+- **[docs/templates/CLAUDE-md-snippet.md](docs/templates/CLAUDE-md-snippet.md)** — drop-in agent instructions for projects that adopt Trust.
 
 ### Case studies
 

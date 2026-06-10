@@ -39,7 +39,13 @@ fn scaffold_creates_strict_project() {
     );
 
     let root = tmp.path().join("demo");
-    for file in ["Cargo.toml", "src/main.rs", ".gitignore", "README.md"] {
+    for file in [
+        "Cargo.toml",
+        "src/main.rs",
+        ".gitignore",
+        "README.md",
+        "CLAUDE.md",
+    ] {
         assert!(root.join(file).is_file(), "missing scaffolded file {file}");
     }
 
@@ -70,6 +76,12 @@ fn scaffold_creates_strict_project() {
     assert!(
         readme.contains("cargo trust build") && readme.contains("cargo trust run"),
         "README must use the cargo trust commands:\n{readme}"
+    );
+
+    let claude_md = std::fs::read_to_string(root.join("CLAUDE.md")).unwrap();
+    assert!(
+        claude_md.contains("cargo trust build"),
+        "CLAUDE.md must mention `cargo trust build`:\n{claude_md}"
     );
 }
 

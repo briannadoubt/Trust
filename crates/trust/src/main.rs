@@ -284,6 +284,33 @@ fn fix(input: &Path, write: bool) -> Result<()> {
     Ok(())
 }
 
+/// The drop-in agent-instructions block (RT-95) written to a scaffolded
+/// project's `CLAUDE.md`. Kept in the binary (installed copies don't have the
+/// repo); a unit test asserts docs/templates/CLAUDE-md-snippet.md contains it
+/// verbatim so the two can't drift.
+const CLAUDE_MD_BLOCK: &str = r#"## Trust (strict Rust dialect)
+
+This project uses Trust, a strict Rust dialect that lowers to plain Rust.
+Build, run, and test with `cargo trust build|run|test` — NEVER plain `cargo`:
+named-argument syntax won't parse under stock cargo, and that's expected.
+
+- Calls with more than one argument use named arguments:
+  `make_rect(width: 1920, height: 1080)`. Also available: the pipe operator
+  `e |> f(args)` and `requires!(cond)` preconditions.
+- Build errors with R-codes (R0001, R0042, …) are Trust teaching errors:
+  read the `why:` and `help:`/`instead:` text, apply it, then rebuild.
+  - `trust explain <CODE>` — detail on one rule.
+  - `trust fix <file> --write` — auto-inserts argument names.
+  - `cargo trust build --message-format json` — machine-readable diagnostics.
+- `#[cfg(test)]` code is exempt — write tests in plain Rust; don't convert them.
+- Don't suppress rules without a `reason`. Suppression via
+  `#[allow(trust::R0xxx, reason = "…")]` only compiles under cargo trust,
+  never stock cargo.
+
+Docs: https://github.com/briannadoubt/Trust — see `docs/WRITING-TRUST.md`
+for the full agent guide.
+"#;
+
 /// Scaffold a new strict Trust project (RT-94): a standalone cargo package
 /// with `[package.metadata.trust] strict = true` and a hello `main.rs` that
 /// uses named-argument syntax, proving the toolchain works on first run.
@@ -349,6 +376,7 @@ fn main() {
     write(src.join("main.rs"), main_rs)?;
     write(root.join(".gitignore"), "/target\n")?;
     write(root.join("README.md"), &readme)?;
+    write(root.join("CLAUDE.md"), CLAUDE_MD_BLOCK)?;
 
     eprintln!("created strict project `{name}` — try `cd {name} && cargo trust run`");
     Ok(())
@@ -509,4 +537,24 @@ fn run_pipeline(
     Ok(PipelineOutput {
         lowered: lower_out.source,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    /// RT-95 drift guard: the agent-instructions block baked into the binary
+    /// must appear verbatim in docs/templates/CLAUDE-md-snippet.md.
+    #[test]
+    fn claude_md_block_matches_docs_template() {
+        let docs_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/templates/CLAUDE-md-snippet.md"
+        );
+        let docs = std::fs::read_to_string(docs_path)
+            .unwrap_or_else(|e| panic!("reading {docs_path}: {e}"));
+        assert!(
+            docs.contains(super::CLAUDE_MD_BLOCK),
+            "docs/templates/CLAUDE-md-snippet.md no longer contains the \
+             CLAUDE_MD_BLOCK const verbatim — update one to match the other"
+        );
+    }
 }
