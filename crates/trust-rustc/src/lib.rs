@@ -20,13 +20,44 @@ use std::path::{Path, PathBuf};
 /// a way that would invalidate previously-cached files.
 const LOWERING_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// FNV-1a 64-bit hash of the lowering-version string concatenated with the
-/// source bytes. Fast, no deps, deterministic across processes and OSes.
+/// Fingerprint of the running wrapper binary (length ⊕ mtime), mixed into
+/// the cache key (RT-86). The package version alone is constant across a
+/// whole dev cycle, so a rebuilt wrapper with changed lowering code would
+/// happily reuse lowered output produced by the previous build — which is
+/// exactly the kind of stale-cache haunting that makes verification results
+/// flip between runs. A new binary now always means a fresh cache namespace.
+fn wrapper_fingerprint() -> u64 {
+    use std::sync::OnceLock;
+    static FP: OnceLock<u64> = OnceLock::new();
+    *FP.get_or_init(|| {
+        let Ok(exe) = env::current_exe() else {
+            return 0;
+        };
+        let Ok(meta) = fs::metadata(&exe) else {
+            return 0;
+        };
+        let mtime = meta
+            .modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0);
+        meta.len() ^ mtime
+    })
+}
+
+/// FNV-1a 64-bit hash of the lowering-version string, the wrapper binary's
+/// fingerprint, and the source bytes. Fast, no deps, deterministic per
+/// wrapper build.
 pub fn source_cache_key(source: &str) -> u64 {
     const FNV_OFFSET: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
     let mut hash = FNV_OFFSET;
-    for byte in LOWERING_VERSION.bytes().chain(source.bytes()) {
+    for byte in LOWERING_VERSION
+        .bytes()
+        .chain(wrapper_fingerprint().to_le_bytes())
+        .chain(source.bytes())
+    {
         hash ^= byte as u64;
         hash = hash.wrapping_mul(FNV_PRIME);
     }
@@ -240,47 +271,76 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
         .context("input path has no file name")?;
 
     let cache_key = source_cache_key(&source);
-    let cache_dir = env::temp_dir()
-        .join("trust-cache")
-        .join(format!("{cache_key:016x}"));
+    let cache_root = env::temp_dir().join("trust-cache");
+    let cache_dir = cache_root.join(format!("{cache_key:016x}"));
     let cached_file = cache_dir.join(file_name);
 
-    if !cached_file.exists() {
-        let src_dir = input_path
-            .parent()
-            .filter(|p| !p.as_os_str().is_empty())
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| PathBuf::from("."));
+    // RT-86: the cache directory's EXISTENCE is the validity marker, so it
+    // must appear atomically. A failed mirror used to leave a partial dir
+    // behind, and the old per-file `cached_file.exists()` check then treated
+    // it as complete on the next run — phantom passes/failures that flip
+    // depending on which run came first. Populate a private staging dir and
+    // rename it into place only after every file lowered clean.
+    if !cache_dir.exists() {
+        let staging = cache_root.join(format!(".staging-{cache_key:016x}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&staging);
 
-        // RT-40: pre-scan the whole `src/` tree for `fn` definitions so
-        // cross-file named-arg call sites resolve. The wrapper is the
-        // first place that has a crate-wide view; individual `lower()`
-        // calls only see one file at a time.
-        let crate_extras = collect_crate_callees(&src_dir);
+        let result = (|| -> Result<()> {
+            let src_dir = input_path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(Path::to_path_buf)
+                .unwrap_or_else(|| PathBuf::from("."));
 
-        // RT-66: seed the registry with the public-fn signatures of
-        // dependencies, discovered from the `TRUST_SIGNATURE_PATH`
-        // manifests (`trust index <dep> -o …` produces them). This is what
-        // lets R0042 fire — and named args reorder — on a positional swap
-        // into a *third-party* crate, the dialect's last coverage gap.
-        // `merge` drops any name that conflicts between the crate and a
-        // dependency, so a shadowed name degrades to the positional
-        // fallback rather than a wrong reorder.
-        let dep_extras = trust_lower::sig_index::load_from_env();
-        let extras = trust_lower::sig_index::merge(&[crate_extras, dep_extras]);
+            // RT-40: pre-scan the whole `src/` tree for `fn` definitions so
+            // cross-file named-arg call sites resolve. The wrapper is the
+            // first place that has a crate-wide view; individual `lower()`
+            // calls only see one file at a time.
+            let crate_extras = collect_crate_callees(&src_dir);
 
-        let mut visited = std::collections::HashSet::new();
-        mirror_module_tree_with_extras(&src_dir, &cache_dir, &mut visited, &extras)
-            .with_context(|| format!("mirroring src tree from {}", src_dir.display()))?;
+            // RT-66: seed the registry with the public-fn signatures of
+            // dependencies, discovered from the `TRUST_SIGNATURE_PATH`
+            // manifests (`trust index <dep> -o …` produces them). This is
+            // what lets R0042 fire — and named args reorder — on a
+            // positional swap into a *third-party* crate. `merge` drops any
+            // name that conflicts between the crate and a dependency, so a
+            // shadowed name degrades to the positional fallback rather than
+            // a wrong reorder.
+            let dep_extras = trust_lower::sig_index::load_from_env();
+            let extras = trust_lower::sig_index::merge(&[crate_extras, dep_extras]);
 
-        // Defensive: if the src_dir traversal somehow didn't write the
-        // crate root (e.g. empty dir), do it directly.
-        if !cached_file.exists() {
-            let out = trust_lower::lower_with_extra_callees_forced(&source, &extras, force_strict)
-                .with_context(|| format!("lowering {}", input_path.display()))?;
-            emit_diagnostics(&out, &source, input_path)?;
-            fs::create_dir_all(&cache_dir)?;
-            fs::write(&cached_file, &out.source)?;
+            let mut visited = std::collections::HashSet::new();
+            mirror_module_tree_with_extras(&src_dir, &staging, &mut visited, &extras)
+                .with_context(|| format!("mirroring src tree from {}", src_dir.display()))?;
+
+            // Defensive: if the src_dir traversal somehow didn't write the
+            // crate root (e.g. empty dir), do it directly.
+            if !staging.join(file_name).exists() {
+                let out =
+                    trust_lower::lower_with_extra_callees_forced(&source, &extras, force_strict)
+                        .with_context(|| format!("lowering {}", input_path.display()))?;
+                emit_diagnostics(&out, &source, input_path)?;
+                fs::create_dir_all(&staging)?;
+                fs::write(staging.join(file_name), &out.source)?;
+            }
+            Ok(())
+        })();
+
+        if let Err(e) = result {
+            let _ = fs::remove_dir_all(&staging);
+            return Err(e);
+        }
+
+        // Atomic publish. If another process won the race, its complete dir
+        // is just as good — discard ours.
+        if fs::rename(&staging, &cache_dir).is_err() {
+            let _ = fs::remove_dir_all(&staging);
+            if !cache_dir.exists() {
+                bail!(
+                    "could not publish lowering cache at {}",
+                    cache_dir.display()
+                );
+            }
         }
     }
 
