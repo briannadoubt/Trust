@@ -1059,6 +1059,7 @@ dependencies = [
  "proc-macro2",
  "syn",
  "trust-diag",
+ "trust-lower",
 ]
 
 [[package]]

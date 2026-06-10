@@ -718,38 +718,65 @@ fn split_by_top_comma(tokens: TokenStream) -> Vec<TokenStream> {
     // must NOT split the surrounding arg/param list. RT-39: without this,
     // a param like `map: &mut HashMap<K, V>` was split into two segments at
     // the comma between `K` and `V`, inflating reported arity. We only
-    // count `<`/`>` when they appear as `Alone`-spacing punct, to avoid
+    // count `<`/`>` when context says they're generic brackets, to avoid
     // tangling with operators like `<<`, `<=`, `->`, `=>`. This is heuristic
     // but matches every well-formed Rust signature.
+    //
+    // RT-90: spacing alone is NOT a safe classifier. A closing `>` that is
+    // immediately followed by `,` (e.g. `Vec<(String, FileType)>,`) lexes as
+    // Joint, so an `Alone`-only rule never closes the generic and every
+    // parameter after it merges into the previous segment — the registry
+    // silently lost trailing params, and named calls then failed R3001
+    // against the truncated signature (tre-strict's format_file). A `>`
+    // therefore closes whenever a generic is open, unless it is the second
+    // half of `->`/`=>` (tracked via the preceding punct); a `<` opens when
+    // spaced Alone or chained directly into another `<` (`Foo<<T as X>::Y>`).
     let mut angle_depth: i32 = 0;
-    for tree in trees {
+    let mut prev_arrow_head = false; // previous token was Joint '-' or '='
+    for i in 0..trees.len() {
+        let tree = trees[i].clone();
+        let arrow_head_now = matches!(
+            &tree,
+            TokenTree::Punct(p)
+                if (p.as_char() == '-' || p.as_char() == '=') && p.spacing() == Spacing::Joint
+        );
         if let TokenTree::Punct(p) = &tree {
             match p.as_char() {
                 '|' => {
                     in_closure_params = !in_closure_params;
                     current.push(tree);
+                    prev_arrow_head = false;
                     continue;
                 }
-                '<' if p.spacing() == Spacing::Alone => {
+                '<' if p.spacing() == Spacing::Alone
+                    || matches!(
+                        trees.get(i + 1),
+                        Some(TokenTree::Punct(n)) if n.as_char() == '<'
+                    ) =>
+                {
                     angle_depth += 1;
                     current.push(tree);
+                    prev_arrow_head = false;
                     continue;
                 }
-                '>' if p.spacing() == Spacing::Alone && angle_depth > 0 => {
+                '>' if angle_depth > 0 && !prev_arrow_head => {
                     angle_depth -= 1;
                     current.push(tree);
+                    prev_arrow_head = false;
                     continue;
                 }
                 ',' if !in_closure_params && angle_depth == 0 => {
                     if !current.is_empty() {
                         segments.push(std::mem::take(&mut current));
                     }
+                    prev_arrow_head = false;
                     continue;
                 }
                 _ => {}
             }
         }
         current.push(tree);
+        prev_arrow_head = arrow_head_now;
     }
     if !current.is_empty() {
         segments.push(current);
@@ -921,6 +948,55 @@ mod tests {
         assert!(
             !diags.iter().any(|d| d.rule == "R0042"),
             "named call must not fire R0042: {diags:?}"
+        );
+    }
+
+    // RT-90: a `>` immediately followed by `,` lexes as Joint; the splitter
+    // must still close the generic, or every param after it merges into the
+    // previous segment and the registry silently drops trailing params.
+    #[test]
+    fn params_after_generic_with_tuple_survive() {
+        let src = "fn format_paths(root_path: &str, children: Vec<(String, u32)>, style: u8) {}\n\
+                   fn main() { format_paths(root_path: \"r\", children: vec![], style: 1); }";
+        let tokens: TokenStream = src.parse().unwrap();
+        let reg = CalleeRegistry::collect(&tokens);
+        assert_eq!(
+            reg.fns.get("format_paths"),
+            Some(&vec![
+                "root_path".to_string(),
+                "children".to_string(),
+                "style".to_string()
+            ]),
+            "trailing param after Vec<(..)> must register"
+        );
+        let (_out, diags) = lower_strict(src);
+        assert!(
+            !diags.iter().any(|d| d.rule == "R3001"),
+            "named call must validate against the full signature: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn params_after_nested_generics_survive() {
+        let src = "fn f(grid: Vec<Vec<u8>>, label: &str) {}";
+        let tokens: TokenStream = src.parse().unwrap();
+        let reg = CalleeRegistry::collect(&tokens);
+        assert_eq!(
+            reg.fns.get("f"),
+            Some(&vec!["grid".to_string(), "label".to_string()]),
+            "param after Vec<Vec<u8>> must register"
+        );
+    }
+
+    #[test]
+    fn params_after_fn_trait_arrow_in_generics_survive() {
+        let src = "fn g(h: Box<dyn Fn(u32) -> u32>, tag: u8) {}";
+        let tokens: TokenStream = src.parse().unwrap();
+        let reg = CalleeRegistry::collect(&tokens);
+        assert_eq!(
+            reg.fns.get("g"),
+            Some(&vec!["h".to_string(), "tag".to_string()]),
+            "the arrow's '>' must not close the generic early"
         );
     }
 
