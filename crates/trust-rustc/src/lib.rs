@@ -522,8 +522,60 @@ fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
+/// Does a `cfg(...)` argument list make the item test-only — i.e. is `test`
+/// present as a POSITIVE predicate? `test` and `all(unix, test)` qualify;
+/// `not(test)` and `all(unix, not(test))` do not (those select NON-test
+/// builds, so exempting them would skip lowering/linting in production
+/// compiles — PR #1 review finding). `not(...)` subtrees are never recursed
+/// into; `any(...)`/`all(...)` are.
+fn cfg_args_positively_test(tokens: &proc_macro2::TokenStream) -> bool {
+    use proc_macro2::{Delimiter, TokenTree};
+    let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
+    let mut i = 0;
+    while i < trees.len() {
+        match &trees[i] {
+            TokenTree::Ident(id) if *id == "not" => {
+                // Skip the negated group entirely.
+                if matches!(trees.get(i + 1), Some(TokenTree::Group(g)) if g.delimiter() == Delimiter::Parenthesis)
+                {
+                    i += 2;
+                    continue;
+                }
+                i += 1;
+            }
+            TokenTree::Ident(id) if *id == "any" || *id == "all" => {
+                if let Some(TokenTree::Group(g)) = trees.get(i + 1) {
+                    if g.delimiter() == Delimiter::Parenthesis
+                        && cfg_args_positively_test(&g.stream())
+                    {
+                        return true;
+                    }
+                    i += 2;
+                    continue;
+                }
+                i += 1;
+            }
+            // Bare `test` predicate — not the LHS of `name = "value"` (the
+            // RHS of those is a Literal, so an Ident named test here is the
+            // predicate form).
+            TokenTree::Ident(id) if *id == "test" => {
+                let followed_by_eq = matches!(
+                    trees.get(i + 1),
+                    Some(TokenTree::Punct(p)) if p.as_char() == '='
+                );
+                if !followed_by_eq {
+                    return true;
+                }
+                i += 1;
+            }
+            _ => i += 1,
+        }
+    }
+    false
+}
+
 /// Top-level `mod NAME ;` declarations in a token stream, with whether the
-/// directly-preceding attribute run contains `#[cfg(test)]`.
+/// directly-preceding attribute run contains a positively-`test` cfg.
 fn file_mod_declarations(tokens: &proc_macro2::TokenStream) -> Vec<(String, bool)> {
     use proc_macro2::{Delimiter, TokenTree};
     let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
@@ -539,11 +591,7 @@ fn file_mod_declarations(tokens: &proc_macro2::TokenStream) -> Vec<(String, bool
                         let inner: Vec<TokenTree> = g.stream().into_iter().collect();
                         if let [TokenTree::Ident(name), TokenTree::Group(args)] = inner.as_slice() {
                             if *name == "cfg" {
-                                let is_test = args
-                                    .stream()
-                                    .into_iter()
-                                    .any(|t| matches!(t, TokenTree::Ident(id) if id == "test"));
-                                pending_cfg_test |= is_test;
+                                pending_cfg_test |= cfg_args_positively_test(&args.stream());
                             }
                         }
                         i += 2;
@@ -1035,6 +1083,53 @@ mod tests {
         assert!(has("helpers.rs"), "transitively reached through tests.rs");
         assert!(!has("shipping.rs"), "normal mod stays enforced");
         assert!(!has("main.rs"), "the crate root is never test-only");
+
+        let _ = fs::remove_dir_all(&base);
+    }
+
+    /// PR #1 review regression: `#[cfg(not(test))]` (and other negated test
+    /// predicates) select PRODUCTION builds and must never be exempted from
+    /// force-strict; positive `test` predicates (bare or inside any/all) are.
+    #[test]
+    fn negated_test_cfgs_are_not_test_only() {
+        let base = std::env::temp_dir().join(format!("trust-pr1-{}", std::process::id()));
+        let src = base.join("src");
+        let _ = fs::remove_dir_all(&base);
+        fs::create_dir_all(&src).unwrap();
+        fs::write(
+            src.join("main.rs"),
+            "#[cfg(not(test))]\nmod prod;\n\
+             #[cfg(all(unix, not(test)))]\nmod prod_unix;\n\
+             #[cfg(all(unix, test))]\nmod unix_tests;\n\
+             #[cfg(test)]\nmod tests;\n\
+             #[cfg(feature = \"test\")]\nmod feature_named_test;\n\
+             fn main() {}\n",
+        )
+        .unwrap();
+        for name in [
+            "prod.rs",
+            "prod_unix.rs",
+            "unix_tests.rs",
+            "tests.rs",
+            "feature_named_test.rs",
+        ] {
+            fs::write(src.join(name), "pub fn x() {}\n").unwrap();
+        }
+
+        let test_only = collect_test_only_files(&src);
+        let has = |name: &str| {
+            test_only
+                .iter()
+                .any(|p| p.file_name().and_then(|f| f.to_str()) == Some(name))
+        };
+        assert!(!has("prod.rs"), "cfg(not(test)) is a production module");
+        assert!(!has("prod_unix.rs"), "all(unix, not(test)) is production");
+        assert!(has("unix_tests.rs"), "all(unix, test) is test-only");
+        assert!(has("tests.rs"), "plain cfg(test) is test-only");
+        assert!(
+            !has("feature_named_test.rs"),
+            "feature = \"test\" is a feature gate, not the test predicate"
+        );
 
         let _ = fs::remove_dir_all(&base);
     }
