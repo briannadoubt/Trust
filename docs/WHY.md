@@ -202,16 +202,59 @@ two syntax extensions are in [SPEC.md](SPEC.md). The
 phase-by-phase rationale for each individual rule is in
 [RATIONALE.md](RATIONALE.md).
 
+## Compared to the neighbors
+
+Trust is not the first "stricter dialect of a language people already
+use." The playbook has shipped at scale three times, and the comparison
+sharpens what Trust is and is not.
+
+**TypeScript over JavaScript** is the closest structural match: a strict
+layer that compiles down to the host language, adoptable file-by-file,
+with the promise that you can stop using it and keep the output.
+TypeScript's bet was that *humans* writing JavaScript needed types to
+scale teams. Trust's bet is that *agents* writing Rust need call-site
+explicitness to ship correct code on the first try — the type system is
+already there; what's missing is syntax that makes argument order
+checkable. Same shape, different missing piece.
+
+**Sorbet over Ruby** and **mypy over Python** retrofitted gradual typing
+onto dynamic languages, and both paid a heavy tax: annotations live in a
+parallel universe (sigs, stubs, `# type:` comments) that drifts from the
+code it describes. Trust deliberately avoids the parallel-universe trap —
+named arguments are *in* the call site, the lints read the real source,
+and the lowered output is plain Rust with no annotations to drift. The
+cost of that choice is a wrapper in the build; the benefit is that
+nothing can go stale.
+
+**Clippy** is the neighbor people ask about first, and the boundary is
+precise: most strict lints have Clippy analogues, and if the lints were
+the whole story Trust would not need to exist. The one thing Clippy
+structurally cannot do is catch a same-typed positional-argument swap —
+`make_rect(height, width)` against `make_rect(width: u32, height: u32)`
+is type-correct, so no analysis of the *existing* syntax can flag it.
+The fix requires syntax Rust doesn't have: names at the call site. That
+is the moat; the lints are the supporting cast, tuned for teaching
+errors (every diagnostic carries `why:` and `instead:`) rather than
+maximal coverage.
+
+**rust-analyzer's inlay hints** show parameter names in the editor,
+which solves the *reading* problem for humans. They do nothing for the
+*writing* problem: an agent emitting tokens never sees the hints, and a
+reviewer scanning a diff outside the IDE doesn't either. Trust puts the
+names in the source, where both the agent and the checker can act on
+them.
+
 ## When not to use it
 
 - **Single-author projects with no LLM contribution.** The dialect's
   whole reason to exist is to catch agent-authoring mistakes. A human
   writing Rust alone gets the cost (verbosity, activation, wrapper)
   without the benefit.
-- **Teams that cannot tolerate `RUSTC_WRAPPER` in their build.** The
-  wrapper is how the syntax extensions reach `rustc`. If your CI,
-  vendor builds, or distro packaging cannot set the environment
-  variable, you get the lints but not named arguments or pipe.
+- **Teams that cannot tolerate a compiler wrapper in their build.**
+  `cargo trust` is how the syntax extensions reach `rustc` (it sets
+  `RUSTC_WRAPPER`/`RUSTDOC` internally). If your CI, vendor builds, or
+  distro packaging cannot route through it, you get the lints but not
+  named arguments or pipe.
 - **Performance-sensitive hot paths that audit every line.** Lowering
   is source-to-source with no runtime cost — the extra dispatch claim
   is not real. But if your team's bar is "every line is reviewed by a
