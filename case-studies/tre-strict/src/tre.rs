@@ -10,6 +10,8 @@ use regex::Regex;
 #[derive(Debug, Clone)]
 pub enum Mode {
     FollowGitIgnore,
+    // reason: vendored upstream variant — kept to match tre v0.4.0's
+    // public surface even though this build configuration never constructs it.
     #[allow(dead_code)]
     ExcludeHiddenFiles,
     ShowAllFiles,

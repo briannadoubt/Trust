@@ -61,7 +61,7 @@ pub struct AsShoutySnakeCase<T: AsRef<str>>(pub T);
 
 impl<T: AsRef<str>> fmt::Display for AsShoutySnakeCase<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        transform(self.0.as_ref(), uppercase, |f| write!(f, "_"), f)
+        transform(s: self.0.as_ref(), with_word: uppercase, boundary: |f| write!(f, "_"), f: f)
     }
 }
 
