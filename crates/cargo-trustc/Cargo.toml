@@ -1,6 +1,6 @@
 [package]
-name = "cargo-trust"
-description = "Cargo subcommand wrapper for the Trust toolchain"
+name = "cargo-trustc"
+description = "Cargo subcommand for the Trust toolchain — `cargo trustc build/run/test` with the lowering shims wired in"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -11,7 +11,7 @@ keywords = ["trust", "strict", "cargo-plugin", "cli", "rust"]
 categories = ["development-tools::cargo-plugins", "command-line-utilities"]
 
 [[bin]]
-name = "cargo-trust"
+name = "cargo-trustc"
 path = "src/main.rs"
 
 [dependencies]

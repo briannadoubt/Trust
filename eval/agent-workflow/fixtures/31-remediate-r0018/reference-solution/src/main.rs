@@ -1,6 +1,6 @@
 //! REFERENCE SOLUTION — never shown to the agent. The closure now carries
 //! the source `ParseIntError` (`.map_err(|err| …)` per the R0018 `instead:`
-//! guidance), so `cargo trust build` is green.
+//! guidance), so `cargo trustc build` is green.
 
 use std::fmt;
 

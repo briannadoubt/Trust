@@ -23,7 +23,7 @@ crates/
   trust-diag/         # Diagnostic shape + ariadne renderer
   trust-lsp/          # tower-lsp stub (Phase 5)
   trust-std/          # named-arg-friendly std shims
-  cargo-trust/        # `cargo trust` subcommand wrapper
+  cargo-trustc/        # `cargo trustc` subcommand wrapper
 examples/
   00-hello.rs              # the round-trip smoke test
 tests/                     # (planned: ui/, snapshots/, golden/)
@@ -33,11 +33,11 @@ docs/
   AGENTS.md                # this file
 ```
 
-`cargo-trust` is a one-file binary that strips the `trust` argv prefix cargo
+`cargo-trustc` is a one-file binary that strips the `trust` argv prefix cargo
 prepends, then either runs `cargo` with the `trust-rustc`/`trust-rustdoc` shims
 wired in (for `build`/`run`/`test`/… — so users need no `RUSTC_WRAPPER` env
 setup) or forwards the rest to the `trust` CLI (for `lower`/`explain`/…). See
-SPEC.md § `cargo trust`. You will rarely need to touch it.
+SPEC.md § `cargo trustc`. You will rarely need to touch it.
 
 Examples and tests live at the workspace root, not per-crate, on purpose:
 they exercise the full pipeline.
@@ -129,10 +129,10 @@ rules: imperative verb, no jargon, explain the fix in concrete code.
 ```sh
 cargo test --workspace
 cargo clippy --workspace --all-targets -- -D warnings
-cargo run -p trust -- build examples/00-hello.rs --out /tmp/hello && /tmp/hello
-cargo run -p trust -- build examples/02-pipe/chain.rs   # (Phase 2)
-cargo run -p trust -- check examples/01-lints/unwrap.rs # (Phase 1)
-cargo run -p trust -- lower examples/03-named-args/swap.rs # (Phase 3)
+cargo run -p trust-lang -- build examples/00-hello.rs --out /tmp/hello && /tmp/hello
+cargo run -p trust-lang -- build examples/02-pipe/chain.rs   # (Phase 2)
+cargo run -p trust-lang -- check examples/01-lints/unwrap.rs # (Phase 1)
+cargo run -p trust-lang -- lower examples/03-named-args/swap.rs # (Phase 3)
 ```
 
 CI runs the first two plus a round-trip of `examples/00-hello.rs`. See

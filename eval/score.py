@@ -11,7 +11,7 @@ The `trust` condition needs a *release* `trust` binary. Because the
 compiles under the lowering wrapper. Build it once with:
 
     cargo build -p trust-rustc
-    RUSTC_WRAPPER="$(pwd)/target/debug/trust-rustc" cargo build --release -p trust
+    RUSTC_WRAPPER="$(pwd)/target/debug/trust-rustc" cargo build --release -p trust-lang
 
 If the binary is missing, this script refuses to run rather than
 silently scoring every trust file as caught=✗ (the RT-53 bug, which
@@ -74,7 +74,7 @@ def ensure_trust_binary(*, build: bool) -> Path:
         "  Build it once:\n"
         "    cargo build -p trust-rustc\n"
         '    RUSTC_WRAPPER="$(pwd)/target/debug/trust-rustc" '
-        "cargo build --release -p trust\n\n"
+        "cargo build --release -p trust-lang\n\n"
         "  ...or re-run this script with --build to do that automatically,\n"
         "  or set TRUST_BIN to point at an existing binary.",
         file=sys.stderr,

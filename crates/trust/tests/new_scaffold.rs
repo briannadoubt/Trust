@@ -34,8 +34,8 @@ fn scaffold_creates_strict_project() {
         "expected `trust new demo` to succeed; stderr:\n{stderr}"
     );
     assert!(
-        stderr.contains("cargo trust run"),
-        "success message should point at `cargo trust run`, got:\n{stderr}"
+        stderr.contains("cargo trustc run"),
+        "success message should point at `cargo trustc run`, got:\n{stderr}"
     );
 
     let root = tmp.path().join("demo");
@@ -74,14 +74,14 @@ fn scaffold_creates_strict_project() {
 
     let readme = std::fs::read_to_string(root.join("README.md")).unwrap();
     assert!(
-        readme.contains("cargo trust build") && readme.contains("cargo trust run"),
-        "README must use the cargo trust commands:\n{readme}"
+        readme.contains("cargo trustc build") && readme.contains("cargo trustc run"),
+        "README must use the cargo trustc commands:\n{readme}"
     );
 
     let claude_md = std::fs::read_to_string(root.join("CLAUDE.md")).unwrap();
     assert!(
-        claude_md.contains("cargo trust build"),
-        "CLAUDE.md must mention `cargo trust build`:\n{claude_md}"
+        claude_md.contains("cargo trustc build"),
+        "CLAUDE.md must mention `cargo trustc build`:\n{claude_md}"
     );
 }
 

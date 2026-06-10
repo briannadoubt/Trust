@@ -17,12 +17,12 @@ Extends the single-file completion eval (../README.md) along two axes:
 | Tasks | Category | What a trial is | Scored by |
 |-------|----------|-----------------|-----------|
 | `30-setup-logstat` | setup | Convert a plain-Rust fixture crate to Trust (metadata key, fix violations, build green) | `score_agent.py` |
-| `31…34-remediate-r00XX` | remediation | Fix a crate that fails `cargo trust build` with exactly R0018/19/20/21 | `score_agent.py` |
+| `31…34-remediate-r00XX` | remediation | Fix a crate that fails `cargo trustc build` with exactly R0018/19/20/21 | `score_agent.py` |
 | `16-frame-parse`, `17-async-cache` | authoring | Greenfield single-file program whose natural solution tempts R0019 / R0020 | existing `../score.py` (shipped/caught) |
 
 Setup and remediation tasks live in `tasks.toml` here (same `[[task]]` +
 `bug`/`good` regex shape as `../tasks.toml`); a trial is a short agent
-session driven by `run_agent_eval.py`: propose files → `cargo trust build` →
+session driven by `run_agent_eval.py`: propose files → `cargo trustc build` →
 read diagnostics → repeat, up to `--rounds` (default 3).
 
 Authoring tasks live in `../tasks.toml` (ids `16-frame-parse`,
@@ -31,7 +31,7 @@ Authoring tasks live in `../tasks.toml` (ids `16-frame-parse`,
 
 Pass criteria:
 
-- **remediation** — `cargo trust build` green ∧ the anti-pattern regex is
+- **remediation** — `cargo trustc build` green ∧ the anti-pattern regex is
   gone ∧ the fix idiom regex is present (e.g. no `map_err(|_|`, a
   `checked_`/`saturating_` call, guard scoped or tokio lock, `.len()` as the
   bound instead of `.capacity()`).
@@ -53,7 +53,7 @@ One-time toolchain build (the runner and scorer refuse to start without it,
 mirroring `../score.py`'s RT-53 guard):
 
 ```sh
-cargo build -p trust -p cargo-trust -p trust-rustc -p trust-rustdoc
+cargo build -p trust-lang -p cargo-trustc -p trust-rustc -p trust-rustdoc
 ```
 
 API keys: `OPENAI_API_KEY` for `--provider openai`, `GOOGLE_API_KEY` for
@@ -121,8 +121,8 @@ and `/tmp/trust-cache` between builds; grep R-codes with `R[0-9]{4}`):
 
 | Fixture | Broken state | Reference solution |
 |---------|--------------|--------------------|
-| `30-setup-logstat` | plain `cargo build` green (exit 0) | `cargo trust build` green; plain `cargo build` fails (exit 101) — named args kept |
-| `31-remediate-r0018` | `cargo trust build` fails, exactly 1×R0018 | green |
+| `30-setup-logstat` | plain `cargo build` green (exit 0) | `cargo trustc build` green; plain `cargo build` fails (exit 101) — named args kept |
+| `31-remediate-r0018` | `cargo trustc build` fails, exactly 1×R0018 | green |
 | `32-remediate-r0019` | fails, exactly 1×R0019 | green |
 | `33-remediate-r0020` | fails, exactly 1×R0020 | green |
 | `34-remediate-r0021` | fails, exactly 1×R0021 | green |

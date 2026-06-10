@@ -150,7 +150,7 @@ pub fn promote_named_args(source: &str, extras: &[(String, Vec<String>)]) -> Res
 /// trust` — for cargo crates, which strips it during lowering).
 ///
 /// Whole crates can skip the marker entirely and opt in at the project level
-/// via `[package.metadata.trust] strict = true` — see `cargo-trust`, which
+/// via `[package.metadata.trust] strict = true` — see `cargo-trustc`, which
 /// threads that through `lower_with_extra_callees_forced`.
 ///
 /// Detection runs at the token level so it works on the *original* Trust

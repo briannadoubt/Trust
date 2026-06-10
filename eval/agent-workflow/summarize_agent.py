@@ -41,7 +41,7 @@ lines: list[str] = []
 lines.append(f"# Trust agent-workflow eval — run {sys.argv[1]}")
 lines.append("")
 lines.append(
-    "*Green* — `cargo trust build` exits 0 on the final work tree. "
+    "*Green* — `cargo trustc build` exits 0 on the final work tree. "
     "*Anti-pattern gone* — the task's bug regex no longer matches. "
     "*Passed* — green ∧ anti-pattern gone ∧ fix idiom present "
     "(setup additionally: metadata key, no per-file markers, plain cargo still fails). "

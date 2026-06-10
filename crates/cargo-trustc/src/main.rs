@@ -1,4 +1,4 @@
-//! `cargo-trust` — the cargo bridge for the Trust toolchain.
+//! `cargo-trustc` — the cargo bridge for the Trust toolchain.
 //!
 //! Two responsibilities, dispatched on the first argument:
 //!
@@ -10,20 +10,20 @@
 //!    command and **zero environment setup** —
 //!
 //!    ```sh
-//!    cargo trust build      # == RUSTC_WRAPPER=… RUSTDOC=… cargo build
-//!    cargo trust run
-//!    cargo trust test
+//!    cargo trustc build      # == RUSTC_WRAPPER=… RUSTDOC=… cargo build
+//!    cargo trustc run
+//!    cargo trustc test
 //!    ```
 //!
 //!    replaces the old multi-step `export RUSTC_WRAPPER=$(realpath …)` dance.
 //!
 //! 2. **Trust-native helpers** (`lower`, `index`, `fix`, `explain`, and any
 //!    other non-cargo subcommand): forwarded verbatim to the `trust` CLI,
-//!    preserving `cargo trust lower foo.rs`, `cargo trust explain R0042`, etc.
+//!    preserving `cargo trustc lower foo.rs`, `cargo trustc explain R0042`, etc.
 //!
 //! ## Disambiguation: `check`
 //!
-//! `check` exists in both worlds. Under `cargo trust` it means **`cargo
+//! `check` exists in both worlds. Under `cargo trustc` it means **`cargo
 //! check`** (whole-crate, project mode) — that is the useful thing in a cargo
 //! workspace. For a single-file lint, call the `trust` CLI directly: `trust
 //! check foo.rs`.
@@ -32,7 +32,7 @@
 //!
 //! In priority order:
 //!   1. `TRUST_RUSTC` / `TRUST_RUSTDOC` env overrides, if set.
-//!   2. A sibling of *this* binary (`cargo-trust`). Covers both a
+//!   2. A sibling of *this* binary (`cargo-trustc`). Covers both a
 //!      `cargo install`ed layout (all three land in `~/.cargo/bin`) and a dev
 //!      checkout (`target/debug/`).
 //!   3. A `PATH` lookup.
@@ -58,15 +58,15 @@ fn main() -> ExitCode {
     match run() {
         Ok(code) => ExitCode::from(u8::try_from(code & 0xff).unwrap_or(1)),
         Err(e) => {
-            eprintln!("cargo-trust: {e:#}");
+            eprintln!("cargo-trustc: {e:#}");
             ExitCode::FAILURE
         }
     }
 }
 
 fn run() -> Result<i32> {
-    // When invoked as `cargo trust <args>`, cargo passes argv as
-    // `cargo-trust trust <args>`. Strip our own name (`args().skip(1)`) and the
+    // When invoked as `cargo trustc <args>`, cargo passes argv as
+    // `cargo-trustc trust <args>`. Strip our own name (`args().skip(1)`) and the
     // literal `trust` cargo prepends.
     let rest = strip_trust_prefix(env::args().skip(1).collect());
 
@@ -80,11 +80,11 @@ fn run() -> Result<i32> {
     }
 }
 
-/// Drop the literal `trust` token cargo prepends when invoked as a subcommand.
-/// Idempotent for direct `cargo-trust <args>` invocations (no leading `trust`).
+/// Drop the literal `trustc` token cargo prepends when invoked as a subcommand.
+/// Idempotent for direct `cargo-trustc <args>` invocations (no leading `trust`).
 fn strip_trust_prefix(argv: Vec<String>) -> Vec<String> {
     match argv.split_first() {
-        Some((first, rest)) if first == "trust" => rest.to_vec(),
+        Some((first, rest)) if first == "trustc" => rest.to_vec(),
         _ => argv,
     }
 }
@@ -387,15 +387,15 @@ fn locate_shim(bin: &str, env_override: &str) -> Result<PathBuf> {
     }
     bail!(
         "could not find the `{bin}` shim.\n\
-         Looked next to `cargo-trust` and on PATH. Fix by either:\n  \
-         • installing it alongside cargo-trust (`cargo install --path crates/{bin}`), or\n  \
+         Looked next to `cargo-trustc` and on PATH. Fix by either:\n  \
+         • installing it alongside cargo-trustc (`cargo install --path crates/{bin}`), or\n  \
          • pointing {env_override} at the binary (e.g. \
          `{env_override}=$(realpath target/debug/{bin})`)."
     )
 }
 
 /// Look for `bin` (with the platform executable extension) in the same
-/// directory as the currently-running `cargo-trust` binary.
+/// directory as the currently-running `cargo-trustc` binary.
 fn sibling_of_self(bin: &str) -> Option<PathBuf> {
     let me = env::current_exe().ok()?;
     let dir = me.parent()?;
@@ -428,18 +428,18 @@ fn is_executable_file(p: &Path) -> bool {
 
 fn print_usage() {
     eprintln!(
-        "cargo-trust — the cargo bridge for the Trust toolchain\n\
+        "cargo-trustc — the cargo bridge for the Trust toolchain\n\
          \n\
          USAGE:\n  \
-         cargo trust <command> [args...]\n\
+         cargo trustc <command> [args...]\n\
          \n\
          CARGO COMMANDS (run with Trust lowering wired in automatically):\n  \
          build, run, test, check, clippy, doc, bench, install\n  \
-         e.g.  cargo trust build      # == RUSTC_WRAPPER/RUSTDOC set, then cargo build\n\
+         e.g.  cargo trustc build      # == RUSTC_WRAPPER/RUSTDOC set, then cargo build\n\
          \n\
          TRUST HELPERS (forwarded to the `trust` CLI):\n  \
          lower, index, fix, explain, …\n  \
-         e.g.  cargo trust explain R0042\n\
+         e.g.  cargo trustc explain R0042\n\
          \n\
          For a single-file lint, use the `trust` CLI directly: trust check foo.rs"
     );
@@ -455,26 +455,26 @@ mod tests {
 
     #[test]
     fn strips_cargo_prepended_trust_token() {
-        assert_eq!(strip_trust_prefix(v(&["trust", "build"])), v(&["build"]));
+        assert_eq!(strip_trust_prefix(v(&["trustc", "build"])), v(&["build"]));
         assert_eq!(
-            strip_trust_prefix(v(&["trust", "explain", "R0042"])),
+            strip_trust_prefix(v(&["trustc", "explain", "R0042"])),
             v(&["explain", "R0042"])
         );
     }
 
     #[test]
     fn strip_is_idempotent_for_direct_invocation() {
-        // `cargo-trust build` (no cargo prefix) must not lose `build`.
+        // `cargo-trustc build` (no cargo prefix) must not lose `build`.
         assert_eq!(strip_trust_prefix(v(&["build"])), v(&["build"]));
         assert_eq!(strip_trust_prefix(v(&[])), v(&[]));
     }
 
     #[test]
     fn only_strips_a_leading_trust_not_a_later_one() {
-        // `cargo trust run trust` → after prefix strip, `run trust` is intact.
+        // `cargo trustc run trustc` → after prefix strip, `run trustc` is intact.
         assert_eq!(
-            strip_trust_prefix(v(&["trust", "run", "trust"])),
-            v(&["run", "trust"])
+            strip_trust_prefix(v(&["trustc", "run", "trustc"])),
+            v(&["run", "trustc"])
         );
     }
 
@@ -576,11 +576,11 @@ mod tests {
     }
 
     /// PR #1 review regression: a root-level [workspace.metadata.trust]
-    /// opt-in must apply when cargo trust is invoked from a MEMBER directory
+    /// opt-in must apply when cargo trustc is invoked from a MEMBER directory
     /// (whose manifest has no [workspace] table).
     #[test]
     fn workspace_opt_in_found_from_member_manifest() {
-        let base = std::env::temp_dir().join(format!("cargo-trust-pr1-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("cargo-trustc-pr1-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         std::fs::create_dir_all(base.join("m/src")).unwrap();
         std::fs::write(
@@ -634,7 +634,7 @@ mod tests {
     /// Build a throwaway workspace on disk: root manifest + one member per
     /// (name, strict) pair under `crates/`, listed via the `crates/*` glob.
     fn temp_workspace(tag: &str, root_extra: &str, members: &[(&str, bool)]) -> PathBuf {
-        let root = env::temp_dir().join(format!("cargo-trust-ws-{tag}-{}", std::process::id()));
+        let root = env::temp_dir().join(format!("cargo-trustc-ws-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         for (name, strict) in members {
             let dir = root.join("crates").join(name);

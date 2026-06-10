@@ -179,7 +179,7 @@ def process(label: str, files: list[Path]) -> dict:
 
 def main() -> None:
     workspace_roots = [
-        "/Users/bri/dev/One/crates/cargo-trust",
+        "/Users/bri/dev/One/crates/cargo-trustc",
         "/Users/bri/dev/One/crates/trust",
         "/Users/bri/dev/One/crates/trust-diag",
         "/Users/bri/dev/One/crates/trust-effects",

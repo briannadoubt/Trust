@@ -1,4 +1,4 @@
-# Eval fixture (RT-97 / RT-73 validation debt): fails `cargo trust build`
+# Eval fixture (RT-97 / RT-73 validation debt): fails `cargo trustc build`
 # with exactly R0020 (no-lock-across-await).
 
 # Standalone workspace — keep out of the main workspace (same pattern as

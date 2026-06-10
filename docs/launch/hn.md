@@ -28,7 +28,7 @@ Trust is a thin layer over stable Rust: two grammar extensions (named
 arguments past arity 1, a pipe operator) that lower to plain positional
 Rust before rustc sees the file, plus a strict lint set tuned for
 teaching errors. Setup is two steps: `strict = true` in Cargo.toml,
-`cargo trust build`. There is no custom compiler — stop using Trust
+`cargo trustc build`. There is no custom compiler — stop using Trust
 tomorrow and the lowered output still builds on stock rustc.
 
 The honest version of the eval claim (the repo says this too): of five
@@ -61,7 +61,7 @@ toward distinct types. Named arguments cover the long tail where a
 newtype per parameter is unergonomic (think `fs::rename(from, to)`).
 
 **"Is this a fork of rustc?"** No. Source-to-source lowering + stock
-rustc via a build wrapper that `cargo trust` manages for you. The
+rustc via a build wrapper that `cargo trustc` manages for you. The
 lowered output is plain Rust you could commit.
 
 **"What's the catch?"** Verbose call sites (that's the point), a

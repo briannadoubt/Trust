@@ -10,7 +10,7 @@ repository.workspace = true
 keywords = ["trust", "strict", "rust", "parser", "syntax"]
 categories = ["parser-implementations"]
 
-# Whole-crate strict dogfood: enforced when built via `cargo trust`
+# Whole-crate strict dogfood: enforced when built via `cargo trustc`
 # (or RUSTC_WRAPPER + TRUST_STRICT_PACKAGES); invisible to stock cargo.
 [package.metadata.trust]
 strict = true

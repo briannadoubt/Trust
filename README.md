@@ -10,19 +10,18 @@ those become compile errors with a fix in the message. In our eval, **60% of age
 in plain Rust; 0% shipped under Trust** — across four models from three
 vendors.
 
-```
-[badges: build · crates.io · license — added with the public push, RT-57/58]
-```
+[![CI](https://github.com/briannadoubt/Trust/actions/workflows/ci.yml/badge.svg)](https://github.com/briannadoubt/Trust/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/trust-lang.svg)](https://crates.io/crates/trust-lang)
+[![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 
 ## Install
 
 ```sh
-cargo install cargo-trust trust   # `cargo trust build/run/test` + the `trust` CLI
+cargo install trust-lang cargo-trustc   # the `trust` CLI + `cargo trustc build/run/test`
 ```
 
-> **0.1 is not on crates.io yet** (publishing is the last launch step, RT-58).
-> Until then, build from source — see [From source](#from-source) below. The
-> command above is what `cargo install` will look like the day 0.1 lands.
+(The crate is `trust-lang`; the binary it installs is `trust`. Building from
+source works too — see [From source](#from-source) below.)
 
 ## Use it in a project — two steps
 
@@ -33,10 +32,10 @@ strict = true
 ```
 
 ```sh
-cargo trust build    # also: run, test, check, clippy, doc, bench
+cargo trustc build    # also: run, test, check, clippy, doc, bench
 ```
 
-That's the whole setup. `cargo trust` wires the lowering shims into cargo
+That's the whole setup. `cargo trustc` wires the lowering shims into cargo
 itself — no environment variables, no per-file markers, no extra
 dependencies — and enforces the full rule set at build time: the syntax
 extensions lower, and every strict lint (`.unwrap()`, `as`-casts, positional
@@ -121,15 +120,15 @@ git clone https://github.com/briannadoubt/trust && cd trust
 cargo build --workspace
 cargo test --workspace
 
-cargo run -p trust -- build examples/00-hello.rs --out /tmp/hello && /tmp/hello
-cargo run -p trust -- check examples/01-lints/positional-fail.rs   # fails with R0042
+cargo run -p trust-lang -- build examples/00-hello.rs --out /tmp/hello && /tmp/hello
+cargo run -p trust-lang -- check examples/01-lints/positional-fail.rs   # fails with R0042
 
 # the two-step cargo flow, against this checkout:
-export PATH="$PWD/target/debug:$PATH"     # cargo-trust + shims
-(cd examples/cargo-strict-config && cargo trust run)   # zero markers, zero env vars
+export PATH="$PWD/target/debug:$PATH"     # cargo-trustc + shims
+(cd examples/cargo-strict-config && cargo trustc run)   # zero markers, zero env vars
 
 # or scaffold a fresh strict project in one command:
-cargo trust new demo && (cd demo && cargo trust run)
+cargo trustc new demo && (cd demo && cargo trustc run)
 ```
 
 The `check`, `build`, and `lower` subcommands accept `-` in place of a path to
@@ -142,19 +141,19 @@ printf '#![strict]\nfn main() { println!("hi"); }\n' | trust check -
 (`build -` additionally needs `--out PATH`, since there's no filename to derive
 the binary name from.)
 
-## How `cargo trust` works
+## How `cargo trustc` works
 
-`cargo trust build` is exactly `cargo build` with `RUSTC_WRAPPER` and
+`cargo trustc build` is exactly `cargo build` with `RUSTC_WRAPPER` and
 `RUSTDOC` pointed at two thin shims (`trust-rustc`, `trust-rustdoc`) that
 lower each strict file to plain positional Rust — and run the lints — before
 the real compiler sees it. `RUSTDOC` matters because rustdoc ignores
 `RUSTC_WRAPPER`; without the second shim, doc-tests using named-arg syntax
-would fail to parse under `cargo trust test --doc`. There is no custom
+would fail to parse under `cargo trustc test --doc`. There is no custom
 compiler anywhere: stop using Trust tomorrow and the lowered output still
 builds on stock rustc.
 
 Prefer file-by-file adoption over the project-wide key? Put `#![strict]` at
-the top of just the files you want checked — `cargo trust` handles either
+the top of just the files you want checked — `cargo trustc` handles either
 form. See [docs/SPEC.md § Activation](docs/SPEC.md). If you need raw
 `cargo`, the wrapper env vars still work
 (`RUSTC_WRAPPER=…/trust-rustc RUSTDOC=…/trust-rustdoc cargo build`).

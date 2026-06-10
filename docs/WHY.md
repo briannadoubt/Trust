@@ -157,12 +157,12 @@ Honestly:
   day. The agent does not feel it at all.
 - **Activation per crate or per file.** Crates opt in once with
   `[package.metadata.trust] strict = true` in `Cargo.toml` and build with
-  `cargo trust build`; single files (and file-by-file opt-ins) use
+  `cargo trustc build`; single files (and file-by-file opt-ins) use
   `#![strict]` at the top. See
   [SPEC.md § Activation](SPEC.md#activation).
 - **Cargo needs a wrapper for the syntax extensions.** The named-arg
   rewrite has to run before `rustc` sees the file, and `cargo build`
-  invokes `rustc` directly. `cargo trust` sets the wrapper up for you;
+  invokes `rustc` directly. `cargo trustc` sets the wrapper up for you;
   only bare `cargo build` needs manual `RUSTC_WRAPPER` wiring.
   The lints alone work without the wrapper; the syntax
   extensions do not.
@@ -251,7 +251,7 @@ them.
   writing Rust alone gets the cost (verbosity, activation, wrapper)
   without the benefit.
 - **Teams that cannot tolerate a compiler wrapper in their build.**
-  `cargo trust` is how the syntax extensions reach `rustc` (it sets
+  `cargo trustc` is how the syntax extensions reach `rustc` (it sets
   `RUSTC_WRAPPER`/`RUSTDOC` internally). If your CI, vendor builds, or
   distro packaging cannot route through it, you get the lints but not
   named arguments or pipe.

@@ -302,7 +302,7 @@ iterating against the checker.
   `docs/SPEC.md` for the grammar.
 
 **Activation:** `[package.metadata.trust] strict = true` in `Cargo.toml` for
-whole crates built with `cargo trust build`; `#![strict]` at the top of a file
+whole crates built with `cargo trustc build`; `#![strict]` at the top of a file
 for single-file `trust check` or per-file opt-in. See `docs/SPEC.md` for the
 full grammar and per-rule detail.";
 

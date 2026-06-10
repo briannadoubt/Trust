@@ -1,6 +1,6 @@
 # Agent-workflow eval suite (RT-97). Same shape as ../tasks.toml — each
 # [[task]] is one row of the matrix — but a trial here is a short *agent
-# session* over a fixture crate (propose files → cargo trust build → read
+# session* over a fixture crate (propose files → cargo trustc build → read
 # diagnostics → repeat), not a single completion. Each task runs in two arms:
 #
 #   bare     — the prompt below, nothing else
@@ -17,7 +17,7 @@
 # args instead of "fixing" the dialect away.
 #
 # Remediation tasks 31–34 pay down the validation debt recorded on
-# RT-68/72/73/74: each fixture fails `cargo trust build` with exactly the
+# RT-68/72/73/74: each fixture fails `cargo trustc build` with exactly the
 # rule under test (verified at authoring time — see README.md).
 
 [[task]]
@@ -33,7 +33,7 @@ repository uses:
 
 1. Opt the whole crate in at the project level (the Cargo.toml way — do not
    add per-file markers to the sources).
-2. Fix every violation the Trust toolchain reports until `cargo trust build`
+2. Fix every violation the Trust toolchain reports until `cargo trustc build`
    exits green.
 
 Keep the program's behavior identical. Note that once converted, plain
@@ -49,7 +49,7 @@ description = "Fix an error-context-dropped failure (R0018): `.map_err(|_| …)`
 bug = 'map_err\s*\(\s*\|\s*_\s*\||\.ok\s*\(\s*\)\s*\.\s*expect'
 good = 'map_err\s*\(\s*\|\s*(?!_\s*\|)\w+\s*\|'
 prompt = """
-The crate in your working directory fails `cargo trust build` (the build
+The crate in your working directory fails `cargo trustc build` (the build
 output is included below). Fix the code properly, following the diagnostic's
 guidance — do not suppress the rule with `#[allow]`, and do not delete the
 error handling. The build must exit green.
@@ -63,7 +63,7 @@ description = "Fix a no-unchecked-len-arith failure (R0019): bare arithmetic on 
 bug = '\.len\s*\(\s*\)\s*[+\-*]|[+\-*]\s*[\w.]*\.len\s*\(\s*\)'
 good = '(?:checked|saturating|wrapping)_(?:sub|add|mul)'
 prompt = """
-The crate in your working directory fails `cargo trust build` (the build
+The crate in your working directory fails `cargo trustc build` (the build
 output is included below). Fix the code properly, following the diagnostic's
 guidance — do not suppress the rule with `#[allow]`. Keep the function's
 signature and intent; make the edge case explicit. The build must exit green.
@@ -77,11 +77,11 @@ description = "Fix a no-lock-across-await failure (R0020): drop the sync guard b
 # Scope-sensitivity is beyond a plain grep, so the bug regex encodes its own
 # exception: it only matches when the file has a sync-guard acquisition AND
 # contains neither fix idiom (a statement-level bare block or tokio::sync).
-# `cargo trust build` green remains the authoritative scope-aware check.
+# `cargo trustc build` green remains the authoritative scope-aware check.
 bug = '(?m)\A(?![\s\S]*(?:tokio::sync|^[ \t]*\{[ \t]*$))[\s\S]*\.lock\s*\(\s*\)\s*\.\s*(?:unwrap|expect)\b'
 good = '(?m)tokio::sync::(?:Mutex|RwLock)|^[ \t]*\{[ \t]*$'
 prompt = """
-The crate in your working directory fails `cargo trust build` (the build
+The crate in your working directory fails `cargo trustc build` (the build
 output is included below). Fix the code properly, following the diagnostic's
 guidance — do not suppress the rule with `#[allow]`, and keep the caching
 behavior (fast path on hit, fetch + store on miss). The crate must stay
@@ -96,7 +96,7 @@ description = "Fix a no-capacity-as-len failure (R0021): `.capacity()` as a loop
 bug = '\.\.\s*[\w.]*capacity\s*\(\s*\)|capacity\s*\(\s*\)\s*\.\.|\[[^\[\]\n]*capacity\s*\(\s*\)'
 good = '\.len\s*\(\s*\)'
 prompt = """
-The crate in your working directory fails `cargo trust build` (the build
+The crate in your working directory fails `cargo trustc build` (the build
 output is included below). Fix the code properly, following the diagnostic's
 guidance — do not suppress the rule with `#[allow]`. Keep the checksum
 behavior for the elements that are actually in the buffer. The build must

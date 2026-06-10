@@ -2,7 +2,7 @@
 
 Runs the tasks in eval/agent-workflow/tasks.toml as short agent sessions:
 copy a fixture crate into a work directory, hand the model the prompt plus
-the file contents, write the files it proposes, run `cargo trust build`,
+the file contents, write the files it proposes, run `cargo trustc build`,
 feed failures back, and stop when the build is green or the round budget is
 spent. Outputs land in eval/runs/<run-id>/<task>-<arm>-<trial>/ so
 score_agent.py + summarize_agent.py can score and aggregate them.
@@ -28,7 +28,7 @@ different scorers).
 
 Requirements:
     - the toolchain binaries, built once:
-        cargo build -p trust -p cargo-trust -p trust-rustc -p trust-rustdoc
+        cargo build -p trust-lang -p cargo-trustc -p trust-rustc -p trust-rustdoc
     - openai provider:  pip install openai;       OPENAI_API_KEY set
     - gemini provider:  pip install google-genai; GOOGLE_API_KEY set
     (Provider adapters are reused from ../run_cross_provider.py. For an
@@ -76,7 +76,7 @@ needed.
 
 
 def trust_env() -> dict:
-    """Environment for `cargo trust` — shims on PATH, stale wrappers unset."""
+    """Environment for `cargo trustc` — shims on PATH, stale wrappers unset."""
     env = dict(os.environ)
     env.pop("RUSTC_WRAPPER", None)
     env.pop("RUSTDOC", None)
@@ -93,14 +93,14 @@ def clear_lowering_cache() -> None:
 
 def ensure_toolchain() -> None:
     missing = [
-        b for b in ("cargo-trust", "trust-rustc", "trust-rustdoc", "trust")
+        b for b in ("cargo-trustc", "trust-rustc", "trust-rustdoc", "trust")
         if not (REPO / "target" / "debug" / b).exists()
     ]
     if missing:
         print(
             f"error: missing toolchain binaries in target/debug: {', '.join(missing)}\n"
             "  Build them once:\n"
-            "    cargo build -p trust -p cargo-trust -p trust-rustc -p trust-rustdoc",
+            "    cargo build -p trust-lang -p cargo-trustc -p trust-rustc -p trust-rustdoc",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -203,7 +203,7 @@ def run_trial(
             break
         feedback = (
             f"(round {round_no}) You changed: {', '.join(written) or 'nothing parseable'}. "
-            "`cargo trust build` still fails:\n```\n"
+            "`cargo trustc build` still fails:\n```\n"
             + proc.stderr.strip()[-4000:]
             + "\n```\nReply with corrected files in the same FILE: format."
         )

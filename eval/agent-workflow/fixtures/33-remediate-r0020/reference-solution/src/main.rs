@@ -1,6 +1,6 @@
 //! REFERENCE SOLUTION — never shown to the agent. The fast-path guard is
 //! scoped in its own block and dropped before the `.await`; the write lock is
-//! re-acquired after the fetch completes. `cargo trust build` is green.
+//! re-acquired after the fetch completes. `cargo trustc build` is green.
 
 use std::collections::HashMap;
 use std::sync::Mutex;

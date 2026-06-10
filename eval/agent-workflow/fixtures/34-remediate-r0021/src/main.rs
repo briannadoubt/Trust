@@ -1,6 +1,6 @@
 //! Eval fixture: `.capacity()` used as a loop bound — capacity sizes future
 //! allocations, it is not the element count, so the loop visits slots that
-//! were never written. `cargo trust build` fails with exactly R0021.
+//! were never written. `cargo trustc build` fails with exactly R0021.
 
 fn checksum(buf: &Vec<u8>) -> u32 {
     let mut sum = 0u32;

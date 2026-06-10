@@ -1,5 +1,5 @@
 //! Eval fixture: bare `- 1` on a `.len()` value — debug panics on an empty
-//! frame, release wraps to `usize::MAX`. `cargo trust build` fails with
+//! frame, release wraps to `usize::MAX`. `cargo trustc build` fails with
 //! exactly R0019.
 
 /// Number of payload bytes in a frame whose first byte is the header.

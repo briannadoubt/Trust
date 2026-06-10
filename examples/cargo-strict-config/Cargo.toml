@@ -1,6 +1,6 @@
 # Fixture for project-level strict opt-in (RT-81). NOTE: there is no
 # `strict!{}` marker anywhere in src/ — strict mode is activated purely by
-# the metadata key below, read by `cargo trust`.
+# the metadata key below, read by `cargo trustc`.
 
 # Standalone workspace — keep out of the main workspace so building this
 # fixture doesn't drag in every trust-* crate.

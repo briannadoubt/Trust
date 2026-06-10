@@ -3,7 +3,7 @@
 Usage: python3 eval/agent-workflow/score_agent.py <run-id>
 
 Reads <task>-<arm>-<trial>/ work directories from eval/runs/<run-id>/,
-re-runs `cargo trust build` in each (cache cleared, shims on PATH), applies
+re-runs `cargo trustc build` in each (cache cleared, shims on PATH), applies
 the bug/good regexes from agent-workflow/tasks.toml to the final sources,
 and writes <task>-<arm>-<trial>.score.json next to each directory — same
 file naming as ../score.py uses for single-file trials.
@@ -62,14 +62,14 @@ def clear_lowering_cache() -> None:
 
 def ensure_toolchain() -> None:
     missing = [
-        b for b in ("cargo-trust", "trust-rustc", "trust-rustdoc", "trust")
+        b for b in ("cargo-trustc", "trust-rustc", "trust-rustdoc", "trust")
         if not (REPO / "target" / "debug" / b).exists()
     ]
     if missing:
         print(
             f"error: missing toolchain binaries in target/debug: {', '.join(missing)}\n"
             "  Scoring without them would fake an all-red run (RT-53). Build them:\n"
-            "    cargo build -p trust -p cargo-trust -p trust-rustc -p trust-rustdoc",
+            "    cargo build -p trust-lang -p cargo-trustc -p trust-rustc -p trust-rustdoc",
             file=sys.stderr,
         )
         sys.exit(2)

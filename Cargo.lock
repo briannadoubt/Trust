@@ -109,7 +109,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
-name = "cargo-trust"
+name = "cargo-trustc"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1030,7 +1030,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "trust"
+name = "trust-diag"
+version = "0.1.0"
+dependencies = [
+ "ariadne",
+]
+
+[[package]]
+name = "trust-lang"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1042,13 +1049,6 @@ dependencies = [
  "trust-lints",
  "trust-lower",
  "trust-syntax",
-]
-
-[[package]]
-name = "trust-diag"
-version = "0.1.0"
-dependencies = [
- "ariadne",
 ]
 
 [[package]]

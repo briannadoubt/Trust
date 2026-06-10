@@ -33,47 +33,47 @@ jobs:
 
       - name: example — Phase 0 hello
         run: |
-          cargo run -p trust -- build examples/00-hello.rs --out /tmp/p0
+          cargo run -p trust-lang -- build examples/00-hello.rs --out /tmp/p0
           test "$(/tmp/p0)" = "hello from trust"
 
       - name: example — Phase 1 strict-clean
         run: |
-          cargo run -p trust -- build examples/01-lints/strict-clean.rs --out /tmp/p1c
+          cargo run -p trust-lang -- build examples/01-lints/strict-clean.rs --out /tmp/p1c
           test "$(/tmp/p1c)" = "1"
 
       - name: example — Phase 1 unwrap-fail (must fail with R0001)
         run: |
-          ! cargo run -p trust -- check examples/01-lints/unwrap-fail.rs 2>&1 | tee /tmp/p1u.log
+          ! cargo run -p trust-lang -- check examples/01-lints/unwrap-fail.rs 2>&1 | tee /tmp/p1u.log
           grep -q R0001 /tmp/p1u.log
 
       - name: example — R0042 positional-fail (must fail with R0042)
         run: |
-          ! cargo run -p trust -- check examples/01-lints/positional-fail.rs 2>&1 | tee /tmp/p1p.log
+          ! cargo run -p trust-lang -- check examples/01-lints/positional-fail.rs 2>&1 | tee /tmp/p1p.log
           grep -q R0042 /tmp/p1p.log
 
       - name: example — R0007 impl-trait-return-fail (must fail with R0007)
         run: |
-          ! cargo run -p trust -- check examples/01-lints/impl-trait-return-fail.rs 2>&1 | tee /tmp/p1i.log
+          ! cargo run -p trust-lang -- check examples/01-lints/impl-trait-return-fail.rs 2>&1 | tee /tmp/p1i.log
           grep -q R0007 /tmp/p1i.log
       - name: example — R0010 todo-fail (must fail with R0010)
         run: |
-          ! cargo run -p trust -- check examples/01-lints/todo-fail.rs 2>&1 | tee /tmp/p1t.log
+          ! cargo run -p trust-lang -- check examples/01-lints/todo-fail.rs 2>&1 | tee /tmp/p1t.log
           grep -q R0010 /tmp/p1t.log
       - name: example — R0011 panic-fail (must fail with R0011)
         run: |
-          ! cargo run -p trust -- check examples/01-lints/panic-fail.rs 2>&1 | tee /tmp/p1pa.log
+          ! cargo run -p trust-lang -- check examples/01-lints/panic-fail.rs 2>&1 | tee /tmp/p1pa.log
           grep -q R0011 /tmp/p1pa.log
       - name: example — R0012 bool-param-fail (must fail with R0012)
         run: |
-          ! cargo run -p trust -- check examples/01-lints/bool-param-fail.rs 2>&1 | tee /tmp/p1b.log
+          ! cargo run -p trust-lang -- check examples/01-lints/bool-param-fail.rs 2>&1 | tee /tmp/p1b.log
           grep -q R0012 /tmp/p1b.log
       - name: example — R0014 bare-index-fail (must fail with R0014)
         run: |
-          ! cargo run -p trust -- check examples/01-lints/bare-index-fail.rs 2>&1 | tee /tmp/p1x.log
+          ! cargo run -p trust-lang -- check examples/01-lints/bare-index-fail.rs 2>&1 | tee /tmp/p1x.log
           grep -q R0014 /tmp/p1x.log
       - name: example — R0017 same-type-params-fail (must fail with R0017)
         run: |
-          ! cargo run -p trust -- check examples/01-lints/same-type-params-fail.rs 2>&1 | tee /tmp/p1s.log
+          ! cargo run -p trust-lang -- check examples/01-lints/same-type-params-fail.rs 2>&1 | tee /tmp/p1s.log
           grep -q R0017 /tmp/p1s.log
 
       - name: rustc wrapper — named args via cargo build
@@ -92,23 +92,23 @@ jobs:
           out=$(examples/cargo-strict-fixture/target/debug/cargo-strict-fixture)
           test "$out" = "(1, 2, 3)"
 
-      - name: cargo trust — one command, zero env vars (RT-80)
+      - name: cargo trustc — one command, zero env vars (RT-80)
         run: |
-          # `cargo trust build/run` must wire the shims itself: no RUSTC_WRAPPER,
-          # no RUSTDOC, no realpath. cargo-trust locates trust-rustc/trust-rustdoc
+          # `cargo trustc build/run` must wire the shims itself: no RUSTC_WRAPPER,
+          # no RUSTDOC, no realpath. cargo-trustc locates trust-rustc/trust-rustdoc
           # as siblings in the same dir, so put all three on PATH and invoke it.
-          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          cargo build -p cargo-trustc -p trust-rustc -p trust-rustdoc
           export PATH="$(realpath target/debug):$PATH"
           (cd examples/cargo-strict-fixture && cargo clean >/dev/null)
-          # No RUSTC_WRAPPER/RUSTDOC in the env here — cargo-trust sets them.
-          out=$(cd examples/cargo-strict-fixture && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust run 2>/dev/null | tail -1)
+          # No RUSTC_WRAPPER/RUSTDOC in the env here — cargo-trustc sets them.
+          out=$(cd examples/cargo-strict-fixture && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trust run 2>/dev/null | tail -1)
           test "$out" = "(1, 2, 3)"
 
-      - name: cargo trust — project-level strict, no per-file marker (RT-81)
+      - name: cargo trustc — project-level strict, no per-file marker (RT-81)
         run: |
           # `[package.metadata.trust] strict = true` activates strict mode for
           # the whole crate; src/ has NO #![strict] / strict!{} marker.
-          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          cargo build -p cargo-trustc -p trust-rustc -p trust-rustdoc
           export PATH="$(realpath target/debug):$PATH"
           FIX=examples/cargo-strict-config
           # Negative: plain cargo build rejects the named-arg syntax (no wrapper).
@@ -118,32 +118,32 @@ jobs:
             echo "FAIL: expected plain cargo build to reject named-arg syntax"
             exit 1
           fi
-          # Positive: cargo trust run lowers the whole crate from the manifest
+          # Positive: cargo trustc run lowers the whole crate from the manifest
           # opt-in alone — zero env vars, zero markers.
           (cd "$FIX" && cargo clean >/dev/null)
-          out=$(cd "$FIX" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust run 2>/dev/null | tail -1)
+          out=$(cd "$FIX" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trust run 2>/dev/null | tail -1)
           test "$out" = "(4, 5, 6)"
           # Enforcement: a positional same-typed call must trip R0042 crate-wide,
           # proving the opt-in turns on the lints, not just syntax lowering.
           tmp=$(mktemp -d); mkdir -p "$tmp/src"; cp "$FIX/Cargo.toml" "$tmp/"
           printf 'fn make_point(x: i32, y: i32, z: i32) -> (i32, i32, i32) { (x, y, z) }\nfn main() { let p = make_point(4, 5, 6); println!("{p:?}"); }\n' > "$tmp/src/main.rs"
-          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust build 2>/dev/null); then
+          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trust build 2>/dev/null); then
             echo "FAIL: expected R0042 to reject positional same-typed call under project strict"
             exit 1
           fi
           rm -rf "$tmp"
 
-      - name: cargo trust — full lint set enforced at build (RT-89)
+      - name: cargo trustc — full lint set enforced at build (RT-89)
         run: |
           # The wrapper runs the same rules as `trust check`: an .unwrap()
-          # in a strict crate must fail `cargo trust build` with R0001.
-          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          # in a strict crate must fail `cargo trustc build` with R0001.
+          cargo build -p cargo-trustc -p trust-rustc -p trust-rustdoc
           export PATH="$(realpath target/debug):$PATH"
           tmp=$(mktemp -d); mkdir -p "$tmp/src"
           cp examples/cargo-strict-config/Cargo.toml "$tmp/"
           printf 'fn main() { let v: Option<i32> = Some(1); let _ = v.unwrap(); }\n' > "$tmp/src/main.rs"
-          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trust trust build 2>/tmp/rt89.log); then
-            echo "FAIL: expected R0001 to reject .unwrap() under cargo trust build"
+          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trust build 2>/tmp/rt89.log); then
+            echo "FAIL: expected R0001 to reject .unwrap() under cargo trustc build"
             exit 1
           fi
           grep -q R0001 /tmp/rt89.log
@@ -151,7 +151,7 @@ jobs:
 
       - name: example — Phase 2 pipe
         run: |
-          cargo run -p trust -- build examples/02-pipe/chain.rs --out /tmp/p2
+          cargo run -p trust-lang -- build examples/02-pipe/chain.rs --out /tmp/p2
           test "$(/tmp/p2)" = "11"
 
       - name: rustc wrapper — multi-module crate
@@ -217,7 +217,7 @@ jobs:
           # RT-66: enforce / reorder named args on calls into an ARBITRARY
           # dependency (not the bundled trust-std), resolved against an index
           # extracted automatically with `trust index` — no hand-written shim.
-          cargo build -p trust -p trust-rustc
+          cargo build -p trust-lang -p trust-rustc
           TRUST=$(realpath target/debug/trust)
           WRAPPER=$(realpath target/debug/trust-rustc)
           # 1. Auto-extract the producer crate's public-fn signature index.
@@ -244,7 +244,7 @@ jobs:
         run: |
           # RT-70: machine-readable diagnostics carrying a structured fix
           # (span + replacement + applicability) an agent loop can apply.
-          cargo build -p trust
+          cargo build -p trust-lang
           TRUST=$(realpath target/debug/trust)
           printf '#![strict]\nfn make_rect(width: u32, height: u32) -> u32 { width + height }\nfn main() { let _ = make_rect(1, 2); }\n' \
             > /tmp/rt70.rs
@@ -257,7 +257,7 @@ jobs:
 
       - name: example — Phase 3 named args
         run: |
-          cargo run -p trust -- build examples/03-named-args/area.rs --out /tmp/p3
+          cargo run -p trust-lang -- build examples/03-named-args/area.rs --out /tmp/p3
           test "$(/tmp/p3)" = "24 24"
 
       - name: trust fix — vanilla→strict round-trips (RT-71)
@@ -265,25 +265,25 @@ jobs:
           # `trust fix` inserts named args at positional calls; `trust lower`
           # strips them back. The round-trip must reproduce the positional call.
           printf 'fn make_rect(width: u32, height: u32) -> u32 { width * height }\nfn main() { let _ = make_rect(1920, 1080); }\n' > /tmp/rt71.rs
-          cargo run -q -p trust -- fix /tmp/rt71.rs | tee /tmp/rt71-fixed.rs | grep -q 'make_rect(width: 1920, height: 1080)'
-          cargo run -q -p trust -- lower /tmp/rt71-fixed.rs | tr -d ' \n' | grep -q 'make_rect(1920,1080)'
+          cargo run -q -p trust-lang -- fix /tmp/rt71.rs | tee /tmp/rt71-fixed.rs | grep -q 'make_rect(width: 1920, height: 1080)'
+          cargo run -q -p trust-lang -- lower /tmp/rt71-fixed.rs | tr -d ' \n' | grep -q 'make_rect(1920,1080)'
 
       - name: trust explain — agent rule contract (RT-78)
         run: |
           # Per-rule explanation carries why + the compliant idiom.
-          cargo run -q -p trust -- explain R0017 | grep -q 'instead:'
+          cargo run -q -p trust-lang -- explain R0017 | grep -q 'instead:'
           # The full catalogue is valid JSON an agent can load into context.
-          cargo run -q -p trust -- explain --format json \
+          cargo run -q -p trust-lang -- explain --format json \
             | python3 -c "import sys,json; d=json.load(sys.stdin); assert len(d['rules'])>=15, d; assert all(r['instead'] for r in d['rules']); print('trust explain json ok')"
           # Unknown codes fail cleanly.
-          if cargo run -q -p trust -- explain R9999 >/dev/null 2>&1; then
+          if cargo run -q -p trust-lang -- explain R9999 >/dev/null 2>&1; then
             echo "FAIL: expected non-zero exit on unknown rule code"; exit 1
           fi
 
-      - name: dogfood — strict library crates via cargo trust (RT-82)
+      - name: dogfood — strict library crates via cargo trustc (RT-82)
         run: |
           # Crates with `[package.metadata.trust] strict = true` build
-          # whole-package strict through `cargo trust`, which discovers the
+          # whole-package strict through `cargo trustc`, which discovers the
           # opt-in by scanning workspace members. trust-syntax and trust-diag
           # qualify (RT-88's cfg(test) exemption keeps their test files plain);
           # the binary crates trust / trust-rustc / xtask are stage-0 plain
@@ -291,13 +291,13 @@ jobs:
           # R0008/R0017 fire on code that is those crates' actual design
           # (macro-exporting, std-mirroring shims, visitor internals). See
           # case-studies/dogfooding.md.
-          cargo build -p cargo-trust -p trust-rustc -p trust-rustdoc
+          cargo build -p cargo-trustc -p trust-rustc -p trust-rustdoc
           export PATH="$(realpath target/debug):$PATH"
           # Force a real recompile: cargo fingerprints the rustc *version
           # string*, which the wrapper passes through unchanged — a cached
           # crate would otherwise skip the wrapper and make this step hollow.
           cargo clean -p trust-syntax -p trust-diag
-          cargo-trust trust build -p trust-syntax -p trust-diag
+          cargo-trustc trust build -p trust-syntax -p trust-diag
 
       - name: std-signatures manifest up-to-date (RT-44)
         run: |

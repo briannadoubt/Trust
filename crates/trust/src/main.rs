@@ -112,7 +112,7 @@ enum Cmd {
     /// Creates `<name>/` with a `Cargo.toml` that opts into strict mode via
     /// `[package.metadata.trust] strict = true`, a hello `src/main.rs` that
     /// exercises named-argument syntax, a `.gitignore`, and a `README.md`.
-    /// Build it with `cargo trust build` (not plain cargo).
+    /// Build it with `cargo trustc build` (not plain cargo).
     New {
         /// Name of the project (and the directory to create)
         name: String,
@@ -291,7 +291,7 @@ fn fix(input: &Path, write: bool) -> Result<()> {
 const CLAUDE_MD_BLOCK: &str = r#"## Trust (strict Rust dialect)
 
 This project uses Trust, a strict Rust dialect that lowers to plain Rust.
-Build, run, and test with `cargo trust build|run|test` — NEVER plain `cargo`:
+Build, run, and test with `cargo trustc build|run|test` — NEVER plain `cargo`:
 named-argument syntax won't parse under stock cargo, and that's expected.
 
 - Calls with more than one argument use named arguments:
@@ -301,10 +301,10 @@ named-argument syntax won't parse under stock cargo, and that's expected.
   read the `why:` and `help:`/`instead:` text, apply it, then rebuild.
   - `trust explain <CODE>` — detail on one rule.
   - `trust fix <file> --write` — auto-inserts argument names.
-  - `cargo trust build --message-format json` — machine-readable diagnostics.
+  - `cargo trustc build --message-format json` — machine-readable diagnostics.
 - `#[cfg(test)]` code is exempt — write tests in plain Rust; don't convert them.
 - Don't suppress rules without a `reason`. Suppression via
-  `#[allow(trust::R0xxx, reason = "…")]` only compiles under cargo trust,
+  `#[allow(trust::R0xxx, reason = "…")]` only compiles under cargo trustc,
   never stock cargo.
 
 Docs: https://github.com/briannadoubt/Trust — see `docs/WRITING-TRUST.md`
@@ -331,14 +331,14 @@ fn scaffold_new(name: &str) -> Result<()> {
          version = \"0.1.0\"\n\
          edition = \"2021\"\n\
          \n\
-         # Strict mode is enforced by `cargo trust` (build/run/test); stock cargo\n\
+         # Strict mode is enforced by `cargo trustc` (build/run/test); stock cargo\n\
          # ignores this metadata table entirely.\n\
          [package.metadata.trust]\n\
          strict = true\n"
     );
 
     let main_rs = "\
-// Named-argument call syntax below only compiles via `cargo trust build` —
+// Named-argument call syntax below only compiles via `cargo trustc build` —
 // plain `cargo build` will reject it.
 
 fn make_point(x: i32, y: i32) -> (i32, i32) {
@@ -357,11 +357,11 @@ fn main() {
          A [Trust](https://github.com/briannadoubt/Trust) project — a strict Rust\n\
          dialect that lowers to plain Rust at build time.\n\
          \n\
-         Build and run with `cargo trust` (NOT plain cargo):\n\
+         Build and run with `cargo trustc` (NOT plain cargo):\n\
          \n\
          ```sh\n\
-         cargo trust build\n\
-         cargo trust run\n\
+         cargo trustc build\n\
+         cargo trustc run\n\
          ```\n"
     );
 
@@ -378,7 +378,7 @@ fn main() {
     write(root.join("README.md"), &readme)?;
     write(root.join("CLAUDE.md"), CLAUDE_MD_BLOCK)?;
 
-    eprintln!("created strict project `{name}` — try `cd {name} && cargo trust run`");
+    eprintln!("created strict project `{name}` — try `cd {name} && cargo trustc run`");
     Ok(())
 }
 

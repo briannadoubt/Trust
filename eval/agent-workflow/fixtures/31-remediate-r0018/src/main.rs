@@ -1,5 +1,5 @@
 //! Eval fixture: the `.map_err(|_| …)` below discards the source
-//! `ParseIntError`, so `cargo trust build` fails with exactly R0018.
+//! `ParseIntError`, so `cargo trustc build` fails with exactly R0018.
 
 use std::fmt;
 

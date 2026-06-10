@@ -12,7 +12,7 @@ consumer/   strict crate that calls `producer::make_rect(...)` by name
 
 ## Run it
 
-From this directory, with the toolchain built (`cargo build -p trust -p trust-rustc`):
+From this directory, with the toolchain built (`cargo build -p trust-lang -p trust-rustc`):
 
 ```sh
 TRUST=$(realpath ../../target/debug/trust)

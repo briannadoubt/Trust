@@ -32,7 +32,7 @@ strict = true
 ```
 
 ```sh
-cargo trust build
+cargo trustc build
 ```
 
 Every diagnostic teaches: rule code, why it exists, what to write

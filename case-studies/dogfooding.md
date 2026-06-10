@@ -207,7 +207,7 @@ The `trust_attrs::strict!{}` per-file marker (and the whole `trust-attrs`
 crate) was removed in RT-82. Activation is now `#![strict]` per file
 (wrapper-built code only — stock rustc rejects it) or
 `[package.metadata.trust] strict = true` per package, discovered by
-`cargo trust` from the workspace manifest.
+`cargo trustc` from the workspace manifest.
 
 That trade has a real cost recorded here honestly: per-file granularity for
 **stock-buildable library crates** is gone. A library that must keep

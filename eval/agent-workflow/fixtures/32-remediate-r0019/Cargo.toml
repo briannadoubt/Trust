@@ -1,4 +1,4 @@
-# Eval fixture (RT-97 / RT-72 validation debt): fails `cargo trust build`
+# Eval fixture (RT-97 / RT-72 validation debt): fails `cargo trustc build`
 # with exactly R0019 (no-unchecked-len-arith).
 
 # Standalone workspace — keep out of the main workspace (same pattern as

@@ -9,7 +9,7 @@ scaffolded with `trust new` already include it as `CLAUDE.md`.
 ## Trust (strict Rust dialect)
 
 This project uses Trust, a strict Rust dialect that lowers to plain Rust.
-Build, run, and test with `cargo trust build|run|test` — NEVER plain `cargo`:
+Build, run, and test with `cargo trustc build|run|test` — NEVER plain `cargo`:
 named-argument syntax won't parse under stock cargo, and that's expected.
 
 - Calls with more than one argument use named arguments:
@@ -19,10 +19,10 @@ named-argument syntax won't parse under stock cargo, and that's expected.
   read the `why:` and `help:`/`instead:` text, apply it, then rebuild.
   - `trust explain <CODE>` — detail on one rule.
   - `trust fix <file> --write` — auto-inserts argument names.
-  - `cargo trust build --message-format json` — machine-readable diagnostics.
+  - `cargo trustc build --message-format json` — machine-readable diagnostics.
 - `#[cfg(test)]` code is exempt — write tests in plain Rust; don't convert them.
 - Don't suppress rules without a `reason`. Suppression via
-  `#[allow(trust::R0xxx, reason = "…")]` only compiles under cargo trust,
+  `#[allow(trust::R0xxx, reason = "…")]` only compiles under cargo trustc,
   never stock cargo.
 
 Docs: https://github.com/briannadoubt/Trust — see `docs/WRITING-TRUST.md`

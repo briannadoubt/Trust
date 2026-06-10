@@ -219,7 +219,7 @@ pub fn find_input_rs(args: &[String]) -> Option<usize> {
 /// the *project* level (`[package.metadata.trust] strict = true`), rather than
 /// per-file with a `#![strict]` marker.
 ///
-/// `cargo-trust` passes the set of strict package names in
+/// `cargo-trustc` passes the set of strict package names in
 /// `TRUST_STRICT_PACKAGES` (comma-separated). Cargo sets `CARGO_PKG_NAME` for
 /// every rustc invocation — including dependencies — so gating on membership
 /// scopes forced lowering to exactly the user's own opted-in package(s) and
@@ -370,7 +370,7 @@ fn emit_diagnostics(
 
 /// True when the caller asked for machine-readable diagnostics (RT-96).
 ///
-/// `cargo trust build --message-format json` sets this env var on the spawned
+/// `cargo trustc build --message-format json` sets this env var on the spawned
 /// cargo process; cargo passes its environment through to every rustc/rustdoc
 /// (and therefore wrapper) invocation. Users may also set
 /// `TRUST_MESSAGE_FORMAT=json` directly — same effect, no flag needed.
@@ -1140,7 +1140,7 @@ mod tests {
     fn force_strict_is_scoped_by_package_name() {
         // The user's own crate is in the set → forced strict.
         assert!(force_strict_for(Some("my-app"), Some("my-app")));
-        // A dependency built in the same `cargo trust build` carries its own
+        // A dependency built in the same `cargo trustc build` carries its own
         // CARGO_PKG_NAME, which is NOT in the set → never force-lowered.
         assert!(!force_strict_for(Some("my-app"), Some("serde")));
         // Multi-package set, with whitespace.

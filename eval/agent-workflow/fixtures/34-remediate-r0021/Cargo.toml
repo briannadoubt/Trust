@@ -1,4 +1,4 @@
-# Eval fixture (RT-97 / RT-74 validation debt): fails `cargo trust build`
+# Eval fixture (RT-97 / RT-74 validation debt): fails `cargo trustc build`
 # with exactly R0021 (no-capacity-as-len).
 
 # Standalone workspace — keep out of the main workspace (same pattern as

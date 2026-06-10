@@ -7,7 +7,7 @@ Raw data: `raw_workspace.json`, `raw_anyhow.json`, `summary.json`
 ## Methodology
 
 For every `.rs` file in
-- the workspace (`crates/cargo-trust`, `crates/trust`, `crates/trust-diag`, `crates/trust-effects`, `crates/trust-lints`, `crates/trust-lower`, `crates/trust-lsp`, `crates/trust-std`, `crates/trust-syntax`, `crates/xtask`)
+- the workspace (`crates/cargo-trustc`, `crates/trust`, `crates/trust-diag`, `crates/trust-effects`, `crates/trust-lints`, `crates/trust-lower`, `crates/trust-lsp`, `crates/trust-std`, `crates/trust-syntax`, `crates/xtask`)
 - and the external crate `anyhow-1.0.86` (downloaded fresh to `/tmp/anyhow-1.0.86`, excluding `tests/ui/` UI-test fixtures and `build.rs`)
 
 the driver:

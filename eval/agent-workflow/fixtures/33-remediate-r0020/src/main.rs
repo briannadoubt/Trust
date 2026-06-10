@@ -1,6 +1,6 @@
 //! Eval fixture: the `std::sync::Mutex` guard is still alive across the
 //! `.await` in `get_cached` — a deadlock under a single-threaded executor.
-//! `cargo trust build` fails with exactly R0020.
+//! `cargo trustc build` fails with exactly R0020.
 //!
 //! std-only on purpose: `main` just constructs the future so the fixture
 //! builds without pulling in an async runtime.

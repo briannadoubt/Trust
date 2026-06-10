@@ -18,7 +18,7 @@ use trust_diag::Diagnostic;
 /// Returns `true` if the file is in Trust strict mode: a `#![strict]` inner
 /// attribute at the crate root. (The `strict!{}` macro marker was removed in
 /// RT-82; project-level `[package.metadata.trust] strict = true` activation
-/// never reaches this detector — `cargo trust` threads it through as a
+/// never reaches this detector — `cargo trustc` threads it through as a
 /// forced flag instead.)
 pub fn detect_strict(file: &syn::File) -> bool {
     file.attrs.iter().any(|attr| attr.path().is_ident("strict"))

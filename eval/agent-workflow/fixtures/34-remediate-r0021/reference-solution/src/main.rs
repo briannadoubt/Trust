@@ -1,6 +1,6 @@
 //! REFERENCE SOLUTION — never shown to the agent. The loop bound is now
 //! `.len()` — the element count — per the R0021 `instead:` guidance.
-//! `cargo trust build` is green.
+//! `cargo trustc build` is green.
 
 fn checksum(buf: &Vec<u8>) -> u32 {
     let mut sum = 0u32;

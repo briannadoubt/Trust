@@ -11,7 +11,7 @@ keywords = ["trust", "strict", "rust", "diagnostic", "lint"]
 categories = ["development-tools"]
 
 # Whole-crate strict dogfood (shipping code; cfg(test)-only files are
-# exempt — RT-88): enforced when built via `cargo trust`; invisible to
+# exempt — RT-88): enforced when built via `cargo trustc`; invisible to
 # stock cargo.
 [package.metadata.trust]
 strict = true

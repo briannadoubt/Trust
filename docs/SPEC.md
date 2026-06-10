@@ -33,7 +33,7 @@ per-file inner attribute.
 
 ### Project mode: `[package.metadata.trust] strict = true` (recommended)
 
-Declare strictness once in `Cargo.toml` and build with `cargo trust`. No
+Declare strictness once in `Cargo.toml` and build with `cargo trustc`. No
 per-file marker, no extra dependency, no environment setup.
 
 ```toml
@@ -42,10 +42,10 @@ strict = true
 ```
 
 ```sh
-cargo trust build    # lowers + checks the whole crate
+cargo trustc build    # lowers + checks the whole crate
 ```
 
-`cargo trust` reads the key — from the package manifest, or by scanning
+`cargo trustc` reads the key — from the package manifest, or by scanning
 member manifests when invoked from a workspace root
 (`[workspace.metadata.trust] strict = true` opts in every member at once) —
 and passes the opted-in package names to the lowering shims in
@@ -73,9 +73,9 @@ This is the form used by `examples/01-lints/*.rs`, the eval tasks, and the
 cargo fixtures. Stock `rustc` rejects `#![strict]` (it is not a registered
 attribute), so a marked file only compiles through the Trust toolchain:
 `trust check`/`trust build` for single files, or the `trust-rustc` wrapper —
-i.e. `cargo trust` — for cargo crates, which strips the marker during
+i.e. `cargo trustc` — for cargo crates, which strips the marker during
 lowering before the real rustc ever sees it. Use this form for single files
-and for mixed crates that opt in file-by-file under `cargo trust`.
+and for mixed crates that opt in file-by-file under `cargo trustc`.
 
 ### How the wrapper applies activation
 
@@ -106,7 +106,7 @@ the shim and passes with it.
 
 `trust_lower::detect_strict_mode` (token-level, runs before parsing)
 recognises the `#![strict]` inner attribute; project-level activation
-bypasses detection entirely — `cargo trust` threads it through as a forced
+bypasses detection entirely — `cargo trustc` threads it through as a forced
 flag (`lower_with_extra_callees_forced`). The lints crate returns an empty
 report when strict mode is off; the lowering passes run unconditionally
 because they are pure rewrites, but in a non-strict file they have nothing
@@ -904,7 +904,7 @@ trust explain [<code>] [--format <human|json>]
 - `new`: scaffold a standalone strict project (RT-94) — a `Cargo.toml` with
   `[package.metadata.trust] strict = true`, a hello `src/main.rs` that uses
   named-argument syntax, a `.gitignore`, and a `README.md`. Refuses to
-  overwrite an existing directory. Build the result with `cargo trust build`
+  overwrite an existing directory. Build the result with `cargo trustc build`
   (the named-arg call won't compile under stock cargo).
 - `build`: lower, lint, write the lowered source to a tempfile, shell out to
   `rustc` to produce a binary at `--out` (default: input with extension
@@ -938,9 +938,9 @@ trust explain [<code>] [--format <human|json>]
 callee registry from the named dependency manifests before lowering, so
 cross-crate calls get the same R0042 / named-arg treatment as in-crate ones.
 
-### `cargo trust`
+### `cargo trustc`
 
-`cargo-trust` is the cargo bridge. When `cargo trust <args>` is invoked, cargo
+`cargo-trustc` is the cargo bridge. When `cargo trustc <args>` is invoked, cargo
 prepends the literal `trust` to argv; the wrapper strips it and dispatches on
 the first argument:
 
@@ -948,25 +948,25 @@ the first argument:
   `doc`, `bench`, `install`) run the real `cargo` with `RUSTC_WRAPPER` and
   `RUSTDOC` set to the bundled `trust-rustc` / `trust-rustdoc` shims — so a
   cargo crate gets the syntax extensions with **one command and no environment
-  setup**. `cargo trust build` is exactly `RUSTC_WRAPPER=… RUSTDOC=… cargo
+  setup**. `cargo trustc build` is exactly `RUSTC_WRAPPER=… RUSTDOC=… cargo
   build`, without the `export $(realpath …)` dance.
 - **Everything else** (`lower`, `index`, `fix`, `explain`, …) is forwarded
   verbatim to the `trust` CLI.
 
-`check` resolves to **`cargo check`** under `cargo trust` (whole-crate). For a
+`check` resolves to **`cargo check`** under `cargo trustc` (whole-crate). For a
 single-file lint, call `trust check foo.rs` directly.
 
-For agent consumers, `--message-format json` (e.g. `cargo trust build
+For agent consumers, `--message-format json` (e.g. `cargo trustc build
 --message-format json`) switches the shims' Trust diagnostics from human
 `[R0001]`-style lines to machine-readable output: one JSON document per file,
 written to stderr, with the same shape as `trust check --format json`.
-`cargo-trust` strips the flag before invoking cargo (cargo's own
+`cargo-trustc` strips the flag before invoking cargo (cargo's own
 `--message-format` takes different values) and sets `TRUST_MESSAGE_FORMAT=json`
 on the spawned process; setting that env var directly is equivalent. `json` is
 the only supported value.
 
 The shims are located, in order: the `TRUST_RUSTC` / `TRUST_RUSTDOC` env
-overrides; a sibling of the `cargo-trust` binary (covers a `cargo install`ed
+overrides; a sibling of the `cargo-trustc` binary (covers a `cargo install`ed
 `~/.cargo/bin` layout and a dev `target/debug/` checkout); then `PATH`. A
 missing shim is a hard error with a fix hint, never a silent fall-through to an
 un-lowered build.
