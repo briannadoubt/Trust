@@ -188,6 +188,7 @@ A dedicated VS Code extension lives in [`editors/vscode/`](editors/vscode/).
 - **[docs/RATIONALE.md](docs/RATIONALE.md)** — phase-by-phase reasoning for each rule.
 - **[docs/AGENTS.md](docs/AGENTS.md)** — the teaching-error contract every diagnostic follows.
 - **[docs/templates/CLAUDE-md-snippet.md](docs/templates/CLAUDE-md-snippet.md)** — drop-in agent instructions for projects that adopt Trust.
+- **[skills/](skills/README.md)** — agent skills for writing Trust, installable via the Claude Code plugin marketplace.
 
 ### Case studies
 

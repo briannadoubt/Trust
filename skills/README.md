@@ -12,4 +12,13 @@ Install paths:
 1. **Per-project:** copy into a project's `.claude/skills/` and it auto-loads
    for sessions in that project.
 2. **Personal (all projects):** `cp -r skills/writing-trust ~/.claude/skills/`
-3. **Plugin/marketplace:** packaged install coming with RT-98.
+3. **Plugin (marketplace install):** this repo is both a Claude Code plugin
+   and its own marketplace. Two slash-commands inside Claude Code:
+
+   ```
+   /plugin marketplace add briannadoubt/Trust
+   /plugin install trust@trust-plugins
+   ```
+
+   Plugin-installed skills are namespaced — invoke as `/trust:writing-trust`
+   (auto-triggering on Trust-shaped tasks works the same as the copy paths).

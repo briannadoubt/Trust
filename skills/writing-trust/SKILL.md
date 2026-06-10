@@ -1,6 +1,6 @@
 ---
 name: writing-trust
-description: Write, fix, or convert Rust in a project that uses Trust, the strict Rust dialect. Use when you see `cargo trust` in build instructions, `[package.metadata.trust] strict = true` (or `[workspace.metadata.trust]`) in a Cargo.toml, a `#![strict]` inner attribute at the top of a .rs file, build errors with R-codes like R0042/R0001/R0014 (`error[R0042]: call to ... must use named arguments`), named-argument call syntax such as `f(width: 1920, height: 1080)`, the pipe operator `|>`, or `requires!(...)` preconditions in function bodies. Also use when asked to convert an existing crate to Trust or scaffold a new Trust project with `trust new`.
+description: "Write, fix, or convert Rust in a project that uses Trust, the strict Rust dialect. Use when you see `cargo trust` in build instructions, `[package.metadata.trust] strict = true` (or `[workspace.metadata.trust]`) in a Cargo.toml, a `#![strict]` inner attribute at the top of a .rs file, build errors with R-codes like R0042/R0001/R0014 (`error[R0042]: call to ... must use named arguments`), named-argument call syntax such as `f(width: 1920, height: 1080)`, the pipe operator `|>`, or `requires!(...)` preconditions in function bodies. Also use when asked to convert an existing crate to Trust or scaffold a new Trust project with `trust new`."
 ---
 
 # Writing Trust

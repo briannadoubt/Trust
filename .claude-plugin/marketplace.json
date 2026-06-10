@@ -1,0 +1,16 @@
+{
+  "name": "trust-plugins",
+  "description": "Claude Code plugins for the Trust dialect of Rust",
+  "owner": {
+    "name": "Bri",
+    "email": "bri@briannadoubt.com"
+  },
+  "plugins": [
+    {
+      "name": "trust",
+      "source": "./",
+      "description": "Skills for writing Trust — the strict Rust dialect for the bugs LLMs actually ship",
+      "version": "0.1.0"
+    }
+  ]
+}
