@@ -11,6 +11,7 @@ use proc_macro2::TokenStream;
 use thiserror::Error;
 use trust_diag::Diagnostic;
 
+pub mod contracts;
 pub mod named_args;
 pub mod pipe;
 pub mod preprocess;
@@ -93,6 +94,9 @@ pub fn lower_with_extra_callees_forced(
     let mut diagnostics = Vec::new();
     let tokens = named_args::rewrite(tokens, &registry, &mut diagnostics, strict_mode);
     let tokens = pipe::rewrite(tokens, &mut diagnostics);
+    // RT-69: `requires!(cond)` precondition contracts lower to debug_assert!
+    // (strict-mode only — in non-strict files `requires!` may be a user macro).
+    let tokens = contracts::rewrite(tokens, strict_mode);
     let tokens = preprocess::strip_strict_attrs(tokens);
 
     // Two views of the lowered output (RT-89): the linter must see the

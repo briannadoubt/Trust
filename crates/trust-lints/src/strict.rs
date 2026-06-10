@@ -40,6 +40,10 @@ pub fn run_rule(rule: Rule, file: &syn::File, source: &str, diagnostics: &mut Ve
         Rule::NoBoolParam => run_no_bool_param(file, diagnostics),
         Rule::NoBareIndex => run_no_bare_index(file, diagnostics),
         Rule::NoSameTypeParams => run_no_same_type_params(file, diagnostics),
+        Rule::NoErrorContextDrop => run_no_error_context_drop(file, diagnostics),
+        Rule::NoUncheckedLenArith => run_no_unchecked_len_arith(file, diagnostics),
+        Rule::NoLockAcrossAwait => run_no_lock_across_await(file, diagnostics),
+        Rule::NoCapacityAsLen => run_no_capacity_as_len(file, diagnostics),
         // R0015 / R0016 emission lives in `crate::allow::collect_allow_map`,
         // which the runner invokes before per-rule dispatch. The catalogue
         // entries stay here so SPEC.md and tooling can refer to the codes.
@@ -414,6 +418,311 @@ impl<'ast, 'a, 'src> Visit<'ast> for JustifyUnsafeVisitor<'a, 'src> {
         }
         visit::visit_item_fn(self, node);
     }
+}
+
+// ── RT-68/72/73/74: Tier 1/3 rules (eval validation still owed) ──────────
+//
+// These four rules were specified as eval-gated; they are implemented with
+// deliberately narrow triggers and the cfg(test) exemption, and their eval
+// validation is tracked on the tickets. Keep triggers narrow — widen only
+// with eval evidence.
+
+/// Shared cfg(test)-scoped expression visitor driver: walks the file, tracks
+/// test scopes like NoUnwrapVisitor, and calls `check` on every method call.
+struct TestScopedVisitor<'a, F: FnMut(&syn::ExprMethodCall, &mut Vec<Diagnostic>)> {
+    diagnostics: &'a mut Vec<Diagnostic>,
+    in_test_depth: usize,
+    check: F,
+}
+
+impl<'a, F: FnMut(&syn::ExprMethodCall, &mut Vec<Diagnostic>)> TestScopedVisitor<'a, F> {
+    fn with_test_scope<G: FnOnce(&mut Self)>(&mut self, is_test: bool, f: G) {
+        if is_test {
+            self.in_test_depth += 1;
+        }
+        f(self);
+        if is_test {
+            self.in_test_depth -= 1;
+        }
+    }
+}
+
+impl<'ast, 'a, F: FnMut(&syn::ExprMethodCall, &mut Vec<Diagnostic>)> Visit<'ast>
+    for TestScopedVisitor<'a, F>
+{
+    fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+        let is_test = attrs_have_cfg_test(&node.attrs)
+            || node.attrs.iter().any(|a| a.path().is_ident("test"));
+        self.with_test_scope(is_test, |this| visit::visit_item_fn(this, node));
+    }
+    fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+        let is_test = attrs_have_cfg_test(&node.attrs);
+        self.with_test_scope(is_test, |this| visit::visit_item_mod(this, node));
+    }
+    fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+        if self.in_test_depth == 0 {
+            (self.check)(node, self.diagnostics);
+        }
+        visit::visit_expr_method_call(self, node);
+    }
+}
+
+/// R0018: `.map_err(|_| …)` and `.ok().expect(…)` discard the source error.
+fn run_no_error_context_drop(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    let mut v = TestScopedVisitor {
+        diagnostics,
+        in_test_depth: 0,
+        check: |node: &syn::ExprMethodCall, diags: &mut Vec<Diagnostic>| {
+            let flag = |diags: &mut Vec<Diagnostic>, span: proc_macro2::Span, what: &str| {
+                diags.push(
+                    Diagnostic::error(Rule::NoErrorContextDrop.code(), what, span_range(span))
+                        .with_why(Rule::NoErrorContextDrop.rationale().to_string())
+                        .with_help(Rule::NoErrorContextDrop.instead().to_string()),
+                );
+            };
+            if node.method == "map_err" && node.args.len() == 1 {
+                if let syn::Expr::Closure(c) = &node.args[0] {
+                    if c.inputs.len() == 1 && matches!(c.inputs.first(), Some(syn::Pat::Wild(_))) {
+                        flag(
+                            diags,
+                            node.method.span(),
+                            "`.map_err(|_| …)` discards the source error",
+                        );
+                    }
+                }
+            }
+            if node.method == "expect" {
+                if let syn::Expr::MethodCall(inner) = &*node.receiver {
+                    if inner.method == "ok" && inner.args.is_empty() {
+                        flag(
+                            diags,
+                            node.method.span(),
+                            "`.ok().expect(…)` throws away the original error before panicking",
+                        );
+                    }
+                }
+            }
+        },
+    };
+    v.visit_file(file);
+}
+
+/// Does this expression (stripping parens/refs) end in a `.len()` call?
+fn is_len_call(expr: &syn::Expr) -> bool {
+    match expr {
+        syn::Expr::MethodCall(m) => m.method == "len" && m.args.is_empty(),
+        syn::Expr::Paren(p) => is_len_call(&p.expr),
+        syn::Expr::Reference(r) => is_len_call(&r.expr),
+        _ => false,
+    }
+}
+
+/// R0019: bare `+`/`-`/`*` with a `.len()` operand.
+fn run_no_unchecked_len_arith(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    struct V<'a> {
+        diagnostics: &'a mut Vec<Diagnostic>,
+        in_test_depth: usize,
+    }
+    impl<'ast, 'a> Visit<'ast> for V<'a> {
+        fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+            let is_test = attrs_have_cfg_test(&node.attrs)
+                || node.attrs.iter().any(|a| a.path().is_ident("test"));
+            if is_test {
+                self.in_test_depth += 1;
+            }
+            visit::visit_item_fn(self, node);
+            if is_test {
+                self.in_test_depth -= 1;
+            }
+        }
+        fn visit_item_mod(&mut self, node: &'ast syn::ItemMod) {
+            let is_test = attrs_have_cfg_test(&node.attrs);
+            if is_test {
+                self.in_test_depth += 1;
+            }
+            visit::visit_item_mod(self, node);
+            if is_test {
+                self.in_test_depth -= 1;
+            }
+        }
+        fn visit_expr_binary(&mut self, node: &'ast syn::ExprBinary) {
+            use syn::BinOp;
+            let arith = matches!(node.op, BinOp::Add(_) | BinOp::Sub(_) | BinOp::Mul(_));
+            if self.in_test_depth == 0
+                && arith
+                && (is_len_call(&node.left) || is_len_call(&node.right))
+            {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        Rule::NoUncheckedLenArith.code(),
+                        "bare arithmetic on a `.len()` value — debug panics, release wraps",
+                        span_range(node.op.span()),
+                    )
+                    .with_why(Rule::NoUncheckedLenArith.rationale().to_string())
+                    .with_help(Rule::NoUncheckedLenArith.instead().to_string()),
+                );
+            }
+            visit::visit_expr_binary(self, node);
+        }
+    }
+    let mut v = V {
+        diagnostics,
+        in_test_depth: 0,
+    };
+    v.visit_file(file);
+}
+
+/// Does this expression contain a *sync* guard acquisition — a
+/// `.lock()`/`.read()`/`.write()` immediately unwrapped with
+/// `.unwrap()`/`.expect(…)`? (An async lock would be `.lock().await`, so the
+/// unwrap/expect discriminates std::sync from tokio::sync at the syntax
+/// level.)
+fn contains_sync_guard_acquisition(expr: &syn::Expr) -> bool {
+    struct Finder(bool);
+    impl<'ast> Visit<'ast> for Finder {
+        fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+            if node.method == "unwrap" || node.method == "expect" {
+                if let syn::Expr::MethodCall(inner) = &*node.receiver {
+                    if inner.method == "lock" || inner.method == "read" || inner.method == "write" {
+                        self.0 = true;
+                    }
+                }
+            }
+            visit::visit_expr_method_call(self, node);
+        }
+    }
+    let mut f = Finder(false);
+    f.visit_expr(expr);
+    f.0
+}
+
+fn contains_await(expr: &syn::Expr) -> bool {
+    struct Finder(bool);
+    impl<'ast> Visit<'ast> for Finder {
+        fn visit_expr_await(&mut self, _: &'ast syn::ExprAwait) {
+            self.0 = true;
+        }
+    }
+    let mut f = Finder(false);
+    f.visit_expr(expr);
+    f.0
+}
+
+/// R0020: a sync guard bound by a `let` with an `.await` later in the same
+/// async block. Statement-level, no dataflow: a guard *dropped* before the
+/// await (scoped in its own block) never surfaces as a flagged `let`.
+fn run_no_lock_across_await(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    fn check_async_block(block: &syn::Block, diagnostics: &mut Vec<Diagnostic>) {
+        for (i, stmt) in block.stmts.iter().enumerate() {
+            let syn::Stmt::Local(local) = stmt else {
+                continue;
+            };
+            let Some(init) = &local.init else { continue };
+            if !contains_sync_guard_acquisition(&init.expr) {
+                continue;
+            }
+            let awaited_later = block.stmts.iter().skip(i + 1).any(|later| {
+                let expr = match later {
+                    syn::Stmt::Expr(e, _) => Some(e),
+                    syn::Stmt::Local(l) => l.init.as_ref().map(|init| &*init.expr),
+                    _ => None,
+                };
+                expr.map(contains_await).unwrap_or(false)
+            });
+            if awaited_later {
+                diagnostics.push(
+                    Diagnostic::error(
+                        Rule::NoLockAcrossAwait.code(),
+                        "sync lock guard held across a later `.await` in this block",
+                        span_range(local.let_token.span),
+                    )
+                    .with_why(Rule::NoLockAcrossAwait.rationale().to_string())
+                    .with_help(Rule::NoLockAcrossAwait.instead().to_string()),
+                );
+            }
+        }
+    }
+
+    struct V<'a> {
+        diagnostics: &'a mut Vec<Diagnostic>,
+    }
+    impl<'ast, 'a> Visit<'ast> for V<'a> {
+        fn visit_item_fn(&mut self, node: &'ast syn::ItemFn) {
+            if node.sig.asyncness.is_some() {
+                check_async_block(&node.block, self.diagnostics);
+            }
+            visit::visit_item_fn(self, node);
+        }
+        fn visit_expr_async(&mut self, node: &'ast syn::ExprAsync) {
+            check_async_block(&node.block, self.diagnostics);
+            visit::visit_expr_async(self, node);
+        }
+    }
+    let mut v = V { diagnostics };
+    v.visit_file(file);
+}
+
+fn contains_capacity_call(expr: &syn::Expr) -> bool {
+    struct Finder(bool);
+    impl<'ast> Visit<'ast> for Finder {
+        fn visit_expr_method_call(&mut self, node: &'ast syn::ExprMethodCall) {
+            if node.method == "capacity" && node.args.is_empty() {
+                self.0 = true;
+            }
+            visit::visit_expr_method_call(self, node);
+        }
+    }
+    let mut f = Finder(false);
+    f.visit_expr(expr);
+    f.0
+}
+
+/// R0021: `.capacity()` as an index or range bound.
+fn run_no_capacity_as_len(file: &syn::File, diagnostics: &mut Vec<Diagnostic>) {
+    struct V<'a> {
+        diagnostics: &'a mut Vec<Diagnostic>,
+    }
+    impl<'a> V<'a> {
+        fn flag(&mut self, span: proc_macro2::Span, what: &str) {
+            self.diagnostics.push(
+                Diagnostic::error(Rule::NoCapacityAsLen.code(), what, span_range(span))
+                    .with_why(Rule::NoCapacityAsLen.rationale().to_string())
+                    .with_help(Rule::NoCapacityAsLen.instead().to_string()),
+            );
+        }
+    }
+    impl<'ast, 'a> Visit<'ast> for V<'a> {
+        fn visit_expr_index(&mut self, node: &'ast syn::ExprIndex) {
+            if contains_capacity_call(&node.index) {
+                self.flag(
+                    node.bracket_token.span.join(),
+                    "`.capacity()` used as an index — element count is `.len()`",
+                );
+            }
+            visit::visit_expr_index(self, node);
+        }
+        fn visit_expr_range(&mut self, node: &'ast syn::ExprRange) {
+            let in_bound = node
+                .start
+                .as_deref()
+                .map(contains_capacity_call)
+                .unwrap_or(false)
+                || node
+                    .end
+                    .as_deref()
+                    .map(contains_capacity_call)
+                    .unwrap_or(false);
+            if in_bound {
+                self.flag(
+                    node.limits.span(),
+                    "`.capacity()` used as a range bound — element count is `.len()`",
+                );
+            }
+            visit::visit_expr_range(self, node);
+        }
+    }
+    let mut v = V { diagnostics };
+    v.visit_file(file);
 }
 
 /// RT-91: token-level site discovery for the comment-window rules.

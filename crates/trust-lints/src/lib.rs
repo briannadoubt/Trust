@@ -93,6 +93,82 @@ mod tests {
         );
     }
 
+    // ── RT-68/72/73/74 Tier 1/3 rules ────────────────────────────────────
+
+    #[test]
+    fn r0018_fires_on_wildcard_map_err_and_ok_expect() {
+        let m = "#![strict]\nfn f() -> Result<u32, String> { \"3\".parse::<u32>().map_err(|_| \"bad\".to_string()) }";
+        assert!(fires(Rule::NoErrorContextDrop, m), "map_err(|_|) must fire");
+        let o = "#![strict]\nfn g() -> u32 { \"3\".parse::<u32>().ok().expect(\"parse\") }";
+        assert!(
+            fires(Rule::NoErrorContextDrop, o),
+            ".ok().expect() must fire"
+        );
+        let kept = "#![strict]\nfn h() -> Result<u32, MyErr> { \"3\".parse::<u32>().map_err(|e| MyErr::Parse(e)) }";
+        assert!(
+            !fires(Rule::NoErrorContextDrop, kept),
+            "carrying the source is fine"
+        );
+        let test_scoped = "#![strict]\n#[cfg(test)]\nmod t { fn f() { let _ = \"3\".parse::<u32>().map_err(|_| ()); } }";
+        assert!(
+            !fires(Rule::NoErrorContextDrop, test_scoped),
+            "exempt in cfg(test)"
+        );
+    }
+
+    #[test]
+    fn r0019_fires_on_bare_len_arithmetic() {
+        let sub = "#![strict]\nfn f(v: &[u32]) -> usize { v.len() - 1 }";
+        assert!(fires(Rule::NoUncheckedLenArith, sub), "len() - 1 must fire");
+        let add = "#![strict]\nfn g(v: &[u32], n: usize) -> usize { n + v.len() }";
+        assert!(fires(Rule::NoUncheckedLenArith, add), "n + len() must fire");
+        let checked = "#![strict]\nfn h(v: &[u32]) -> Option<usize> { v.len().checked_sub(1) }";
+        assert!(
+            !fires(Rule::NoUncheckedLenArith, checked),
+            "checked_sub is the fix"
+        );
+        let unrelated = "#![strict]\nfn k(a: usize, b: usize) -> usize { a.saturating_add(b) }";
+        assert!(!fires(Rule::NoUncheckedLenArith, unrelated));
+    }
+
+    #[test]
+    fn r0020_fires_on_guard_held_across_await() {
+        let bad = "#![strict]\nasync fn f(m: &std::sync::Mutex<u32>) { let g = m.lock().unwrap(); tokio::task::yield_now().await; drop(g); }";
+        assert!(
+            fires(Rule::NoLockAcrossAwait, bad),
+            "guard across await must fire"
+        );
+        let scoped = "#![strict]\nasync fn g(m: &std::sync::Mutex<u32>) { { let g = m.lock().unwrap(); drop(g); } tokio::task::yield_now().await; }";
+        assert!(
+            !fires(Rule::NoLockAcrossAwait, scoped),
+            "guard dropped in its own block is fine"
+        );
+        let async_lock = "#![strict]\nasync fn h(m: &tokio::sync::Mutex<u32>) { let g = m.lock().await; tokio::task::yield_now().await; drop(g); }";
+        assert!(
+            !fires(Rule::NoLockAcrossAwait, async_lock),
+            "async-aware locks are the fix"
+        );
+    }
+
+    #[test]
+    fn r0021_fires_on_capacity_as_bound() {
+        let idx = "#![strict]\nfn f(v: &Vec<u32>) -> u32 { v[v.capacity() - 1] }";
+        assert!(
+            fires(Rule::NoCapacityAsLen, idx),
+            "capacity as index must fire"
+        );
+        let range = "#![strict]\nfn g(v: &Vec<u32>) { for i in 0..v.capacity() { let _ = i; } }";
+        assert!(
+            fires(Rule::NoCapacityAsLen, range),
+            "capacity as range bound must fire"
+        );
+        let fine = "#![strict]\nfn h(v: &Vec<u32>) -> usize { v.capacity() }";
+        assert!(
+            !fires(Rule::NoCapacityAsLen, fine),
+            "reporting capacity itself is fine"
+        );
+    }
+
     #[test]
     fn clean_program_has_no_diagnostics() {
         let src = "#![strict]\nfn main() { let x: u32 = 1; println!(\"{x}\"); }";

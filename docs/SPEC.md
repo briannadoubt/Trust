@@ -131,6 +131,10 @@ regenerate.
 | Code  | Name                  | Phase | Severity |
 | ----- | --------------------- | ----- | -------- |
 | R0001 | no-unwrap             | 1     | error    |
+| R0018 | error-context-dropped | 1     | error    |
+| R0019 | no-unchecked-len-arith | 1     | error    |
+| R0020 | no-lock-across-await  | 1     | error    |
+| R0021 | no-capacity-as-len    | 1     | error    |
 | R0002 | empty-expect          | 1     | error    |
 | R0003 | no-as-cast            | 1     | error    |
 | R0004 | no-glob-import        | 1     | error    |
@@ -520,6 +524,82 @@ Escape hatch: `#[allow(trust::R0017, reason = "…")]` on the enclosing item
 when two same-typed parameters are genuinely interchangeable (e.g. a thin
 shim mirroring a `std` signature like `copy(from, to)`).
 
+### R0018 — error-context-dropped
+
+`.map_err(|_| …)` (a wildcard-param closure) and `.ok().expect(…)` discard
+the source error. Agents do this constantly to make `?` typecheck; the
+dropped chain is exactly what a debugging agent needs later.
+
+```rust
+// rejected
+let n: u32 = s.parse().map_err(|_| MyError::Bad)?;
+let f = std::fs::read(p).ok().expect("read failed");
+
+// accepted
+let n: u32 = s.parse().map_err(MyError::Parse)?;   // source carried
+let f = std::fs::read(p).expect("read failed");     // panic keeps the error
+```
+
+Exempt in `#[cfg(test)]`. *(RT-72 — implemented ahead of its eval gate;
+validation owed.)*
+
+### R0019 — no-unchecked-len-arith
+
+Bare `+` / `-` / `*` where an operand is a `.len()` call. Debug builds
+panic on overflow, release builds silently wrap — `v.len() - 1` on empty
+input is the canonical agent bug. The rule forces an explicit choice:
+
+```rust
+// rejected
+let last = v.len() - 1;
+
+// accepted — the failure mode is now a typed decision
+let last = v.len().checked_sub(1)?;
+let last = v.len().saturating_sub(1);
+```
+
+Exempt in `#[cfg(test)]`. *(RT-68 scoped: detection-as-lint; the lowering
+form — auto-rewriting to checked ops — needs type info and stays future
+work. Eval validation owed.)*
+
+### R0020 — no-lock-across-await
+
+A sync lock guard (`.lock().unwrap()`, `.read().expect(…)`, …) bound by a
+`let` with a later `.await` in the same async block. The unwrap/expect
+suffix is the syntactic discriminator from async-aware locks (whose
+acquisition is `.lock().await`).
+
+```rust
+// rejected
+let g = m.lock().unwrap();
+something().await;          // every task on `m` now blocks on this one
+
+// accepted
+{ let g = m.lock().unwrap(); use_it(&g); }  // guard dropped before await
+something().await;
+```
+
+Statement-level, no dataflow — a guard scoped in its own block never
+flags. *(RT-73 — overlaps Clippy's type-aware `await_holding_lock`; the
+delta is operating pre-typecheck inside the Trust pipeline so agents get
+the teaching error in the same pass as every other rule. Eval owed.)*
+
+### R0021 — no-capacity-as-len
+
+`.capacity()` used as an index or range bound. Allocation size is not
+element count; the swap compiles and reads plausible.
+
+```rust
+// rejected
+for i in 0..v.capacity() { … }
+let last = v[v.capacity() - 1];
+
+// accepted
+for i in 0..v.len() { … }
+```
+
+*(RT-74 — speculative tier, narrowest trigger in the set; eval owed.)*
+
 ### R0042 — no-positional-args
 
 The dialect's main bug-prevention lint. Calls to locally-defined functions
@@ -662,6 +742,25 @@ The lowering pass (`trust_lower::named_args`) walks the token stream,
 builds a `CalleeRegistry` from local `fn` declarations, and rewrites every
 named call to positional based on declared order. The rewritten Rust contains
 no trace of the name annotations.
+
+### Precondition contracts: `requires!(…)`
+
+A strict-mode function body may state preconditions with `requires!`:
+
+```rust
+fn withdraw(balance: u64, amount: u64) -> u64 {
+    requires!(amount <= balance);
+    balance - amount
+}
+```
+
+Lowering rewrites each bare invocation to
+`debug_assert!(COND, "requires violated: COND")` — a checkable assertion
+in debug builds, gone in release. Deliberately lowering-only: no solver,
+no dataflow, no new type machinery, and no `ensures!` (postconditions
+would have to wrap every return path — out of scope by design, RT-69).
+Path-qualified `other::requires!(…)` and non-strict files pass through
+untouched, so the name doesn't collide with user macros.
 
 ### Pipe operator `|>`
 
