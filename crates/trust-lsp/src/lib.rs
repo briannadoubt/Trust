@@ -232,9 +232,20 @@ pub fn compute_diagnostics(source: &str) -> Vec<Diagnostic> {
     };
     all.extend(lower_out.diagnostics);
 
-    if let Ok(file) = syn::parse_str::<syn::File>(&lower_out.lint_source) {
-        let lint_report = trust_lints::lint_strict(&file, source, lower_out.strict_mode);
-        all.extend(lint_report.diagnostics);
+    if lower_out.strict_mode {
+        // Strict file (per-file `#![strict]`): the full dialect rule set.
+        if let Ok(file) = syn::parse_str::<syn::File>(&lower_out.lint_source) {
+            let lint_report = trust_lints::lint_strict(&file, source, true);
+            all.extend(lint_report.diagnostics);
+        }
+    } else if let Ok(file) = syn::parse_str::<syn::File>(source) {
+        // RT-108: plain Rust with no marker → run the advisory bug-catching
+        // rules so real findings (`.unwrap()`, `as`-casts, bare indexing,
+        // dropped error context, …) show in-editor without adopting the
+        // dialect. Parse the original source — no lowering is needed, and the
+        // named-arg rule R0042 is excluded so positional calls don't light up.
+        let report = trust_lints::lint_advisory(&file, source, trust_lints::bug_rules());
+        all.extend(report.diagnostics);
     }
 
     all.into_iter().map(|d| rt_diag_to_lsp(source, d)).collect()
@@ -570,6 +581,36 @@ mod tests {
                 .iter()
                 .any(|d| matches!(&d.code, Some(NumberOrString::String(s)) if s == "R0001")),
             "expected R0001, got {:?}",
+            diags.iter().map(|d| d.code.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    // RT-108: plain Rust (no #![strict]) surfaces advisory bug findings, so the
+    // editor is useful on a not-yet-adopted cargo project.
+    #[test]
+    fn diagnostics_advisory_on_plain_rust() {
+        let src = "fn f(x: Option<u32>) -> u32 { x.unwrap() }\n";
+        let diags = compute_diagnostics(src);
+        assert!(
+            diags
+                .iter()
+                .any(|d| matches!(&d.code, Some(NumberOrString::String(s)) if s == "R0001")),
+            "expected R0001 on plain Rust, got {:?}",
+            diags.iter().map(|d| d.code.clone()).collect::<Vec<_>>()
+        );
+    }
+
+    // R0042 (named-arg dialect) must NOT fire in the editor on plain Rust —
+    // positional calls are normal stock Rust, not a finding.
+    #[test]
+    fn no_r0042_in_editor_on_plain_rust() {
+        let src = "fn area(w: u32, h: u32) -> u32 { w * h }\nfn main() { let _ = area(3, 4); }\n";
+        let diags = compute_diagnostics(src);
+        assert!(
+            !diags
+                .iter()
+                .any(|d| matches!(&d.code, Some(NumberOrString::String(s)) if s == "R0042")),
+            "R0042 must not fire on plain Rust in-editor, got {:?}",
             diags.iter().map(|d| d.code.clone()).collect::<Vec<_>>()
         );
     }

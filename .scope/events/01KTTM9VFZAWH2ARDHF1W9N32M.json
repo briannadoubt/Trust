@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTTM9VFZAWH2ARDHF1W9N32M",
+  "ts": "2026-06-11T06:00:54.015Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTA5PVRBGCG888JK7GDNZM6",
+    "commentId": "01KTTM9VFYAS5TVA9CJTFK0X4S",
+    "author": "claude",
+    "body": "Resolved as metadata-only per bri. SPEC § Activation reframed into 3 tiers (advisory/project/per-file), metadata-primary, #![strict] explicitly flagged as not stock-valid. Metadata code path already shipped in RT-81; advisory zero-activation tier is RT-101. The user-facing version lands in the README rewrite (RT-103). No new per-file marker added (register_tool is nightly; comment-marker was declined in favor of the simpler metadata story)."
+  }
+}
