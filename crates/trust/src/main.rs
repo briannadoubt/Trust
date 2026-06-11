@@ -122,8 +122,15 @@ enum Cmd {
     /// function Trust can see — in-crate `fn`s plus any dependency indices
     /// from `TRUST_SIGNATURE_PATH` (RT-71). Only the names are inserted;
     /// all other formatting is preserved. Pass `-` to read from stdin.
+    ///
+    /// Point it at a directory or `Cargo.toml` to migrate a whole tree into the
+    /// dialect in one command (RT-110): it builds a workspace-wide signature
+    /// index first, so positional calls resolve across modules and crates, then
+    /// rewrites every file. `--write` applies in place; without it, a dry run
+    /// reports how many files would change.
     Fix {
-        /// Input .rs file, or `-` to read from stdin
+        /// Input `.rs` file, a directory / `Cargo.toml` to migrate a whole
+        /// tree, or `-` to read from stdin
         input: PathBuf,
         /// Rewrite the file in place instead of printing to stdout
         #[arg(short, long)]
@@ -556,12 +563,22 @@ fn index(input: &Path, out: Option<&Path>) -> Result<()> {
     Ok(())
 }
 
-/// Rewrite a source file: by default insert named arguments at positional call
-/// sites (vanilla → strict, RT-71, reading `TRUST_SIGNATURE_PATH` for indexed
-/// dependencies); with `--safety` (RT-106), rewrite `.unwrap()`/`.expect(…)` to
-/// `?` inside `Result`-returning functions instead. Prints to stdout, or
-/// rewrites the file in place with `--write`.
+/// `trust fix` entry point. A single file or stdin rewrites that input; a
+/// directory or `Cargo.toml` walks the whole tree (RT-110) — the migration path
+/// from plain Rust into the dialect.
 fn fix(input: &Path, write: bool, safety: bool) -> Result<()> {
+    if let Some(root) = walk_root(input) {
+        return fix_tree(&root, write, safety);
+    }
+    fix_one(input, write, safety)
+}
+
+/// Rewrite one source file (or stdin): by default insert named arguments at
+/// positional call sites (vanilla → strict, RT-71, reading
+/// `TRUST_SIGNATURE_PATH` for indexed dependencies); with `--safety` (RT-106),
+/// rewrite `.unwrap()`/`.expect(…)` to `?` inside `Result`-returning functions.
+/// Prints to stdout, or rewrites the file in place with `--write`.
+fn fix_one(input: &Path, write: bool, safety: bool) -> Result<()> {
     let (source, label) = read_source(input)?;
     let rewritten = if safety {
         trust_lower::fix_unwrap_to_question(&source)
@@ -580,6 +597,104 @@ fn fix(input: &Path, write: bool, safety: bool) -> Result<()> {
         eprintln!("rewrote {}", input.display());
     } else {
         print!("{rewritten}");
+    }
+    Ok(())
+}
+
+/// The root to walk for a multi-file operation, or `None` for stdin / a single
+/// `.rs` file. A `Cargo.toml` resolves to its directory (mirrors `check`).
+fn walk_root(input: &Path) -> Option<PathBuf> {
+    if is_stdin(input) {
+        return None;
+    }
+    if input.is_file() {
+        if is_manifest(input) {
+            return Some(match input.parent() {
+                Some(p) if !p.as_os_str().is_empty() => p.to_path_buf(),
+                _ => PathBuf::from("."),
+            });
+        }
+        return None; // a single .rs file
+    }
+    if input.is_dir() {
+        return Some(input.to_path_buf());
+    }
+    None // nonexistent — let the single-file path surface a precise error
+}
+
+/// Whole-tree `trust fix` (RT-110): the migration path from plain Rust into the
+/// dialect. Walks every `.rs` file under `root` and rewrites it. For named-arg
+/// mode it first builds a workspace-wide public-fn signature index, so
+/// positional calls resolve across modules and crates — not just within a
+/// single file. `--write` rewrites in place; without it, this is a dry run that
+/// reports how many files would change. A file that can't be read or rewritten
+/// is reported and skipped, never aborting the whole migration.
+fn fix_tree(root: &Path, write: bool, safety: bool) -> Result<()> {
+    let files = collect_rs_files(root);
+    if files.is_empty() {
+        bail!("no .rs files found under {}", root.display());
+    }
+
+    // Named-arg migration needs the whole tree's signatures so calls into other
+    // modules/crates get named too; safety fixes need no index.
+    let index = if safety {
+        Vec::new()
+    } else {
+        let mut indices = Vec::new();
+        for f in &files {
+            if let Ok(s) = std::fs::read_to_string(f) {
+                indices.push(trust_lower::sig_index::extract_from_source(&s));
+            }
+        }
+        trust_lower::sig_index::merge(&indices)
+    };
+
+    let mut changed = 0usize;
+    let mut failed = 0usize;
+    for f in &files {
+        let src = match std::fs::read_to_string(f) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("trust: skipping {}: {e}", f.display());
+                failed += 1;
+                continue;
+            }
+        };
+        let rewritten = if safety {
+            trust_lower::fix_unwrap_to_question(&src).map_err(anyhow::Error::from)
+        } else {
+            trust_lower::promote_named_args(&src, &index).map_err(anyhow::Error::from)
+        };
+        let rewritten = match rewritten {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("trust: skipping {}: {e}", f.display());
+                failed += 1;
+                continue;
+            }
+        };
+        if rewritten != src {
+            changed += 1;
+            if write {
+                std::fs::write(f, &rewritten)
+                    .with_context(|| format!("writing {}", f.display()))?;
+            }
+        }
+    }
+
+    let mode = if safety { "safety" } else { "named-arg" };
+    let skipped = if failed > 0 {
+        format!("; {failed} skipped (unreadable/unparseable)")
+    } else {
+        String::new()
+    };
+    if write {
+        eprintln!("rewrote {changed} of {} file(s) [{mode}]{skipped}", files.len());
+    } else {
+        eprintln!(
+            "{changed} of {} file(s) would change [{mode}]{skipped} — rerun with --write to apply",
+            files.len()
+        );
     }
     Ok(())
 }
@@ -904,5 +1019,32 @@ mod tests {
         assert!(super::is_manifest(Path::new("/a/b/Cargo.toml")));
         assert!(!super::is_manifest(Path::new("src/lib.rs")));
         assert!(!super::is_manifest(Path::new("cargo.toml")));
+    }
+
+    // RT-110: whole-tree migration names positional calls across files, using a
+    // workspace-wide signature index (the cross-file call is the point).
+    #[test]
+    fn fix_tree_names_cross_file_calls() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(
+            src.join("geo.rs"),
+            "pub fn describe(width: u32, label: &str) -> String { format!(\"{width}{label}\") }\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("main.rs"),
+            "mod geo;\nfn main() { let _ = geo::describe(7, \"x\"); }\n",
+        )
+        .unwrap();
+
+        super::fix_tree(dir.path(), /*write*/ true, /*safety*/ false).unwrap();
+
+        let main = std::fs::read_to_string(src.join("main.rs")).unwrap();
+        assert!(
+            main.contains("geo::describe(width: 7, label: \"x\")"),
+            "cross-file call should be named: {main}"
+        );
     }
 }
