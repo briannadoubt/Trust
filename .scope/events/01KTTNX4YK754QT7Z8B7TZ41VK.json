@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTTNX4YK754QT7Z8B7TZ41VK",
+  "ts": "2026-06-11T06:28:54.867Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "commentId": "01KTTNX4YK754QT7Z8B7TZ41VJ",
+    "author": "claude",
+    "body": "SHIPPED + PUBLISHED. All 10 crates live on crates.io at 0.2.0; main pushed, tag v0.2.0, GitHub release https://github.com/briannadoubt/Trust/releases/tag/v0.2.0. Clean-room cargo install trust-lang + trust check --rules bugs verified green against the live registry."
+  }
+}
