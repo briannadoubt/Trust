@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTTK59Y1W8JH43SYKXWF08X4",
+  "ts": "2026-06-11T05:40:56.385Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJF",
+    "commentId": "01KTTK59Y1W8JH43SYKXWF08X3",
+    "author": "claude",
+    "body": "Delivered: dir/Cargo.toml walk + per-file aggregation, composes with --rules (advisory). REMAINING DEPTH (follow-up): (1) auto-build the dependency signature index from cargo's dep graph so cross-crate R0042 works without manual TRUST_SIGNATURE_PATH; (2) the CLI walk lints each file independently, so --rules all cross-FILE named-arg (R0042) resolution still relies on the wrapper's crate-wide registry, not the walk. Advisory modes (bugs/safety) are fully correct per-file since they need no cross-file deps."
+  }
+}

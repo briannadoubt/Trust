@@ -1045,6 +1045,7 @@ dependencies = [
  "proc-macro2",
  "syn",
  "tempfile",
+ "toml",
  "trust-diag",
  "trust-lints",
  "trust-lower",

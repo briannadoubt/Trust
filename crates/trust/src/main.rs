@@ -11,6 +11,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use trust_diag::Diagnostic;
 
+mod config;
+use config::TrustConfig;
+
 /// Sentinel value (`-`) used in CLI input positions to mean "read from stdin",
 /// matching the convention used by `rustc`, `cat`, etc.
 const STDIN_SENTINEL: &str = "-";
@@ -84,8 +87,10 @@ enum Cmd {
         /// marker and keep your source valid stock Rust — so Trust works as an
         /// out-of-tree linter on a stock cargo workspace. You may also pass an
         /// explicit comma list of rule codes, e.g. `--rules R0001,R0003,R0014`.
-        #[arg(long, default_value = "all")]
-        rules: String,
+        /// When omitted, the `rules` key in a discovered `trust.toml` (RT-102)
+        /// is used, falling back to `all`.
+        #[arg(long)]
+        rules: Option<String>,
     },
     /// Lower a file and print the resulting plain Rust to stdout.
     ///
@@ -181,7 +186,7 @@ fn main() -> Result<()> {
             input,
             format,
             rules,
-        } => check(&input, format, &rules),
+        } => check(&input, format, rules.as_deref()),
         Cmd::Lower { input } => lower_to_stdout(&input),
         Cmd::Index { input, out } => index(&input, out.as_deref()),
         Cmd::Fix { input, write } => fix(&input, write),
@@ -278,12 +283,19 @@ fn parse_rule_selection(spec: &str) -> Result<RuleSelection> {
     }
 }
 
-fn check(input: &Path, format: OutputFormat, rules: &str) -> Result<()> {
-    let selection = parse_rule_selection(rules)?;
+fn check(input: &Path, format: OutputFormat, rules_flag: Option<&str>) -> Result<()> {
+    // RT-102: a discovered `trust.toml` supplies the default rule selection and
+    // the project-wide allow/warn lists. The `--rules` flag overrides `rules`.
+    let config = TrustConfig::discover(input)?;
+    let spec = rules_flag
+        .map(str::to_string)
+        .or_else(|| config.rules.clone())
+        .unwrap_or_else(|| "all".to_string());
+    let selection = parse_rule_selection(&spec)?;
 
     // stdin, or a single (non-manifest) file: check exactly that input.
     if is_stdin(input) || (input.is_file() && !is_manifest(input)) {
-        return check_one(input, format, &selection);
+        return check_one(input, format, &selection, &config);
     }
 
     // A directory or a Cargo.toml: walk the project tree and check every `.rs`
@@ -301,14 +313,14 @@ fn check(input: &Path, format: OutputFormat, rules: &str) -> Result<()> {
     } else {
         // Non-existent / unrecognized path: defer to read_source for a precise
         // "reading <path>" error rather than a vague "no files found".
-        return check_one(input, format, &selection);
+        return check_one(input, format, &selection, &config);
     };
 
     let files = collect_rs_files(&root);
     if files.is_empty() {
         bail!("no .rs files found under {}", root.display());
     }
-    check_many(&files, format, &selection)
+    check_many(&files, format, &selection, &config)
 }
 
 /// `true` if the path names a cargo manifest (`Cargo.toml`).
@@ -323,21 +335,30 @@ fn compute_diagnostics(
     label: &str,
     source: &str,
     selection: &RuleSelection,
+    config: &TrustConfig,
 ) -> Result<Vec<Diagnostic>> {
-    match selection {
-        RuleSelection::All => Ok(compute_pipeline(label, source, false)?.diagnostics),
+    let mut diagnostics = match selection {
+        RuleSelection::All => compute_pipeline(label, source, false)?.diagnostics,
         RuleSelection::Advisory(rules) => {
             let file: syn::File =
                 syn::parse_str(source).with_context(|| format!("parsing {label} as Rust"))?;
-            Ok(trust_lints::lint_advisory(&file, source, rules.clone()).diagnostics)
+            trust_lints::lint_advisory(&file, source, rules.clone()).diagnostics
         }
-    }
+    };
+    // RT-102: drop project-allowed codes; downgrade project-relaxed ones.
+    config.apply(&mut diagnostics);
+    Ok(diagnostics)
 }
 
 /// Check a single input (a `.rs` file or stdin) and render its diagnostics.
-fn check_one(input: &Path, format: OutputFormat, selection: &RuleSelection) -> Result<()> {
+fn check_one(
+    input: &Path,
+    format: OutputFormat,
+    selection: &RuleSelection,
+    config: &TrustConfig,
+) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let diagnostics = compute_diagnostics(&label, &source, selection)?;
+    let diagnostics = compute_diagnostics(&label, &source, selection, config)?;
     emit_diagnostics(&diagnostics, &label, &source, format);
     if format == OutputFormat::Human && diagnostics.is_empty() {
         eprintln!("ok: {label}");
@@ -353,10 +374,16 @@ fn check_one(input: &Path, format: OutputFormat, selection: &RuleSelection) -> R
 /// does not abort the run, so one unparseable file can't mask findings in the
 /// rest (the mirror's "abort at first failing entry" trap, per past sessions).
 /// Exits non-zero if any file has an error-level finding or failed to process.
-fn check_many(files: &[PathBuf], format: OutputFormat, selection: &RuleSelection) -> Result<()> {
+fn check_many(
+    files: &[PathBuf],
+    format: OutputFormat,
+    selection: &RuleSelection,
+    config: &TrustConfig,
+) -> Result<()> {
     let mut findings = 0usize;
     let mut files_with_findings = 0usize;
     let mut failed = 0usize;
+    let mut errors = 0usize;
     // JSON mode accumulates one document per file and emits a single array.
     let mut json_docs: Vec<String> = Vec::new();
 
@@ -370,11 +397,12 @@ fn check_many(files: &[PathBuf], format: OutputFormat, selection: &RuleSelection
                 continue;
             }
         };
-        match compute_diagnostics(&label, &source, selection) {
+        match compute_diagnostics(&label, &source, selection, config) {
             Ok(diags) => {
                 if !diags.is_empty() {
                     files_with_findings += 1;
                     findings += diags.len();
+                    errors += diags.iter().filter(|d| d.is_error()).count();
                 }
                 match format {
                     OutputFormat::Human => {
@@ -410,11 +438,21 @@ fn check_many(files: &[PathBuf], format: OutputFormat, selection: &RuleSelection
             } else {
                 String::new()
             };
-            eprintln!("{findings} finding(s) in {files_with_findings} of {scanned} file(s){skipped}");
+            let warns = findings - errors;
+            let warn_note = if warns > 0 {
+                format!(" ({errors} error(s), {warns} warning(s))")
+            } else {
+                String::new()
+            };
+            eprintln!(
+                "{findings} finding(s){warn_note} in {files_with_findings} of {scanned} file(s){skipped}"
+            );
         }
     }
 
-    if findings > 0 || failed > 0 {
+    // Warnings (project-relaxed rules) don't fail the run; errors and
+    // unprocessable files do.
+    if errors > 0 || failed > 0 {
         bail!("aborting due to previous errors");
     }
     Ok(())
