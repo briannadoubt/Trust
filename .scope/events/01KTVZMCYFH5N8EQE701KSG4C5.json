@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTVZMCYFH5N8EQE701KSG4C5",
+  "ts": "2026-06-11T18:38:08.335Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTRY43D4JZ93CPV1XE4HCQC",
+    "commentId": "01KTVZMCYFH5N8EQE701KSG4C4",
+    "author": "claude",
+    "body": "Delivered: trust-rustc wrapper honors trust.toml allow/warn at build time; TrustConfig moved to trust-lints (shared); cache key folds trust.toml so config edits re-trigger. Verified end-to-end (warn/allow/bad-code). NOTE: adds anyhow+toml to trust-lints' published deps (vs. a separate trust-config crate — chose fewer crates over a leaner lint lib). LSP could now honor config too (RT-108 follow-up) since TrustConfig is shared."
+  }
+}
