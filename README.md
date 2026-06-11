@@ -36,13 +36,10 @@ cargo install trust-lang
 cargo install trust-lang cargo-trustc trust-rustc trust-rustdoc
 ```
 
-All four crates are published on crates.io. MSRV is **Rust 1.85**.
-
-> The advisory-linter features (`trust check --rules`, `trust.toml`,
-> `--format sarif`, `trust fix --safety`) land in **0.2.0**. If `cargo install`
-> still pulls an older version, install from `main` until 0.2.0 is published:
-> `cargo install --git https://github.com/briannadoubt/Trust trust-lang`.
-> Building from source also works — see [From source](#from-source) below.
+All four crates are published on crates.io (latest: **0.2.0**). MSRV is **Rust
+1.85**. The advisory-linter features (`trust check --rules`, `trust.toml`,
+`--format sarif`, `trust fix --safety`) are in 0.2.0+. Building from source also
+works — see [From source](#from-source) below.
 
 ## Use it as an advisory linter — zero ceremony
 
