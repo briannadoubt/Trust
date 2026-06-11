@@ -21,7 +21,7 @@ use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 use trust_diag::{Diagnostic, Severity};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TrustConfig {
     /// Base rule selection (`all` | `bugs` | `safety` | a code list). `None`
     /// when unset; the CLI `--rules` flag, if given, takes precedence.

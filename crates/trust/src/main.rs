@@ -338,7 +338,24 @@ fn check(input: &Path, format: OutputFormat, rules_flag: Option<&str>) -> Result
     if files.is_empty() {
         bail!("no .rs files found under {}", root.display());
     }
-    check_many(&files, format, &selection, &config)
+    check_many(&files, format, &selection)
+}
+
+/// The nearest `trust.toml` config for `path`, discovered per directory and
+/// memoized (RT-119): in a monorepo each crate's own config applies to its
+/// files, not just one project-root config for the whole run.
+fn config_for(path: &Path, cache: &mut std::collections::HashMap<PathBuf, TrustConfig>) -> Result<TrustConfig> {
+    let dir = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."))
+        .to_path_buf();
+    if let Some(cfg) = cache.get(&dir) {
+        return Ok(cfg.clone());
+    }
+    let cfg = TrustConfig::discover(path)?;
+    cache.insert(dir, cfg.clone());
+    Ok(cfg)
 }
 
 /// `true` if the path names a cargo manifest (`Cargo.toml`).
@@ -392,12 +409,7 @@ fn check_one(
 /// does not abort the run, so one unparseable file can't mask findings in the
 /// rest (the mirror's "abort at first failing entry" trap, per past sessions).
 /// Exits non-zero if any file has an error-level finding or failed to process.
-fn check_many(
-    files: &[PathBuf],
-    format: OutputFormat,
-    selection: &RuleSelection,
-    config: &TrustConfig,
-) -> Result<()> {
+fn check_many(files: &[PathBuf], format: OutputFormat, selection: &RuleSelection) -> Result<()> {
     let mut findings = 0usize;
     let mut files_with_findings = 0usize;
     let mut failed = 0usize;
@@ -406,6 +418,10 @@ fn check_many(
     let mut json_docs: Vec<String> = Vec::new();
     // SARIF mode accumulates (uri, source, diagnostics) for one whole-run log.
     let mut sarif_files: Vec<(String, String, Vec<Diagnostic>)> = Vec::new();
+    // RT-119: per-directory trust.toml, so each crate's config applies to its
+    // own files (memoized — most files share a directory's config).
+    let mut config_cache: std::collections::HashMap<PathBuf, TrustConfig> =
+        std::collections::HashMap::new();
 
     for path in files {
         let label = path.display().to_string();
@@ -417,7 +433,8 @@ fn check_many(
                 continue;
             }
         };
-        match compute_diagnostics(&label, &source, selection, config) {
+        let config = config_for(path, &mut config_cache)?;
+        match compute_diagnostics(&label, &source, selection, &config) {
             Ok(diags) => {
                 if !diags.is_empty() {
                     files_with_findings += 1;
@@ -1010,6 +1027,24 @@ mod tests {
         assert!(!names.iter().any(|n| n == "hook.rs"), "hidden dirs skipped");
         assert!(!names.iter().any(|n| n == "notes.txt"), "non-.rs skipped");
         assert_eq!(names.len(), 2);
+    }
+
+    // RT-119: config is discovered per directory, so each crate's trust.toml
+    // applies to its own files in a monorepo walk.
+    #[test]
+    fn config_for_is_per_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("crateA/src");
+        let b = dir.path().join("crateB/src");
+        std::fs::create_dir_all(&a).unwrap();
+        std::fs::create_dir_all(&b).unwrap();
+        std::fs::write(dir.path().join("crateA/trust.toml"), "allow = [\"R0001\"]\n").unwrap();
+
+        let mut cache = std::collections::HashMap::new();
+        let ca = super::config_for(&a.join("x.rs"), &mut cache).unwrap();
+        let cb = super::config_for(&b.join("y.rs"), &mut cache).unwrap();
+        assert_eq!(ca.allow, vec!["R0001"], "crateA's config applies");
+        assert!(cb.allow.is_empty(), "crateB has no config");
     }
 
     #[test]
