@@ -99,3 +99,58 @@ fn applicability_tokens_are_stable() {
     assert_eq!(Applicability::MaybeIncorrect.as_str(), "maybeIncorrect");
     assert_eq!(Applicability::HasPlaceholders.as_str(), "hasPlaceholders");
 }
+
+// RT-107: SARIF 2.1.0 for GitHub code-scanning.
+#[test]
+fn sarif_emits_valid_shape() {
+    let src = "fn f() { let x = a.unwrap(); }\n";
+    let diag = Diagnostic::error("R0001", "`.unwrap()` is banned", 17..23).with_why("panics");
+    let sarif = to_sarif(&[FileDiagnostics {
+        name: "src/a.rs",
+        text: src,
+        diagnostics: std::slice::from_ref(&diag),
+    }]);
+    assert!(sarif.contains("\"version\": \"2.1.0\""));
+    assert!(sarif.contains("\"name\": \"trust\""));
+    assert!(sarif.contains("\"ruleId\": \"R0001\""));
+    assert!(sarif.contains("\"level\": \"error\""));
+    assert!(sarif.contains("\"uri\": \"src/a.rs\""));
+    assert!(sarif.contains("\"startLine\": 1"));
+    // Distinct rule is listed in driver.rules carrying its `why`.
+    assert!(sarif.contains("\"id\": \"R0001\""));
+    assert!(sarif.contains("panics"));
+}
+
+#[test]
+fn sarif_aggregates_multiple_files_in_one_run() {
+    let a = Diagnostic::error("R0001", "x", 0..1);
+    let b = Diagnostic::warning("R0003", "y", 0..1);
+    let sarif = to_sarif(&[
+        FileDiagnostics {
+            name: "a.rs",
+            text: "ab",
+            diagnostics: std::slice::from_ref(&a),
+        },
+        FileDiagnostics {
+            name: "b.rs",
+            text: "cd",
+            diagnostics: std::slice::from_ref(&b),
+        },
+    ]);
+    // Exactly one run; both files' findings present with their level.
+    assert_eq!(sarif.matches("\"runs\":").count(), 1);
+    assert!(sarif.contains("\"uri\": \"a.rs\""));
+    assert!(sarif.contains("\"uri\": \"b.rs\""));
+    assert!(sarif.contains("\"level\": \"warning\""));
+}
+
+#[test]
+fn sarif_empty_is_well_formed() {
+    let sarif = to_sarif(&[FileDiagnostics {
+        name: "a.rs",
+        text: "",
+        diagnostics: &[],
+    }]);
+    assert!(sarif.contains("\"results\": []"));
+    assert!(sarif.contains("\"rules\": []"));
+}

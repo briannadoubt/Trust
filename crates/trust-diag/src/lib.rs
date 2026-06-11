@@ -287,6 +287,101 @@ fn severity_str(severity: Severity) -> &'static str {
     }
 }
 
+/// One file's diagnostics plus its source text, for the multi-file SARIF
+/// emitter ([`to_sarif`]).
+pub struct FileDiagnostics<'a> {
+    /// Path/URI reported in the SARIF `artifactLocation`.
+    pub name: &'a str,
+    /// Source text, used to resolve byte spans to 1-based line/columns.
+    pub text: &'a str,
+    /// Diagnostics for this file.
+    pub diagnostics: &'a [Diagnostic],
+}
+
+/// Serialise diagnostics to a SARIF 2.1.0 log (RT-107) so GitHub code-scanning
+/// — and any SARIF consumer — can ingest Trust findings as inline PR
+/// annotations and Security-tab alerts without bespoke glue. Emits one run
+/// covering all files; SARIF regions are 1-based, matching our line/col. The
+/// distinct rule codes seen become `tool.driver.rules` so the alerts carry
+/// descriptions. Hand-rolled to match the no-serde `to_json` emitter.
+pub fn to_sarif(files: &[FileDiagnostics<'_>]) -> String {
+    // Distinct rules in first-seen order → tool.driver.rules.
+    let mut rule_ids: Vec<&str> = Vec::new();
+    let mut rule_text: Vec<String> = Vec::new();
+    for f in files {
+        for d in f.diagnostics {
+            if !rule_ids.contains(&d.rule) {
+                rule_ids.push(d.rule);
+                rule_text.push(d.why.clone().unwrap_or_else(|| d.message.clone()));
+            }
+        }
+    }
+
+    const INFO_URI: &str = "https://github.com/briannadoubt/Trust";
+    const HELP_URI: &str = "https://github.com/briannadoubt/Trust/blob/main/docs/SPEC.md";
+
+    let mut out = String::new();
+    out.push_str("{\n  \"version\": \"2.1.0\",\n");
+    out.push_str("  \"$schema\": \"https://json.schemastore.org/sarif-2.1.0.json\",\n");
+    out.push_str("  \"runs\": [\n    {\n      \"tool\": {\n        \"driver\": {\n");
+    out.push_str("          \"name\": \"trust\",\n");
+    out.push_str("          \"informationUri\": ");
+    out.push_str(&json_escape(INFO_URI));
+    out.push_str(",\n          \"version\": ");
+    out.push_str(&json_escape(env!("CARGO_PKG_VERSION")));
+    out.push_str(",\n          \"rules\": [");
+    for (i, (id, text)) in rule_ids.iter().zip(rule_text.iter()).enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str("\n            {\"id\": ");
+        out.push_str(&json_escape(id));
+        out.push_str(", \"shortDescription\": {\"text\": ");
+        out.push_str(&json_escape(text));
+        out.push_str("}, \"helpUri\": ");
+        out.push_str(&json_escape(HELP_URI));
+        out.push('}');
+    }
+    out.push_str(if rule_ids.is_empty() {
+        "]\n"
+    } else {
+        "\n          ]\n"
+    });
+    out.push_str("        }\n      },\n      \"results\": [");
+
+    let mut first = true;
+    for f in files {
+        for d in f.diagnostics {
+            if !first {
+                out.push(',');
+            }
+            first = false;
+            let (sl, sc) = Located { source: f.text }.at(d.span.start);
+            let (el, ec) = Located { source: f.text }.at(d.span.end);
+            out.push_str("\n        {\"ruleId\": ");
+            out.push_str(&json_escape(d.rule));
+            out.push_str(", \"level\": ");
+            out.push_str(&json_escape(severity_str(d.severity)));
+            out.push_str(", \"message\": {\"text\": ");
+            out.push_str(&json_escape(&d.message));
+            out.push_str("}, \"locations\": [{\"physicalLocation\": {\"artifactLocation\": {\"uri\": ");
+            out.push_str(&json_escape(f.name));
+            out.push_str("}, \"region\": {\"startLine\": ");
+            out.push_str(&sl.to_string());
+            out.push_str(", \"startColumn\": ");
+            out.push_str(&sc.to_string());
+            out.push_str(", \"endLine\": ");
+            out.push_str(&el.to_string());
+            out.push_str(", \"endColumn\": ");
+            out.push_str(&ec.to_string());
+            out.push_str("}}}]}");
+        }
+    }
+    out.push_str(if first { "]\n" } else { "\n      ]\n" });
+    out.push_str("    }\n  ]\n}\n");
+    out
+}
+
 /// Accumulates the JSON document. Methods (not free fns) so multi-argument
 /// helpers don't trip R0042 in this strict-dogfooded crate.
 struct JsonWriter<'a> {

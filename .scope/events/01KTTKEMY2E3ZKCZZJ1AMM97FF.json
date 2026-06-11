@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTTKEMY2E3ZKCZZJ1AMM97FF",
+  "ts": "2026-06-11T05:46:02.562Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTA5PVRBGCG888JK7GDNZMA",
+    "commentId": "01KTTKEMY2E3ZKCZZJ1AMM97FE",
+    "author": "claude",
+    "body": "Delivered for 'trust check': trust.toml with rules/allow/warn, walk-up discovery, validation. REMAINING DEPTH (follow-up): (1) honor trust.toml in cargo trustc / the trust-rustc wrapper (build-gate path) — today it's the CLI advisory path only; (2) mirror the keys under [package.metadata.trust] for single-file Cargo.toml config; (3) per-crate config in a monorepo walk (currently one project-root config per run)."
+  }
+}

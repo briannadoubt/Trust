@@ -45,6 +45,9 @@ enum OutputFormat {
     /// Machine-readable JSON for agent consumers: rule, span, line/col,
     /// why, help, and a structured fix with an applicability/confidence.
     Json,
+    /// SARIF 2.1.0 for GitHub code-scanning and other static-analysis
+    /// consumers (RT-107). `check` only — inline annotations + Security tab.
+    Sarif,
 }
 
 #[derive(Subcommand)]
@@ -386,6 +389,8 @@ fn check_many(
     let mut errors = 0usize;
     // JSON mode accumulates one document per file and emits a single array.
     let mut json_docs: Vec<String> = Vec::new();
+    // SARIF mode accumulates (uri, source, diagnostics) for one whole-run log.
+    let mut sarif_files: Vec<(String, String, Vec<Diagnostic>)> = Vec::new();
 
     for path in files {
         let label = path.display().to_string();
@@ -415,6 +420,7 @@ fn check_many(
                             text: &source,
                         },
                     )),
+                    OutputFormat::Sarif => sarif_files.push((label, source, diags)),
                 }
             }
             Err(e) => {
@@ -428,6 +434,17 @@ fn check_many(
         // A JSON array of per-file result objects. Single-file `check` still
         // emits one bare object, unchanged (RT-70).
         print!("[{}]", json_docs.join(","));
+    } else if format == OutputFormat::Sarif {
+        // One SARIF run covering every file walked (RT-107).
+        let fds: Vec<trust_diag::FileDiagnostics> = sarif_files
+            .iter()
+            .map(|(name, text, diagnostics)| trust_diag::FileDiagnostics {
+                name,
+                text,
+                diagnostics,
+            })
+            .collect();
+        print!("{}", trust_diag::to_sarif(&fds));
     } else {
         let scanned = files.len();
         if findings == 0 && failed == 0 {
@@ -682,6 +699,9 @@ fn explain(code: Option<&str>, format: OutputFormat) -> Result<()> {
     match format {
         OutputFormat::Json => print!("{}", explain_json(&rules)),
         OutputFormat::Human => print!("{}", explain_human(&rules)),
+        OutputFormat::Sarif => {
+            bail!("`--format sarif` describes findings, not rules — it's only supported by `trust check`")
+        }
     }
     Ok(())
 }
@@ -798,6 +818,16 @@ fn emit_diagnostics(diags: &[Diagnostic], label: &str, source: &str, format: Out
                         text: source,
                     },
                 )
+            );
+        }
+        OutputFormat::Sarif => {
+            print!(
+                "{}",
+                trust_diag::to_sarif(&[trust_diag::FileDiagnostics {
+                    name: label,
+                    text: source,
+                    diagnostics: diags,
+                }])
             );
         }
     }
