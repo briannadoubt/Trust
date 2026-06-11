@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTW0GKQAG62BD3597W89SK7T",
+  "ts": "2026-06-11T18:53:32.778Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTW0GKQAG62BD3597W89SK7S",
+    "number": 118,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "`cargo trustc adopt` works workspace-wide",
+    "description": "RT-111 boundary: adopt currently handles the single package at cwd. For a workspace it should opt in every member (or [workspace.metadata.trust]) and migrate the whole tree. Reuse the workspace member discovery already in cargo-trustc.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTW0GKQ9WZVSM3Y6DC5BHCAA",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTW0GKQAG62BD3597W89SK7R",
+  "ts": "2026-06-11T18:53:32.778Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTW0GKQAG62BD3597W89SK7Q",
+    "number": 117,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "LSP honors trust.toml (rules/allow/warn)",
+    "description": "RT-108/RT-113 follow-up: now that TrustConfig lives in trust-lints (shared), wire trust-lsp's compute_diagnostics to discover + apply the project trust.toml — drop allow-listed codes, downgrade warn-listed ones to LSP Warning severity. Also lets a project pick the advisory rule set for the editor.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTW0GKQ9WZVSM3Y6DC5BHCAA",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

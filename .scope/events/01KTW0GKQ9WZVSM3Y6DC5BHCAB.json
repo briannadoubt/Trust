@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTW0GKQ9WZVSM3Y6DC5BHCAB",
+  "ts": "2026-06-11T18:53:32.777Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTW0GKQ9WZVSM3Y6DC5BHCAA",
+    "number": 115,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Close the remaining-depth backlog (RT-99/RT-109 follow-ups)",
+    "description": "The honest boundaries recorded in the RT-102/105/106/107/108/110/111/114 ticket comments. Each was a deliberate scope cut on a shipped feature; this epic finishes them.",
+    "status": "todo",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

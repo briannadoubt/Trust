@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTW0GKQAG62BD3597W89SK80",
+  "ts": "2026-06-11T18:53:32.778Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTW0GKQAG62BD3597W89SK7Z",
+    "number": 121,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Cache the auto signature index across invocations",
+    "description": "RT-114 boundary: the workspace signature index is rebuilt (all member src parsed) on every cargo trustc invocation. Cache it keyed on member src mtimes so incremental rebuilds skip the re-parse. Registry/path-deps-outside-workspace indexing (needs cargo metadata) stays out of scope.",
+    "status": "backlog",
+    "priority": "low",
+    "parentId": "01KTW0GKQ9WZVSM3Y6DC5BHCAA",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

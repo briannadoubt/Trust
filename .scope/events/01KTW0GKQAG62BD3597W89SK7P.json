@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTW0GKQAG62BD3597W89SK7P",
+  "ts": "2026-06-11T18:53:32.778Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTW0GKQAG62BD3597W89SK7N",
+    "number": 116,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Migration: name PRIVATE cross-file calls too (not just pub)",
+    "description": "RT-110/111 boundary: the migration's workspace index is pub-only (sig_index::extract_from_source), so a PRIVATE fn called across files in the same crate doesn't get named — those residual R0042s surface at cargo trustc build. Within a workspace we can see every fn, so add an all-fns extraction variant and use it for the *migration* index (trust fix tree). NB: the cross-CRATE auto-index (RT-114) must stay pub-only — private fns aren't callable across crates.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTW0GKQ9WZVSM3Y6DC5BHCAA",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

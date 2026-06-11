@@ -641,7 +641,9 @@ fn fix_tree(root: &Path, write: bool, safety: bool) -> Result<()> {
         let mut indices = Vec::new();
         for f in &files {
             if let Ok(s) = std::fs::read_to_string(f) {
-                indices.push(trust_lower::sig_index::extract_from_source(&s));
+                // RT-116: include private fns — within a workspace migration a
+                // call to a private cross-file fn still needs naming.
+                indices.push(trust_lower::sig_index::extract_all_from_source(&s));
             }
         }
         trust_lower::sig_index::merge(&indices)

@@ -54,12 +54,27 @@ pub const SIGNATURE_PATH_ENV: &str = "TRUST_SIGNATURE_PATH";
 /// first and re-parsed. Returns an empty index if neither parse succeeds —
 /// extraction is best-effort and never panics on malformed input.
 pub fn extract_from_source(source: &str) -> Vec<Signature> {
+    extract_from_source_impl(source, false)
+}
+
+/// Like [`extract_from_source`] but includes **private** fns and fns in private
+/// modules (RT-116). For a *within-workspace* migration (`trust fix` over a
+/// tree) we can see every fn, and a positional call to a private cross-file fn
+/// still needs naming. The registry matches by name, so a name that collides
+/// with mismatched params across files still drops to the positional fallback
+/// via [`merge`]. Do NOT use this for the cross-*crate* index — private fns
+/// aren't callable from another crate.
+pub fn extract_all_from_source(source: &str) -> Vec<Signature> {
+    extract_from_source_impl(source, true)
+}
+
+fn extract_from_source_impl(source: &str, include_private: bool) -> Vec<Signature> {
     let Some(file) = parse_file_lenient(source) else {
         return Vec::new();
     };
     let mut sigs: SigMap = BTreeMap::new();
     let mut ambiguous: NameSet = BTreeSet::new();
-    walk_items(&file.items, &mut sigs, &mut ambiguous);
+    walk_items(&file.items, &mut sigs, &mut ambiguous, include_private);
     sigs.into_iter().collect()
 }
 
@@ -72,7 +87,7 @@ pub fn extract_from_dir(src_dir: &Path) -> Vec<Signature> {
     let mut sigs: SigMap = BTreeMap::new();
     let mut ambiguous: NameSet = BTreeSet::new();
     let mut visited: HashSet<PathBuf> = HashSet::new();
-    walk_dir(src_dir, &mut sigs, &mut ambiguous, &mut visited);
+    walk_dir(src_dir, &mut sigs, &mut ambiguous, &mut visited, false);
     sigs.into_iter().collect()
 }
 
@@ -227,13 +242,14 @@ fn walk_dir(
     sigs: &mut SigMap,
     ambiguous: &mut NameSet,
     visited: &mut HashSet<PathBuf>,
+    include_private: bool,
 ) {
     if !dir.is_dir() {
         // Allow passing a single `.rs` file too.
         if dir.extension().and_then(|e| e.to_str()) == Some("rs") {
             if let Ok(source) = fs::read_to_string(dir) {
                 if let Some(file) = parse_file_lenient(&source) {
-                    walk_items(&file.items, sigs, ambiguous);
+                    walk_items(&file.items, sigs, ambiguous, include_private);
                 }
             }
         }
@@ -249,28 +265,35 @@ fn walk_dir(
             continue;
         }
         if path.is_dir() {
-            walk_dir(&path, sigs, ambiguous, visited);
+            walk_dir(&path, sigs, ambiguous, visited, include_private);
         } else if path.extension().and_then(|e| e.to_str()) == Some("rs") {
             if let Ok(source) = fs::read_to_string(&path) {
                 if let Some(file) = parse_file_lenient(&source) {
-                    walk_items(&file.items, sigs, ambiguous);
+                    walk_items(&file.items, sigs, ambiguous, include_private);
                 }
             }
         }
     }
 }
 
-fn walk_items(items: &[syn::Item], sigs: &mut SigMap, ambiguous: &mut NameSet) {
+fn walk_items(
+    items: &[syn::Item],
+    sigs: &mut SigMap,
+    ambiguous: &mut NameSet,
+    include_private: bool,
+) {
     for item in items {
         match item {
-            syn::Item::Fn(f) => record_fn(&f.sig, &f.vis, sigs, ambiguous),
-            syn::Item::Mod(m) => {
-                // Only public modules expose their fns across the crate
-                // boundary; a private `mod` hides everything inside it.
-                if matches!(m.vis, syn::Visibility::Public(_)) {
-                    if let Some((_, inner)) = &m.content {
-                        walk_items(inner, sigs, ambiguous);
-                    }
+            syn::Item::Fn(f) => record_fn(&f.sig, &f.vis, sigs, ambiguous, include_private),
+            // Only public modules expose their fns across the crate boundary; a
+            // private `mod` hides everything inside it — except a within-
+            // workspace migration (include_private), where a call into a
+            // private module's fn still needs naming.
+            syn::Item::Mod(m)
+                if include_private || matches!(m.vis, syn::Visibility::Public(_)) =>
+            {
+                if let Some((_, inner)) = &m.content {
+                    walk_items(inner, sigs, ambiguous, include_private);
                 }
             }
             _ => {}
@@ -283,9 +306,11 @@ fn record_fn(
     vis: &syn::Visibility,
     sigs: &mut SigMap,
     ambiguous: &mut NameSet,
+    include_private: bool,
 ) {
-    // Only `pub` fns are nameable by a downstream crate's call sites.
-    if !matches!(vis, syn::Visibility::Public(_)) {
+    // Only `pub` fns are nameable by a downstream *crate*; a within-workspace
+    // migration (include_private) names calls to any fn it can see.
+    if !include_private && !matches!(vis, syn::Visibility::Public(_)) {
         return;
     }
     let name = sig.ident.to_string();
@@ -428,6 +453,25 @@ mod tests {
         let a = vec![sig("rect", &["w", "h"])];
         let b = vec![sig("rect", &["w", "h"])];
         assert_eq!(merge(&[a, b]), vec![sig("rect", &["w", "h"])]);
+    }
+
+    // RT-116: the cross-crate index stays pub-only; the migration variant also
+    // captures pub(crate) and private fns (and private modules).
+    #[test]
+    fn extract_all_includes_restricted_and_private() {
+        let src = "pub fn a(x: u32) {}\n\
+                   pub(crate) fn b(x: u32, y: u32) {}\n\
+                   fn c(x: u32, y: u32) {}\n\
+                   mod m { pub(crate) fn d(x: u32, y: u32) {} fn e(x: u32, y: u32) {} }";
+
+        let pub_only: Vec<String> = extract_from_source(src).into_iter().map(|(n, _)| n).collect();
+        assert_eq!(pub_only, vec!["a"], "cross-crate index must stay pub-only");
+
+        let all: std::collections::BTreeSet<String> =
+            extract_all_from_source(src).into_iter().map(|(n, _)| n).collect();
+        for name in ["a", "b", "c", "d", "e"] {
+            assert!(all.contains(name), "extract_all should include `{name}`: {all:?}");
+        }
     }
 
     #[test]

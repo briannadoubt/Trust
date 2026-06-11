@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTW0GKQAG62BD3597W89SK7W",
+  "ts": "2026-06-11T18:53:32.778Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTW0GKQAG62BD3597W89SK7V",
+    "number": 119,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Per-crate trust.toml in the multi-file walk",
+    "description": "RT-102 boundary: trust check/fix over a tree discover ONE project-root trust.toml for the whole run. In a monorepo each crate may have its own. Discover the nearest trust.toml per file (cache by directory) so member-local configs apply.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTW0GKQ9WZVSM3Y6DC5BHCAA",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}
