@@ -10,6 +10,23 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
+  # RT-104: guard the declared MSRV so it can't silently regress. The whole
+  # point of lowering 1.95 → 1.74 is that adopters on an older toolchain can
+  # `cargo install trust-lang`; this job keeps that promise honest. If a
+  # dependency bump breaks the 1.74 build, this fails and we bump deliberately.
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: Swatinem/rust-cache@v2
+      # No -D warnings: later toolchains add lints this pinned one doesn't have,
+      # and we don't want MSRV CI to fail on lints we can't see at this version.
+      - name: check on MSRV
+        env:
+          RUSTFLAGS: ""
+        run: cargo check --workspace --all-targets --locked
+
   test:
     runs-on: ubuntu-latest
     steps:

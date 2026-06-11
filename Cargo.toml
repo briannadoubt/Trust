@@ -5,7 +5,16 @@ members = ["crates/*"]
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.95"
+# MSRV (RT-104). The previous 1.95 was aspirational and blocked `cargo install
+# trust-lang` on common toolchains — adopting a linter shouldn't drag the whole
+# toolchain forward. Our own code floor is 1.70 (`is_some_and`/`is_ok_and`), but
+# the binding constraint is the dependency tree: clap declares 1.85, and the
+# committed Cargo.lock is format v4 (needs Cargo >= 1.78). Declaring below a
+# dep's own supported floor is the fragility that bit our first adopter in
+# reverse — so we pin the honest floor, 1.85, verified with
+# `cargo +1.85 check --workspace --all-targets --locked`. The `msrv` CI job
+# guards it so a dependency bump can't silently regress it.
+rust-version = "1.85"
 license = "MIT OR Apache-2.0"
 authors = ["Bri <bri@briannadoubt.com>"]
 repository = "https://github.com/briannadoubt/trust"
