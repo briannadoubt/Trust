@@ -364,7 +364,9 @@ pub fn to_sarif(files: &[FileDiagnostics<'_>]) -> String {
             out.push_str(&json_escape(severity_str(d.severity)));
             out.push_str(", \"message\": {\"text\": ");
             out.push_str(&json_escape(&d.message));
-            out.push_str("}, \"locations\": [{\"physicalLocation\": {\"artifactLocation\": {\"uri\": ");
+            out.push_str(
+                "}, \"locations\": [{\"physicalLocation\": {\"artifactLocation\": {\"uri\": ",
+            );
             out.push_str(&json_escape(f.name));
             out.push_str("}, \"region\": {\"startLine\": ");
             out.push_str(&sl.to_string());

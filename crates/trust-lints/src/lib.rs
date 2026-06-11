@@ -77,7 +77,10 @@ mod tests {
         // …but the advisory pass surfaces the bug.
         let report = lint_advisory(&parse(src), src, bug_rules());
         assert!(
-            report.diagnostics.iter().any(|d| d.rule == Rule::NoUnwrap.code()),
+            report
+                .diagnostics
+                .iter()
+                .any(|d| d.rule == Rule::NoUnwrap.code()),
             "advisory pass must flag .unwrap() on unmarked source"
         );
     }
@@ -98,7 +101,10 @@ mod tests {
         let src = "fn area(w: u32, h: u32) -> u32 { w * h }\npub fn g() -> u32 { area(3, 4) }";
         let report = lint_advisory(&parse(src), src, advisory_rules());
         assert!(
-            !report.diagnostics.iter().any(|d| d.rule == Rule::NoPositionalArgs.code()),
+            !report
+                .diagnostics
+                .iter()
+                .any(|d| d.rule == Rule::NoPositionalArgs.code()),
             "R0042 must not fire in an advisory run on plain Rust"
         );
     }

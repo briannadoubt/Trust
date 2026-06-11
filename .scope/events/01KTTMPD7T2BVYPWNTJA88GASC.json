@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTTMPD7T2BVYPWNTJA88GASC",
+  "ts": "2026-06-11T06:07:45.402Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJB",
+    "commentId": "01KTTMPD7T2BVYPWNTJA88GASB",
+    "author": "claude",
+    "body": "Done: README reframed (advisory vs build-gate), advisory quickstart added, #![strict] honest caveat, Status refreshed. Confirmed all 4 crates ARE published at 0.1.0 (reviewer's 'not on crates.io' was a stale install — old line listed only trust-lang). Bumped workspace+internal deps to 0.2.0 so the new advisory features map to a real release; README documents the --git fallback until bri publishes 0.2.0. PUBLISH = bri's call (RT-58 runbook)."
+  }
+}
