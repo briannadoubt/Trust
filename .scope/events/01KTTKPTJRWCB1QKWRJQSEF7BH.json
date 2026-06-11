@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTTKPTJRWCB1QKWRJQSEF7BH",
+  "ts": "2026-06-11T05:50:30.488Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJK",
+    "commentId": "01KTTKPTJRWCB1QKWRJQSEF7BG",
+    "author": "claude",
+    "body": "Delivered: trust check --format sarif (single + walked tree), valid SARIF 2.1.0, explain rejects it. FOLLOW-UP: wire a CI job that runs trust check --rules bugs --format sarif and uploads via github/codeql-action/upload-sarif so Trust self-reports in the Security tab; deferred because it needs a clean (or allow-listed) baseline first."
+  }
+}

@@ -128,6 +128,12 @@ enum Cmd {
         /// Rewrite the file in place instead of printing to stdout
         #[arg(short, long)]
         write: bool,
+        /// Apply mechanical safety fixes instead of named-arg insertion
+        /// (RT-106): rewrite `.unwrap()`/`.expect(…)` to `?` inside functions
+        /// that return `Result`. Produces plain Rust (no dialect), so it's the
+        /// companion to `check --rules bugs`. Best-effort — review the result.
+        #[arg(long)]
+        safety: bool,
     },
     /// Scaffold a new strict Trust project (RT-94).
     ///
@@ -192,7 +198,11 @@ fn main() -> Result<()> {
         } => check(&input, format, rules.as_deref()),
         Cmd::Lower { input } => lower_to_stdout(&input),
         Cmd::Index { input, out } => index(&input, out.as_deref()),
-        Cmd::Fix { input, write } => fix(&input, write),
+        Cmd::Fix {
+            input,
+            write,
+            safety,
+        } => fix(&input, write, safety),
         Cmd::New { name } => scaffold_new(&name),
         Cmd::Explain { code, format } => explain(code.as_deref(), format),
     }
@@ -546,22 +556,30 @@ fn index(input: &Path, out: Option<&Path>) -> Result<()> {
     Ok(())
 }
 
-/// Insert named arguments at positional call sites — vanilla → strict (RT-71).
-/// Reads `TRUST_SIGNATURE_PATH` so calls into indexed dependencies are named
-/// too. Prints to stdout, or rewrites the file in place with `--write`.
-fn fix(input: &Path, write: bool) -> Result<()> {
+/// Rewrite a source file: by default insert named arguments at positional call
+/// sites (vanilla → strict, RT-71, reading `TRUST_SIGNATURE_PATH` for indexed
+/// dependencies); with `--safety` (RT-106), rewrite `.unwrap()`/`.expect(…)` to
+/// `?` inside `Result`-returning functions instead. Prints to stdout, or
+/// rewrites the file in place with `--write`.
+fn fix(input: &Path, write: bool, safety: bool) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let extras = trust_lower::sig_index::load_from_env();
-    let promoted = trust_lower::promote_named_args(&source, &extras)
-        .with_context(|| format!("promoting named arguments in {label}"))?;
+    let rewritten = if safety {
+        trust_lower::fix_unwrap_to_question(&source)
+            .with_context(|| format!("applying safety fixes in {label}"))?
+    } else {
+        let extras = trust_lower::sig_index::load_from_env();
+        trust_lower::promote_named_args(&source, &extras)
+            .with_context(|| format!("promoting named arguments in {label}"))?
+    };
     if write {
         if is_stdin(input) {
             bail!("`fix --write` needs a file path to rewrite, not stdin");
         }
-        std::fs::write(input, &promoted).with_context(|| format!("writing {}", input.display()))?;
+        std::fs::write(input, &rewritten)
+            .with_context(|| format!("writing {}", input.display()))?;
         eprintln!("rewrote {}", input.display());
     } else {
-        print!("{promoted}");
+        print!("{rewritten}");
     }
     Ok(())
 }
