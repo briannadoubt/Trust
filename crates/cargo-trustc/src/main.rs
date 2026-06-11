@@ -70,6 +70,12 @@ fn run() -> Result<i32> {
     // literal `trust` cargo prepends.
     let rest = strip_trust_prefix(env::args().skip(1).collect());
 
+    // RT-111: `cargo trustc adopt` — guided one-command dialect onboarding.
+    // Intercepted before dispatch since it orchestrates several steps.
+    if rest.first().map(String::as_str) == Some("adopt") {
+        return adopt(&rest[1..]);
+    }
+
     match dispatch(&rest) {
         Dispatch::Usage => {
             print_usage();
@@ -78,6 +84,117 @@ fn run() -> Result<i32> {
         Dispatch::Cargo => run_cargo(&rest),
         Dispatch::Trust => forward_to_trust(&rest),
     }
+}
+
+/// Outcome of ensuring the strict opt-in is present in a manifest.
+enum MetadataOutcome {
+    Added,
+    AlreadyStrict,
+    TableExistsNotStrict,
+}
+
+/// `cargo trustc adopt` (RT-111): turn an existing crate into a Trust dialect
+/// crate in one command — opt into strict mode, migrate every positional call
+/// to named-arg form (RT-110), then build through the gate and surface the
+/// lints the mechanical migration can't fix for a human to finish.
+fn adopt(args: &[String]) -> Result<i32> {
+    let manifest = manifest_path(args)
+        .context("no Cargo.toml found — run `cargo trustc adopt` inside a cargo package")?;
+    let project_dir = manifest
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."))
+        .to_path_buf();
+
+    // 1. Opt in at the project level (invisible to stock cargo).
+    match ensure_strict_metadata(&manifest)? {
+        MetadataOutcome::Added => {
+            eprintln!(
+                "✓ added [package.metadata.trust] strict = true to {}",
+                manifest.display()
+            );
+        }
+        MetadataOutcome::AlreadyStrict => {
+            eprintln!("✓ already opted in ({})", manifest.display());
+        }
+        MetadataOutcome::TableExistsNotStrict => {
+            bail!(
+                "{} already has a [package.metadata.trust] table but `strict` isn't `true` — \
+                 set `strict = true` there, then re-run `cargo trustc adopt`",
+                manifest.display()
+            );
+        }
+    }
+
+    // 2. Migrate positional calls → named-arg form across the tree (RT-110).
+    let trust = locate_trust().context(
+        "could not find the `trust` CLI, needed for the migration step.\n  \
+         Install it with `cargo install trust-lang`, or place it on PATH \
+         (it ships alongside cargo-trustc).",
+    )?;
+    eprintln!("→ migrating calls to named-argument form (`trust fix --write`)…");
+    let status = Command::new(&trust)
+        .arg("fix")
+        .arg("--write")
+        .arg(&project_dir)
+        .status()
+        .context("running `trust fix --write` for the migration")?;
+    if !status.success() {
+        bail!("the migration step failed; aborting before the build");
+    }
+
+    // 3. Build through the dialect so the remaining (non-mechanical) lints show.
+    eprintln!("→ building through the dialect (`cargo trustc build`) to surface what's left…");
+    let code = run_cargo(&["build".to_string()])?;
+    if code == 0 {
+        eprintln!(
+            "\n✓ adopted — this crate builds clean under the Trust dialect. \
+             Use `cargo trustc build|run|test` from here on."
+        );
+    } else {
+        eprintln!(
+            "\nMigration applied. The build above lists the lints the mechanical step \
+             can't fix (e.g. R0017 newtypes, R0001 `.unwrap()`) — address those, then \
+             `cargo trustc build` again. `trust explain <CODE>` details any rule."
+        );
+    }
+    Ok(code)
+}
+
+/// Ensure `[package.metadata.trust] strict = true` is present in `manifest`,
+/// appending it when absent. Preserves existing formatting (text append, not a
+/// TOML re-serialise). Refuses to touch a manifest that already has the table
+/// with a non-true value — that's the user's to resolve.
+fn ensure_strict_metadata(manifest: &Path) -> Result<MetadataOutcome> {
+    let text = std::fs::read_to_string(manifest)
+        .with_context(|| format!("reading {}", manifest.display()))?;
+
+    if let Ok(value) = text.parse::<toml::Value>() {
+        if value.get("package").is_some_and(metadata_trust_strict) {
+            return Ok(MetadataOutcome::AlreadyStrict);
+        }
+    }
+    if text.contains("[package.metadata.trust]") {
+        return Ok(MetadataOutcome::TableExistsNotStrict);
+    }
+
+    let mut new = text;
+    if !new.ends_with('\n') {
+        new.push('\n');
+    }
+    new.push_str(
+        "\n# Strict mode is enforced by `cargo trustc` (build/run/test); stock cargo\n\
+         # ignores this metadata table entirely.\n\
+         [package.metadata.trust]\n\
+         strict = true\n",
+    );
+    std::fs::write(manifest, new).with_context(|| format!("writing {}", manifest.display()))?;
+    Ok(MetadataOutcome::Added)
+}
+
+/// Locate the `trust` CLI: next to this binary first, then on PATH.
+fn locate_trust() -> Option<PathBuf> {
+    sibling_of_self("trust").or_else(|| locate_on_path("trust"))
 }
 
 /// Drop the literal `trustc` token cargo prepends when invoked as a subcommand.
@@ -437,6 +554,9 @@ fn print_usage() {
          build, run, test, check, clippy, doc, bench, install\n  \
          e.g.  cargo trustc build      # == RUSTC_WRAPPER/RUSTDOC set, then cargo build\n\
          \n\
+         ADOPT (one-command migration of an existing crate into the dialect):\n  \
+         cargo trustc adopt            # opt in + migrate calls + build, report what's left\n\
+         \n\
          TRUST HELPERS (forwarded to the `trust` CLI):\n  \
          lower, index, fix, explain, …\n  \
          e.g.  cargo trustc explain R0042\n\
@@ -483,6 +603,56 @@ mod tests {
         for cmd in CARGO_COMMANDS {
             assert_eq!(dispatch(&v(&[cmd])), Dispatch::Cargo, "{cmd}");
         }
+    }
+
+    // RT-111: `adopt` is intercepted in run(), so it must NOT route to the
+    // cargo path (which would try to run `cargo adopt`).
+    #[test]
+    fn adopt_is_not_a_cargo_command() {
+        assert!(!CARGO_COMMANDS.contains(&"adopt"));
+        assert_eq!(dispatch(&v(&["adopt"])), Dispatch::Trust);
+    }
+
+    // RT-111: ensure_strict_metadata appends the opt-in once, is idempotent,
+    // and refuses to clobber a table that's present with a non-true value.
+    #[test]
+    fn ensure_strict_metadata_appends_then_is_idempotent() {
+        let dir = tempfile::tempdir().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"x\"\nversion = \"0.1.0\"\nedition = \"2021\"\n",
+        )
+        .unwrap();
+
+        assert!(matches!(
+            super::ensure_strict_metadata(&manifest).unwrap(),
+            super::MetadataOutcome::Added
+        ));
+        let after = std::fs::read_to_string(&manifest).unwrap();
+        assert!(after.contains("[package.metadata.trust]"));
+        assert!(after.contains("strict = true"));
+        // Parses, and a second run is a no-op (AlreadyStrict).
+        assert!(after.parse::<toml::Value>().is_ok());
+        assert!(matches!(
+            super::ensure_strict_metadata(&manifest).unwrap(),
+            super::MetadataOutcome::AlreadyStrict
+        ));
+    }
+
+    #[test]
+    fn ensure_strict_metadata_refuses_non_true_table() {
+        let dir = tempfile::tempdir().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"x\"\nversion = \"0.1.0\"\n[package.metadata.trust]\nstrict = false\n",
+        )
+        .unwrap();
+        assert!(matches!(
+            super::ensure_strict_metadata(&manifest).unwrap(),
+            super::MetadataOutcome::TableExistsNotStrict
+        ));
     }
 
     #[test]

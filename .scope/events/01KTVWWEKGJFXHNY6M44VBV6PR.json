@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTVWWEKGJFXHNY6M44VBV6PR",
+  "ts": "2026-06-11T17:50:06.448Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTRY43D4JZ93CPV1XE4HCQ6",
+    "commentId": "01KTVWWEKGJFXHNY6M44VBV6PQ",
+    "author": "claude",
+    "body": "Delivered: trust fix <dir|Cargo.toml> whole-tree named-arg migration with workspace-wide index (cross-file + cross-crate-pub resolution), dry-run + --write, --safety on trees too. Verified the output passes cargo trustc build + runs. BOUNDARY/remaining depth: (1) the workspace index is PUB-ONLY (sig_index::extract_from_source), so a PRIVATE fn called across files in the same crate won't get named — those residual R0042s surface at cargo trustc build for manual fix; a within-workspace 'extract all fns' variant would close this. (2) Migration only does R0042 (named args) — other strict lints (R0017 newtypes, R0001 unwrap, …) still need human attention; cargo trustc build surfaces them. (3) Idempotency on already-partially-named files relies on promote's existing named-arg detection."
+  }
+}
