@@ -87,11 +87,12 @@ fn run() -> Result<i32> {
     }
 }
 
-/// Outcome of ensuring the strict opt-in is present in a manifest.
+/// Outcome of ensuring the strict opt-in is present in a manifest. The `String`
+/// is the table the opt-in lives under (`workspace` or `package`).
 enum MetadataOutcome {
-    Added,
+    Added(String),
     AlreadyStrict,
-    TableExistsNotStrict,
+    TableExistsNotStrict(String),
 }
 
 /// `cargo trustc adopt` (RT-111): turn an existing crate into a Trust dialect
@@ -107,20 +108,22 @@ fn adopt(args: &[String]) -> Result<i32> {
         .unwrap_or(Path::new("."))
         .to_path_buf();
 
-    // 1. Opt in at the project level (invisible to stock cargo).
+    // 1. Opt in at the project level (invisible to stock cargo). A workspace
+    // root opts in every member via [workspace.metadata.trust]; a plain package
+    // uses [package.metadata.trust].
     match ensure_strict_metadata(&manifest)? {
-        MetadataOutcome::Added => {
+        MetadataOutcome::Added(table) => {
             eprintln!(
-                "✓ added [package.metadata.trust] strict = true to {}",
+                "✓ added [{table}.metadata.trust] strict = true to {}",
                 manifest.display()
             );
         }
         MetadataOutcome::AlreadyStrict => {
             eprintln!("✓ already opted in ({})", manifest.display());
         }
-        MetadataOutcome::TableExistsNotStrict => {
+        MetadataOutcome::TableExistsNotStrict(table) => {
             bail!(
-                "{} already has a [package.metadata.trust] table but `strict` isn't `true` — \
+                "{} already has a [{table}.metadata.trust] table but `strict` isn't `true` — \
                  set `strict = true` there, then re-run `cargo trustc adopt`",
                 manifest.display()
             );
@@ -162,35 +165,48 @@ fn adopt(args: &[String]) -> Result<i32> {
     Ok(code)
 }
 
-/// Ensure `[package.metadata.trust] strict = true` is present in `manifest`,
-/// appending it when absent. Preserves existing formatting (text append, not a
-/// TOML re-serialise). Refuses to touch a manifest that already has the table
-/// with a non-true value — that's the user's to resolve.
+/// Ensure the strict opt-in is present in `manifest`, appending it when absent.
+/// A workspace root (has a `[workspace]` table) opts in every member via
+/// `[workspace.metadata.trust]`; a plain package uses `[package.metadata.trust]`
+/// (RT-118). Preserves existing formatting (text append, not a TOML
+/// re-serialise). Refuses to touch a manifest that already has the table with a
+/// non-true value — that's the user's to resolve.
 fn ensure_strict_metadata(manifest: &Path) -> Result<MetadataOutcome> {
     let text = std::fs::read_to_string(manifest)
         .with_context(|| format!("reading {}", manifest.display()))?;
 
-    if let Ok(value) = text.parse::<toml::Value>() {
-        if value.get("package").is_some_and(metadata_trust_strict) {
+    let parsed = text.parse::<toml::Value>().ok();
+    // A workspace root opts in all members; otherwise it's a package.
+    let table = if parsed
+        .as_ref()
+        .is_some_and(|v| v.get("workspace").is_some())
+    {
+        "workspace"
+    } else {
+        "package"
+    };
+
+    if let Some(value) = &parsed {
+        if value.get(table).is_some_and(metadata_trust_strict) {
             return Ok(MetadataOutcome::AlreadyStrict);
         }
     }
-    if text.contains("[package.metadata.trust]") {
-        return Ok(MetadataOutcome::TableExistsNotStrict);
+    if text.contains(&format!("[{table}.metadata.trust]")) {
+        return Ok(MetadataOutcome::TableExistsNotStrict(table.to_string()));
     }
 
     let mut new = text;
     if !new.ends_with('\n') {
         new.push('\n');
     }
-    new.push_str(
+    new.push_str(&format!(
         "\n# Strict mode is enforced by `cargo trustc` (build/run/test); stock cargo\n\
          # ignores this metadata table entirely.\n\
-         [package.metadata.trust]\n\
+         [{table}.metadata.trust]\n\
          strict = true\n",
-    );
+    ));
     std::fs::write(manifest, new).with_context(|| format!("writing {}", manifest.display()))?;
-    Ok(MetadataOutcome::Added)
+    Ok(MetadataOutcome::Added(table.to_string()))
 }
 
 /// Locate the `trust` CLI: next to this binary first, then on PATH.
@@ -802,7 +818,7 @@ mod tests {
 
         assert!(matches!(
             super::ensure_strict_metadata(&manifest).unwrap(),
-            super::MetadataOutcome::Added
+            super::MetadataOutcome::Added(t) if t == "package"
         ));
         let after = std::fs::read_to_string(&manifest).unwrap();
         assert!(after.contains("[package.metadata.trust]"));
@@ -813,6 +829,21 @@ mod tests {
             super::ensure_strict_metadata(&manifest).unwrap(),
             super::MetadataOutcome::AlreadyStrict
         ));
+    }
+
+    // RT-118: a workspace root opts in via [workspace.metadata.trust].
+    #[test]
+    fn ensure_strict_metadata_uses_workspace_table_for_a_workspace() {
+        let dir = tempfile::tempdir().unwrap();
+        let manifest = dir.path().join("Cargo.toml");
+        std::fs::write(&manifest, "[workspace]\nmembers = [\"a\"]\n").unwrap();
+        assert!(matches!(
+            super::ensure_strict_metadata(&manifest).unwrap(),
+            super::MetadataOutcome::Added(t) if t == "workspace"
+        ));
+        let after = std::fs::read_to_string(&manifest).unwrap();
+        assert!(after.contains("[workspace.metadata.trust]"));
+        assert!(after.parse::<toml::Value>().is_ok());
     }
 
     // RT-114: the auto signature index gathers every member's src/ dir.
@@ -857,7 +888,7 @@ mod tests {
         .unwrap();
         assert!(matches!(
             super::ensure_strict_metadata(&manifest).unwrap(),
-            super::MetadataOutcome::TableExistsNotStrict
+            super::MetadataOutcome::TableExistsNotStrict(t) if t == "package"
         ));
     }
 
