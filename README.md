@@ -14,64 +14,41 @@ vendors.
 [![crates.io](https://img.shields.io/crates/v/trust-lang.svg)](https://crates.io/crates/trust-lang)
 [![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 
-## Two ways to use Trust
+## What Trust is
 
-You can adopt Trust at the level that fits — and the lowest-friction one needs
-no dialect, no markers, and no toolchain bump:
+Trust **is** a strict dialect of Rust — a thin layer that turns the bugs agents
+ship (wrong argument order, `.unwrap()`, silent `as` casts) into compile errors
+with a fix in the message, caught in **one pass** before the code ever runs.
+That dialect is the product, and it's what the [eval numbers](#the-numbers)
+measure: 60% of agent files shipped a bug in plain Rust, **0% under the dialect**.
 
-1. **As an advisory linter** on a normal cargo workspace — the bug-catching
-   rules over plain Rust, no `#![strict]`, nothing added to your source. Just
-   the `trust` CLI.
-2. **As a build gate** with the full dialect (named arguments, the complete
-   rule set) — opted in via `Cargo.toml` and enforced by `cargo trustc`.
+You can run it two ways — but they are not equals:
+
+1. **The dialect — a build gate.** Opt in via `Cargo.toml`, build with `cargo
+   trustc`, and the full rule set — including named-argument enforcement
+   (R0042), the rule that makes the argument-swap bug *unrepresentable* — is
+   enforced at compile time. **This is Trust.**
+2. **An advisory linter — an on-ramp.** Not ready to change how you build? Point
+   the `trust` CLI at existing plain Rust and it *reports* the subset of rules
+   that work without the dialect — zero commitment, partial value, a way to see
+   what Trust catches before you switch the build over. It cannot enforce R0042,
+   and it reports rather than blocks.
 
 ## Install
 
 ```sh
-# Advisory linter — just the `trust` CLI (the crate is `trust-lang`):
-cargo install trust-lang
-
-# Full build gate — also install the cargo subcommand and the two lowering shims
-# (cargo doesn't install a dependency's binaries, so they're listed explicitly):
+# The dialect (the build gate) — the CLI, the cargo subcommand, and the two
+# lowering shims (cargo doesn't install a dependency's binaries):
 cargo install trust-lang cargo-trustc trust-rustc trust-rustdoc
+
+# Or just the advisory linter — only the `trust` CLI (the crate is `trust-lang`):
+cargo install trust-lang
 ```
 
-All four crates are published on crates.io (latest: **0.2.0**). MSRV is **Rust
-1.85**. The advisory-linter features (`trust check --rules`, `trust.toml`,
-`--format sarif`, `trust fix --safety`) are in 0.2.0+. Building from source also
-works — see [From source](#from-source) below.
+All four crates are published on crates.io (latest: **0.2.0**); MSRV is **Rust
+1.85**. Building from source also works — see [From source](#from-source) below.
 
-## Use it as an advisory linter — zero ceremony
-
-The bug-catching rules — `.unwrap()`, `as`-casts, bare indexing, dropped error
-context, and their kin — apply to **plain Rust**. No marker, no metadata, no
-dialect:
-
-```sh
-trust check --rules bugs  src/     # the runtime-bug rules — the high-signal backlog
-trust check --rules safety src/    # every rule that applies to plain Rust
-```
-
-`trust check` takes a file, a directory, or a `Cargo.toml` and walks the tree —
-one command, CI-ready (non-zero exit on findings). Nothing is added to your
-source, so it can never break a normal `cargo build`. Tune it without editing
-call sites:
-
-```toml
-# trust.toml — at the project root
-rules = "bugs"          # default selection (--rules overrides)
-allow = ["R0012"]       # dropped project-wide
-warn  = ["R0017"]       # kept, but a non-failing warning
-```
-
-Pipe findings into CI with `--format json` (agent-native) or `--format sarif`
-(GitHub code-scanning → inline annotations + the Security tab). `trust fix
-<file> --safety` mechanically rewrites `.unwrap()`/`.expect(…)` to `?` inside
-`Result`-returning functions. The one rule **not** in these sets is R0042
-(named arguments) — it needs the dialect below, because its fix is syntax stock
-`rustc` rejects.
-
-## Use it as a build gate — two steps
+## The dialect — two steps
 
 ```toml
 # Cargo.toml
@@ -92,6 +69,35 @@ touched. `[workspace.metadata.trust] strict = true` opts in a whole
 workspace at once. Because the opt-in lives in `Cargo.toml` metadata (which
 stock cargo ignores), **every source file stays a valid plain `cargo build`** —
 nothing in your `.rs` files changes.
+
+## Try it first — the advisory linter
+
+New to Trust, or not ready to change your build? Run the bug-catching rules over
+your existing plain Rust — no marker, no metadata, no dialect:
+
+```sh
+trust check --rules bugs  src/     # the runtime-bug rules
+trust check --rules safety src/    # every rule that applies to plain Rust
+```
+
+`trust check` takes a file, a directory, or a `Cargo.toml` and walks the tree —
+one command, CI-ready (non-zero exit on findings). Nothing is added to your
+source, so it can't break a normal `cargo build`. Tune it in a `trust.toml`:
+
+```toml
+# trust.toml — at the project root
+rules = "bugs"          # default selection (--rules overrides)
+allow = ["R0012"]       # dropped project-wide
+warn  = ["R0017"]       # kept, but a non-failing warning
+```
+
+Emit `--format json` (agent-native) or `--format sarif` (GitHub code-scanning);
+`trust fix <file> --safety` rewrites `.unwrap()`/`.expect(…)` → `?`. **Mind the
+ceiling, though:** advisory mode *reports* a subset and **cannot enforce R0042**
+(named arguments) — the rule that prevents the argument-swap bug and the
+strongest result in the eval. For one-pass *enforcement* rather than
+after-the-fact reports, you need the dialect above. The advisory linter is the
+doorway; the dialect is the room.
 
 ## What it looks like
 
@@ -158,18 +164,17 @@ playbook.
 
 ## Status
 
-**0.1 — agent-authored, evaluation-backed prototype.** 18 rules across
-`trust-lints` (strict mode) and `trust-lower` (named args, pipe). Two ways in:
-an **advisory linter** over plain Rust (`trust check --rules bugs|safety`,
-directory/workspace walk, `trust.toml` rule selection + `allow`/`warn`, JSON
-and SARIF output, `trust fix --safety` for `.unwrap()`→`?`), and a **build
-gate** via `cargo trustc` (`RUSTC_WRAPPER`/`RUSTDOC` shims, `[package.metadata.
-trust]` activation). An LSP server gives in-editor diagnostics (advisory on
-plain Rust, full set on strict files), hover, and go-to-def. Cross-crate
+**0.2 — agent-authored, evaluation-backed prototype.** The core is the
+**dialect**: 18 rules across `trust-lints` (strict mode) and `trust-lower`
+(named args, pipe), enforced at build time by `cargo trustc` (`RUSTC_WRAPPER`/
+`RUSTDOC` shims, `[package.metadata.trust]` activation). Cross-crate
 named-argument enforcement works against a signature index from `trust index`
-([`examples/cross-crate-index`](examples/cross-crate-index/)); zero-config
-discovery of those indices from cargo's dependency graph, honoring `trust.toml`
-in the build gate, and editor packaging are the active gaps. MSRV is Rust 1.85.
+([`examples/cross-crate-index`](examples/cross-crate-index/)). The **advisory
+linter** (`trust check --rules bugs|safety` over plain Rust, dir/workspace walk,
+`trust.toml`, JSON/SARIF, `trust fix --safety`, LSP) is a 0.2 on-ramp — the
+dialect-free subset, for trying Trust before adopting it. Active gaps: zero-config
+discovery of signature indices from cargo's dependency graph, honoring
+`trust.toml` in the build gate, and editor packaging. MSRV is Rust 1.85.
 Validated by 6 eval runs and 4 case-study conversions of real crates. MIT OR
 Apache-2.0 — see the [case studies](#case-studies) and `eval/` for exactly what
 is and isn't proven.

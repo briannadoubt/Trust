@@ -27,11 +27,15 @@ the final Rust. The driver lives in `crates/trust`; the orchestration is
 
 ## Activation
 
-Trust meets a codebase at one of three levels of commitment, lowest-friction
-first. Pick the one that matches how much of the dialect you want — you can
-start advisory-only and never touch the dialect at all.
+Trust is the **dialect** — the full rule set enforced at build time, including
+the named-argument rule (R0042) that makes the argument-swap bug
+unrepresentable. The project- and per-file modes below turn it on. There is
+also an **advisory mode** that runs the dialect-free *subset* on plain Rust with
+no activation at all — an on-ramp for trying Trust before adopting it, not a
+substitute for the dialect (it reports rather than enforces, and cannot run
+R0042). The three are listed lowest-commitment first.
 
-### Advisory mode: no activation (RT-101)
+### Advisory mode: no activation — an on-ramp (RT-101)
 
 The bug-catching lints — `.unwrap()`, `as`-casts, bare indexing, dropped error
 context, and their kin — apply to **plain Rust**. They need no marker, no
@@ -43,9 +47,10 @@ trust check --rules safety src/    # every rule that applies to plain Rust
 ```
 
 Nothing is added to your source, so this can never break a normal
-`cargo build` — it is the way to adopt Trust as an out-of-tree advisory linter
-on an existing cargo workspace, and the recommended starting point. `trust
-check` accepts a file, a directory, or a `Cargo.toml` and walks the tree.
+`cargo build` — it lets you run Trust as an out-of-tree advisory linter on an
+existing cargo workspace to see what it catches, before committing to the
+dialect. `trust check` accepts a file, a directory, or a `Cargo.toml` and walks
+the tree.
 Configure the rule set and project-wide `allow`/`warn` in a `trust.toml` at the
 project root; emit SARIF for GitHub code-scanning with `--format sarif`. The
 named-argument rule **R0042 is not in these sets** — it is the one rule whose
