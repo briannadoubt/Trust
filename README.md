@@ -17,7 +17,10 @@ vendors.
 ## Install
 
 ```sh
-cargo install trust-lang cargo-trustc   # the `trust` CLI + `cargo trustc build/run/test`
+cargo install trust-lang cargo-trustc trust-rustc trust-rustdoc
+# trust-lang installs the `trust` CLI; cargo-trustc gives `cargo trustc
+# build/run/test`; the two shims do the lowering (cargo doesn't install a
+# dependency's binaries, so they're listed explicitly).
 ```
 
 (The crate is `trust-lang`; the binary it installs is `trust`. Building from
