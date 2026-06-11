@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTVZ2TW81PE9DMPX9E3HA99R",
+  "ts": "2026-06-11T18:28:32.776Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTRY43D4JZ93CPV1XE4HCQ8",
+    "commentId": "01KTVZ2TW81PE9DMPX9E3HA99Q",
+    "author": "claude",
+    "body": "Delivered: cargo trustc adopt (metadata opt-in + RT-110 migration + gated build + report). Verified plain-Rust → adopted, builds clean. FOLLOW-UP: workspace-wide adopt (currently single package at cwd); inherits RT-110's pub-only cross-file boundary."
+  }
+}

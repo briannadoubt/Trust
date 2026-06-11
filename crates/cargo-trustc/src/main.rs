@@ -70,10 +70,11 @@ fn run() -> Result<i32> {
     // literal `trust` cargo prepends.
     let rest = strip_trust_prefix(env::args().skip(1).collect());
 
-    // RT-111: `cargo trustc adopt` — guided one-command dialect onboarding.
-    // Intercepted before dispatch since it orchestrates several steps.
-    if rest.first().map(String::as_str) == Some("adopt") {
-        return adopt(&rest[1..]);
+    // RT-111/112: helper subcommands intercepted before dispatch.
+    match rest.first().map(String::as_str) {
+        Some("adopt") => return adopt(&rest[1..]),
+        Some("doctor") => return doctor(),
+        _ => {}
     }
 
     match dispatch(&rest) {
@@ -476,12 +477,90 @@ fn manifest_path(args: &[String]) -> Option<PathBuf> {
 
 /// Forward a trust-native subcommand to the `trust` CLI.
 fn forward_to_trust(args: &[String]) -> Result<i32> {
-    let trust = locate_on_path("trust").unwrap_or_else(|| PathBuf::from("trust"));
+    let trust = locate_trust().context(
+        "could not find the `trust` CLI. Install it with `cargo install trust-lang`, \
+         or place it on PATH (it ships alongside cargo-trustc). \
+         Run `cargo trustc doctor` to check your setup.",
+    )?;
     let status = Command::new(&trust)
         .args(args)
         .status()
-        .context("invoking `trust` (is it on PATH?)")?;
+        .context("running the `trust` CLI")?;
     Ok(status.code().unwrap_or(1))
+}
+
+/// `cargo trustc doctor` (RT-112): diagnose the toolchain setup and print
+/// actionable fixes, so a first-time user isn't left with a cryptic stock-rustc
+/// error when a piece is missing or the project isn't opted in.
+fn doctor() -> Result<i32> {
+    eprintln!("cargo trustc doctor — checking your Trust setup\n");
+
+    let mut missing = false;
+    // (binary, env override). `trust` is the CLI; the other two are the shims
+    // cargo trustc wires in as RUSTC_WRAPPER / RUSTDOC.
+    let checks: [(&str, Option<&str>); 3] = [
+        ("trust", None),
+        ("trust-rustc", Some("TRUST_RUSTC")),
+        ("trust-rustdoc", Some("TRUST_RUSTDOC")),
+    ];
+    for (bin, env_override) in checks {
+        match probe_bin(bin, env_override) {
+            Some(p) => eprintln!("  ✓ {bin:<14} {}", p.display()),
+            None => {
+                missing = true;
+                eprintln!("  ✗ {bin:<14} not found");
+            }
+        }
+    }
+
+    eprintln!();
+    match manifest_path(&[]) {
+        Some(m) if !strict_packages(&[]).is_empty() => {
+            eprintln!("  ✓ {} opts into strict mode", m.display());
+        }
+        Some(m) => {
+            eprintln!(
+                "  • {} isn't strict yet — run `cargo trustc adopt`, or add\n    \
+                 [package.metadata.trust] strict = true",
+                m.display()
+            );
+        }
+        None => {
+            eprintln!(
+                "  • no Cargo.toml here — run inside a cargo package, or use the \
+                 `trust` CLI on single files (`trust check foo.rs`)"
+            );
+        }
+    }
+
+    if missing {
+        eprintln!(
+            "\nInstall the missing pieces:\n  \
+             cargo install trust-lang cargo-trustc trust-rustc trust-rustdoc"
+        );
+        Ok(1)
+    } else {
+        eprintln!(
+            "\nReady: build with `cargo trustc build` \
+             (or `cargo trustc adopt` to convert this crate into the dialect)."
+        );
+        Ok(0)
+    }
+}
+
+/// Probe for a binary the way the wrapper resolution does, but leniently
+/// (returns `None` instead of failing): an existing env-override path first,
+/// then a sibling of this binary, then `PATH`.
+fn probe_bin(bin: &str, env_override: Option<&str>) -> Option<PathBuf> {
+    if let Some(ev) = env_override {
+        if let Some(p) = env::var_os(ev) {
+            let path = PathBuf::from(p);
+            if path.is_file() {
+                return Some(path);
+            }
+        }
+    }
+    sibling_of_self(bin).or_else(|| locate_on_path(bin))
 }
 
 /// Resolve a bundled shim binary by name, honouring an env override.
@@ -555,7 +634,8 @@ fn print_usage() {
          e.g.  cargo trustc build      # == RUSTC_WRAPPER/RUSTDOC set, then cargo build\n\
          \n\
          ADOPT (one-command migration of an existing crate into the dialect):\n  \
-         cargo trustc adopt            # opt in + migrate calls + build, report what's left\n\
+         cargo trustc adopt            # opt in + migrate calls + build, report what's left\n  \
+         cargo trustc doctor           # check the toolchain setup and print fixes\n\
          \n\
          TRUST HELPERS (forwarded to the `trust` CLI):\n  \
          lower, index, fix, explain, …\n  \
@@ -605,12 +685,28 @@ mod tests {
         }
     }
 
-    // RT-111: `adopt` is intercepted in run(), so it must NOT route to the
-    // cargo path (which would try to run `cargo adopt`).
+    // RT-111/112: `adopt` and `doctor` are intercepted in run(), so they must
+    // NOT route to the cargo path (which would try to run `cargo adopt`).
     #[test]
-    fn adopt_is_not_a_cargo_command() {
-        assert!(!CARGO_COMMANDS.contains(&"adopt"));
-        assert_eq!(dispatch(&v(&["adopt"])), Dispatch::Trust);
+    fn helper_subcommands_are_not_cargo_commands() {
+        for cmd in ["adopt", "doctor"] {
+            assert!(!CARGO_COMMANDS.contains(&cmd), "{cmd}");
+        }
+    }
+
+    // RT-112: probe_bin finds this very test binary by its own name (it lives
+    // next to no `trust` shim, but a sibling lookup of an existing file works).
+    #[test]
+    fn probe_bin_honors_env_override() {
+        let dir = tempfile::tempdir().unwrap();
+        let fake = dir.path().join("trust-rustc");
+        std::fs::write(&fake, "x").unwrap();
+        std::env::set_var("TRUST_RUSTC_PROBE_TEST", &fake);
+        assert_eq!(
+            super::probe_bin("trust-rustc", Some("TRUST_RUSTC_PROBE_TEST")),
+            Some(fake)
+        );
+        std::env::remove_var("TRUST_RUSTC_PROBE_TEST");
     }
 
     // RT-111: ensure_strict_metadata appends the opt-in once, is idempotent,
