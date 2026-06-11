@@ -328,3 +328,29 @@ jobs:
           # (RT-76), so no wrapper is needed to build it.
           cargo xtask gen-std-signatures --check
 
+  # RT-120: advisory self-scan — surface Trust's own bug-catching findings in
+  # the GitHub Security tab via SARIF, dogfooding `trust check --format sarif`.
+  # Push-only (forks/PRs lack `security-events: write`), and never fails the
+  # build: it's an informational baseline, and some dialect files don't parse in
+  # advisory mode (named-arg syntax) so they're skipped.
+  self-scan:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: build the trust CLI
+        run: cargo build -p trust-lang --bin trust
+      - name: advisory scan -> SARIF (never fails the build)
+        continue-on-error: true
+        run: ./target/debug/trust check --rules bugs --format sarif crates > trust.sarif
+      - name: upload SARIF to code scanning
+        continue-on-error: true # don't block CI if code scanning isn't enabled yet
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trust.sarif
+          category: trust-advisory
+
