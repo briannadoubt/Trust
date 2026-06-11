@@ -55,7 +55,9 @@ impl Backend {
             let mut docs = self.docs.lock().await;
             docs.insert(uri.clone(), text.clone());
         }
-        let diags = compute_diagnostics(&text);
+        // RT-117: pass the file path so a project trust.toml is honored.
+        let path = uri.to_file_path().ok();
+        let diags = compute_diagnostics_at(&text, path.as_deref());
         self.client.publish_diagnostics(uri, diags, None).await;
     }
 }
@@ -203,6 +205,15 @@ fn rt_to_lsp_severity(s: Severity) -> DiagnosticSeverity {
 /// to publish whatever we managed to compute. If lowering itself fails (the
 /// token stream is unlexable, etc.) we surface that as a synthetic diagnostic.
 pub fn compute_diagnostics(source: &str) -> Vec<Diagnostic> {
+    compute_diagnostics_at(source, None)
+}
+
+/// Like [`compute_diagnostics`], but `path` (the document's file path, when
+/// known) lets the LSP honor a project `trust.toml` (RT-117): allow-listed
+/// codes are dropped and warn-listed ones shown as editor warnings, the same as
+/// `trust check` and the build gate. A malformed config is ignored rather than
+/// breaking diagnostics — the editor should degrade gracefully.
+pub fn compute_diagnostics_at(source: &str, path: Option<&std::path::Path>) -> Vec<Diagnostic> {
     let mut all: Vec<RtDiag> = Vec::new();
 
     let lower_out = match trust_lower::lower(source) {
@@ -246,6 +257,13 @@ pub fn compute_diagnostics(source: &str) -> Vec<Diagnostic> {
         // named-arg rule R0042 is excluded so positional calls don't light up.
         let report = trust_lints::lint_advisory(&file, source, trust_lints::bug_rules());
         all.extend(report.diagnostics);
+    }
+
+    // RT-117: apply the project trust.toml (allow drops, warn downgrades).
+    if let Some(path) = path {
+        if let Ok(config) = trust_lints::TrustConfig::discover(path) {
+            config.apply(&mut all);
+        }
     }
 
     all.into_iter().map(|d| rt_diag_to_lsp(source, d)).collect()
@@ -613,6 +631,37 @@ mod tests {
             "R0042 must not fire on plain Rust in-editor, got {:?}",
             diags.iter().map(|d| d.code.clone()).collect::<Vec<_>>()
         );
+    }
+
+    // RT-117: the LSP honors a project trust.toml — allow drops, warn
+    // downgrades to an editor Warning.
+    #[test]
+    fn lsp_honors_trust_toml_allow_and_warn() {
+        let src = "fn f(x: Option<u32>) -> u32 { x.unwrap() }\n";
+        let has_r0001 = |diags: &[Diagnostic]| {
+            diags
+                .iter()
+                .any(|d| matches!(&d.code, Some(NumberOrString::String(s)) if s == "R0001"))
+        };
+        // Baseline: no config → R0001 fires.
+        assert!(has_r0001(&compute_diagnostics(src)));
+
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("lib.rs");
+
+        std::fs::write(dir.path().join("trust.toml"), "allow = [\"R0001\"]\n").unwrap();
+        assert!(
+            !has_r0001(&compute_diagnostics_at(src, Some(&file))),
+            "allow should drop R0001"
+        );
+
+        std::fs::write(dir.path().join("trust.toml"), "warn = [\"R0001\"]\n").unwrap();
+        let diags = compute_diagnostics_at(src, Some(&file));
+        let r0001 = diags
+            .iter()
+            .find(|d| matches!(&d.code, Some(NumberOrString::String(s)) if s == "R0001"))
+            .expect("R0001 still present under warn");
+        assert_eq!(r0001.severity, Some(DiagnosticSeverity::WARNING));
     }
 
     #[test]

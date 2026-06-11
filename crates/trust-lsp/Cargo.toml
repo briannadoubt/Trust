@@ -27,3 +27,6 @@ trust-lints.workspace = true
 tower-lsp = "0.20"
 tokio = { version = "1", features = ["rt-multi-thread", "io-std", "macros", "sync"] }
 serde_json = "1"
+
+[dev-dependencies]
+tempfile.workspace = true

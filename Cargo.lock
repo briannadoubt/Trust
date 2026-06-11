@@ -1088,6 +1088,7 @@ dependencies = [
  "proc-macro2",
  "serde_json",
  "syn",
+ "tempfile",
  "tokio",
  "tower-lsp",
  "trust-diag",
