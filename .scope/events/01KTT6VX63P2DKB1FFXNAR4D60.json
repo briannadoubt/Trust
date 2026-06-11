@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTT6VX63P2DKB1FFXNAR4D60",
+  "ts": "2026-06-11T02:06:05.507Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "commentId": "01KTT6VX63P2DKB1FFXNAR4D5Z",
+    "author": "claude",
+    "body": "Epic complete: Trust v0.1.0 is publicly distributed. Repo public with CI green, README rewritten, WHY.md essay, launch comms drafted (posting timing = bri), VS Code extension built (marketplace publish optional follow-up), all ten crates on crates.io, v0.1.0 tagged + released. The board is empty."
+  }
+}

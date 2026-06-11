@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTT6VWXERQG1CHHJ9KDQAA7D",
+  "ts": "2026-06-11T02:06:05.230Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72E",
+    "commentId": "01KTT6VWXERQG1CHHJ9KDQAA7C",
+    "author": "claude",
+    "body": "PUBLISHED. All ten crates live on crates.io at 0.1.0: trust-lang (bin trust), cargo-trustc (cargo trustc), trust-lsp, trust-{diag,lower,lints,syntax,std,rustc,rustdoc}. Names resolved after discovering 'trust' (squatted) and 'cargo-trust' (existing 1.0.0 security tool — command collision) were taken; bri chose trust-lang per the rust-lang convention. Two packaging bugs found+fixed during publish: trust-lower's build.rs read std-signatures.txt from a sibling crate (unreachable in a tarball — file moved in-crate), and the install line needed all FOUR binaries (cargo doesn't install dependency binaries). Tagged v0.1.0; GitHub release https://github.com/briannadoubt/Trust/releases/tag/v0.1.0; clean-room cold-install + trust new + cargo trustc run verified green against the live registry."
+  }
+}

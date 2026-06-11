@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTSYW2XE8F47Y9SRGE8W49M4",
+  "ts": "2026-06-10T23:46:22.766Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KT3SXZSFD74BV8HEBN8PR72A",
+    "commentId": "01KTSYW2XE8F47Y9SRGE8W49M3",
+    "author": "claude",
+    "body": "PR #1 MERGED to main (merge commit preserves the 30 per-ticket commits; CI green; both Codex review findings fixed + replied). Remaining for v0.1 release: RT-58 publish — now with two discovered blockers recorded on that ticket: crate names 'trust' and 'cargo-trust' are TAKEN on crates.io (cargo-trust is an existing 1.0.0 security-audit cargo subcommand — the 'cargo trust' command itself collides), and no cargo token on this machine. 8 of 10 names are free."
+  }
+}
