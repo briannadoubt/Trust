@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTRY43D4JZ93CPV1XE4HCQ5",
+  "ts": "2026-06-11T07:21:52.493Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTRY43CCGT448CZ2HF2F0ET",
+    "number": 109,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Make the dialect itself easier to adopt",
+    "description": "Strategic direction after the first external adopter (RT-99): the right answer to 'the dialect is too hard to adopt' is to make THE DIALECT easier — not to reposition Trust as a linter. The 0.2 advisory mode is an on-ramp/teaser; this epic is about getting people through the door to the actual product (one-pass enforcement incl. R0042). Targets the real friction the reviewer hit when trying to use the dialect, plus the remaining-depth notes from RT-102/105/106.",
+    "status": "todo",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

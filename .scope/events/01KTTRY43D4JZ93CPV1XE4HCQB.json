@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTRY43D4JZ93CPV1XE4HCQB",
+  "ts": "2026-06-11T07:21:52.493Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTRY43D4JZ93CPV1XE4HCQA",
+    "number": 112,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Onboarding diagnostics when not set up for the dialect",
+    "description": "The reviewer hit cryptic `cannot find attribute 'strict'` and a missing `cargo trustc`. When stock cargo encounters `#![strict]`/named-arg syntax, or when `cargo trustc` isn't installed, surface a clear, actionable message ('this project uses the Trust dialect — install cargo-trustc and build with `cargo trustc build`, or run as an advisory linter with `trust check --rules bugs`') instead of a raw rustc error. Lowers the cliff for a first-time dialect user.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTTRY43CCGT448CZ2HF2F0ET",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

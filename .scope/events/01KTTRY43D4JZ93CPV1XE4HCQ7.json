@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTRY43D4JZ93CPV1XE4HCQ7",
+  "ts": "2026-06-11T07:21:52.493Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTRY43D4JZ93CPV1XE4HCQ6",
+    "number": 110,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "One-command plain-Rust → dialect migration (whole-workspace `trust fix`)",
+    "description": "The core adoption barrier: converting an existing crate to the dialect means rewriting every multi-arg call to named-arg syntax across the whole workspace (the reviewer's pilot file was 100% R0042). Today `trust fix` is single-file + in-crate (+ manual TRUST_SIGNATURE_PATH). Build a `trust fix` that walks a crate/workspace, resolves callees across modules and crates, and rewrites all positional calls to named-arg form in one shot — turning 'adopt the dialect' from days of hand-edits into one command. Elevates the RT-106 remaining-depth note.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTTRY43CCGT448CZ2HF2F0ET",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

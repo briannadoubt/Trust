@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTRY43D4JZ93CPV1XE4HCQ9",
+  "ts": "2026-06-11T07:21:52.493Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTRY43D4JZ93CPV1XE4HCQ8",
+    "number": 111,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "`cargo trustc adopt` — guided one-command dialect onboarding",
+    "description": "Turn dialect adoption from a manual multi-step (add metadata, install shims, convert calls, build) into one guided command: add `[package.metadata.trust] strict = true`, run the whole-workspace named-arg conversion, then `cargo trustc build` and report what's left (the lints that aren't auto-fixable). Pairs with the migration ticket. Makes 'try the real thing' a single invocation on an existing repo.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTTRY43CCGT448CZ2HF2F0ET",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

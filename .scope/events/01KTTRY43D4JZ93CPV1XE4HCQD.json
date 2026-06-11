@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTRY43D4JZ93CPV1XE4HCQD",
+  "ts": "2026-06-11T07:21:52.493Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTRY43D4JZ93CPV1XE4HCQC",
+    "number": 113,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Honor trust.toml in the build gate (cargo trustc / trust-rustc wrapper)",
+    "description": "trust.toml (rules/allow/severity) is honored by `trust check` only (RT-102). For the dialect to be configurable the same way, the trust-rustc wrapper / cargo trustc must read trust.toml too — per-rule relax/disable at build time, project allows without inline attrs. Lifts TrustConfig out of the trust binary into a shared crate so CLI + wrapper + LSP share one config. RT-102 remaining depth.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTTRY43CCGT448CZ2HF2F0ET",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

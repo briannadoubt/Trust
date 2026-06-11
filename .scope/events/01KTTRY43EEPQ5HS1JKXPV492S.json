@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTRY43EEPQ5HS1JKXPV492S",
+  "ts": "2026-06-11T07:21:52.494Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTRY43D4JZ93CPV1XE4HCQE",
+    "number": 114,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Zero-config cross-crate signature index from cargo's dep graph",
+    "description": "R0042/named-arg enforcement across crates currently needs manual `trust index` + TRUST_SIGNATURE_PATH. Auto-discover/build the signature index from cargo's resolved dependency graph during `cargo trustc build`, so cross-crate named-arg checking 'just works'. Long-standing gap (RT-66) and the other half of RT-105's remaining depth — removes the last manual step in a multi-crate dialect adoption.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTTRY43CCGT448CZ2HF2F0ET",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}
