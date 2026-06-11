@@ -1,4 +1,4 @@
-//! Build script: read the checked-in `crates/trust-std/std-signatures.txt`
+//! Build script: read the checked-in `std-signatures.txt` (in this crate)
 //! manifest and emit a static `STD_SIGNATURES` table that the named-args
 //! lowering pass uses to seed the `CalleeRegistry` for cross-crate calls
 //! like `trust_std::fs::write_text(path: p, contents: c)`.
@@ -28,10 +28,9 @@ use std::path::PathBuf;
 
 fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
-    let sig_file = PathBuf::from(&manifest_dir)
-        .join("..")
-        .join("trust-std")
-        .join("std-signatures.txt");
+    // Lives INSIDE this crate so the published tarball is self-contained
+    // (a ../trust-std path can't exist inside a package — RT-58).
+    let sig_file = PathBuf::from(&manifest_dir).join("std-signatures.txt");
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}", sig_file.display());

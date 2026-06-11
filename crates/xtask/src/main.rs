@@ -5,7 +5,7 @@
 //! - `cargo xtask check-emissions` — verify every implemented `Rule` variant
 //!   has at least one emission site in the workspace.
 //! - `cargo xtask gen-std-signatures [--check]` — regenerate
-//!   `crates/trust-std/std-signatures.txt` from
+//!   `crates/trust-lower/std-signatures.txt` from
 //!   `crates/trust-std/src/lib.rs` (lowered, then parsed with `syn`).
 //!   With `--check`, fail if the checked-in manifest is stale. See RT-44.
 
@@ -39,7 +39,7 @@ fn main() -> Result<()> {
     }
 }
 
-/// Regenerate `crates/trust-std/std-signatures.txt` from
+/// Regenerate `crates/trust-lower/std-signatures.txt` from
 /// `crates/trust-std/src/lib.rs`.
 ///
 /// `trust-std` may itself be `#![strict]`-marked, so the source is
@@ -51,7 +51,7 @@ fn main() -> Result<()> {
 fn gen_std_signatures(check_only: bool) -> Result<()> {
     let root = repo_root()?;
     let lib_path = root.join("crates/trust-std/src/lib.rs");
-    let manifest_path = root.join("crates/trust-std/std-signatures.txt");
+    let manifest_path = root.join("crates/trust-lower/std-signatures.txt");
 
     let raw =
         fs::read_to_string(&lib_path).with_context(|| format!("reading {}", lib_path.display()))?;
