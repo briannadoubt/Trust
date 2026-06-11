@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVSHN0KT8A5A8QSQQJE",
+  "ts": "2026-06-11T03:03:52.441Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJD",
+    "number": 104,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Lower or loudly document the MSRV (1.95 dragged the reviewer's toolchain forward)",
+    "description": "Reviewer: 'Requiring rustc ≥1.95 forced a toolchain bump that surfaced a new clippy lint (collapsible_match) and broke an unrelated -D warnings gate. Adopting a linter shouldn't drag the whole toolchain forward.' workspace Cargo.toml declares rust-version = \"1.95\" but the only modern std APIs found are is_some_and/is_ok_and (stable since 1.70). Verify the true minimum (cargo-msrv or manual) and lower rust-version accordingly; if something genuinely needs a high floor, document why loudly. The advisory-linter path especially should run on a wide toolchain range.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

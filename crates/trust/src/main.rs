@@ -72,6 +72,20 @@ enum Cmd {
         /// Diagnostic output format (RT-70)
         #[arg(long, value_enum, default_value_t = OutputFormat::Human)]
         format: OutputFormat,
+        /// Which rules to run (RT-101).
+        ///
+        /// `all` (default) runs the full strict rule set through the normal
+        /// lower+lint pipeline — it expects the dialect (named-arg syntax,
+        /// `#![strict]`/metadata activation). `bugs` runs only the
+        /// runtime-bug-catching lints (`.unwrap()`, `as`-casts, bare indexing,
+        /// dropped error context, …); `safety` runs every rule that applies to
+        /// *plain* Rust (the bug rules plus the style/design ones), minus the
+        /// named-arg dialect (R0042). Both advisory modes need no `#![strict]`
+        /// marker and keep your source valid stock Rust — so Trust works as an
+        /// out-of-tree linter on a stock cargo workspace. You may also pass an
+        /// explicit comma list of rule codes, e.g. `--rules R0001,R0003,R0014`.
+        #[arg(long, default_value = "all")]
+        rules: String,
     },
     /// Lower a file and print the resulting plain Rust to stdout.
     ///
@@ -163,7 +177,11 @@ fn main() -> Result<()> {
             edition,
             no_lint,
         } => build(&input, out.as_deref(), &edition, no_lint),
-        Cmd::Check { input, format } => check(&input, format),
+        Cmd::Check {
+            input,
+            format,
+            rules,
+        } => check(&input, format, &rules),
         Cmd::Lower { input } => lower_to_stdout(&input),
         Cmd::Index { input, out } => index(&input, out.as_deref()),
         Cmd::Fix { input, write } => fix(&input, write),
@@ -213,13 +231,80 @@ fn build(input: &Path, out: Option<&Path>, edition: &str, no_lint: bool) -> Resu
     Ok(())
 }
 
-fn check(input: &Path, format: OutputFormat) -> Result<()> {
+/// How `trust check` selects which rules to run (RT-101).
+enum RuleSelection {
+    /// The full strict set via the normal lower+lint pipeline. Expects the
+    /// dialect (named args, `#![strict]`/metadata activation).
+    All,
+    /// A dialect-free subset run as an advisory pass over plain Rust — no
+    /// `#![strict]` marker, no lowering, no R0042.
+    Advisory(Vec<trust_lints::Rule>),
+}
+
+/// Parse the `--rules` value: `all`, the `safety`/`bugs` group, or an explicit
+/// comma list of rule codes. Dialect rules (R0042) are rejected in advisory
+/// selections with a message pointing at the full pipeline.
+fn parse_rule_selection(spec: &str) -> Result<RuleSelection> {
+    use trust_lints::Rule;
+    match spec.trim().to_ascii_lowercase().as_str() {
+        "all" => Ok(RuleSelection::All),
+        "bugs" => Ok(RuleSelection::Advisory(trust_lints::bug_rules())),
+        "safety" => Ok(RuleSelection::Advisory(trust_lints::advisory_rules())),
+        _ => {
+            let mut rules = Vec::new();
+            for code in spec.split(',').map(str::trim).filter(|s| !s.is_empty()) {
+                let rule = Rule::from_code(&code.to_uppercase()).with_context(|| {
+                    format!("unknown rule code `{code}` in --rules (run `trust explain` for the catalogue)")
+                })?;
+                if rule.is_dialect() {
+                    bail!(
+                        "rule {code} ({}) needs Trust's named-argument syntax, which stock rustc \
+                         rejects — it can't run as an advisory lint. Use `--rules all` with \
+                         `cargo trustc` for the full dialect.",
+                        rule.name()
+                    );
+                }
+                rules.push(rule);
+            }
+            if rules.is_empty() {
+                bail!("--rules got an empty selection; pass `all`, `safety`, or a comma list of rule codes");
+            }
+            Ok(RuleSelection::Advisory(rules))
+        }
+    }
+}
+
+fn check(input: &Path, format: OutputFormat, rules: &str) -> Result<()> {
+    match parse_rule_selection(rules)? {
+        RuleSelection::All => {
+            let (source, label) = read_source(input)?;
+            let _ = run_pipeline(&label, &source, false, format)?;
+            // In JSON mode the document on stdout is the whole result; don't add
+            // a human "ok" line that would corrupt it.
+            if format == OutputFormat::Human {
+                eprintln!("ok: {label}");
+            }
+            Ok(())
+        }
+        RuleSelection::Advisory(rules) => check_advisory(input, format, rules),
+    }
+}
+
+/// Advisory lint pass (RT-101): run a dialect-free rule subset over plain
+/// Rust — no `#![strict]` marker, no lowering. This is Trust as an out-of-tree
+/// linter on a stock cargo workspace. Exits non-zero when findings are present
+/// so CI can gate on it.
+fn check_advisory(input: &Path, format: OutputFormat, rules: Vec<trust_lints::Rule>) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let _ = run_pipeline(&label, &source, false, format)?;
-    // In JSON mode the document on stdout is the whole result; don't add a
-    // human "ok" line that would corrupt it.
-    if format == OutputFormat::Human {
+    let file: syn::File =
+        syn::parse_str(&source).with_context(|| format!("parsing {label} as Rust"))?;
+    let report = trust_lints::lint_advisory(&file, &source, rules);
+    emit_diagnostics(&report.diagnostics, &label, &source, format);
+    if format == OutputFormat::Human && report.is_clean() {
         eprintln!("ok: {label}");
+    }
+    if report.diagnostics.iter().any(Diagnostic::is_error) {
+        bail!("aborting due to previous errors");
     }
     Ok(())
 }
@@ -499,15 +584,28 @@ fn run_pipeline(
 
     let any_errors = all_diagnostics.iter().any(Diagnostic::is_error);
 
-    // RT-70: emit either human-readable (ariadne) or machine-readable JSON.
-    // JSON goes to stdout (the document is the whole result); human
-    // diagnostics go to stderr so stdout stays clean for `lower`/`build`.
+    emit_diagnostics(&all_diagnostics, label, source, format);
+
+    if any_errors {
+        bail!("aborting due to previous errors");
+    }
+
+    Ok(PipelineOutput {
+        lowered: lower_out.source,
+    })
+}
+
+/// Render diagnostics in the requested format (RT-70). JSON goes to stdout (the
+/// document is the whole result); human-readable (ariadne) diagnostics go to
+/// stderr so stdout stays clean for `lower`/`build`. Shared by the full
+/// pipeline and the advisory pass (RT-101).
+fn emit_diagnostics(diags: &[Diagnostic], label: &str, source: &str, format: OutputFormat) {
     match format {
         OutputFormat::Human => {
-            if !all_diagnostics.is_empty() {
+            if !diags.is_empty() {
                 let mut stderr = std::io::stderr();
                 let _ = trust_diag::render(
-                    &all_diagnostics,
+                    diags,
                     trust_diag::NamedSource {
                         name: label,
                         text: source,
@@ -520,23 +618,15 @@ fn run_pipeline(
             print!(
                 "{}",
                 trust_diag::to_json(
-                    &all_diagnostics,
+                    diags,
                     trust_diag::NamedSource {
                         name: label,
-                        text: source
+                        text: source,
                     },
                 )
             );
         }
     }
-
-    if any_errors {
-        bail!("aborting due to previous errors");
-    }
-
-    Ok(PipelineOutput {
-        lowered: lower_out.source,
-    })
 }
 
 #[cfg(test)]

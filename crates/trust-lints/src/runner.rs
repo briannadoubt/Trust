@@ -49,6 +49,16 @@ pub fn lint_with(file: &syn::File, source: &str, rules: Vec<Rule>) -> LintReport
     run(file, source, rules, strict_mode)
 }
 
+/// Run `rules` against `file` as an **advisory** pass (RT-101): lints fire
+/// regardless of whether the file carries a `#![strict]` marker. This is how
+/// Trust runs as a plain-Rust linter on a stock cargo workspace (`trust check
+/// --rules safety`), where the source has no marker and must stay valid stock
+/// Rust. Pass a dialect-free subset (see [`crate::advisory_rules`]); R0042 is
+/// a no-op in the runner regardless — it is emitted only during lowering.
+pub fn lint_advisory(file: &syn::File, source: &str, rules: Vec<Rule>) -> LintReport {
+    run(file, source, rules, /* strict_mode */ true)
+}
+
 fn run(file: &syn::File, source: &str, rules: Vec<Rule>, strict_mode: bool) -> LintReport {
     let mut report = LintReport {
         diagnostics: Vec::new(),

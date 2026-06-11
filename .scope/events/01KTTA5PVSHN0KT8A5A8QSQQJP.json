@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVSHN0KT8A5A8QSQQJP",
+  "ts": "2026-06-11T03:03:52.441Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJN",
+    "number": 108,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Editor ergonomics — make in-editor diagnostics discoverable/packaged",
+    "description": "Reviewer wants 'rust-analyzer/LSP diagnostics so findings show in-editor.' trust-lsp exists as an MVP (diagnostics, hover, go-to-def; crates/trust-lsp) and a VS Code extension lives in editors/vscode, but it isn't a drop-in for someone adopting the advisory-linter path. Make the LSP/editor path discoverable and easy to point at an existing cargo project (esp. running the safety-lint subset live), and document setup beyond the Neovim snippet.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

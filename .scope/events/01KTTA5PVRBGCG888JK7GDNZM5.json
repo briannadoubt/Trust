@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVRBGCG888JK7GDNZM5",
+  "ts": "2026-06-11T03:03:52.440Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "number": 99,
+    "keyPrefix": "RT",
+    "ticketType": "epic",
+    "title": "Adoptability on a stock cargo workspace — first external integration feedback",
+    "description": "First integration attempt by someone other than the author (v0.1.0). Verdict: 'Trust 0.1.0 can't be adopted as a build gate for this cargo workspace.' Three blockers cascade: (1) #![strict] is rejected by stock rustc so it can't live in committed source; (2) the reviewer never got the cargo wrapper working (likely installed only trust-lang, not cargo-trustc/trust-rustc/trust-rustdoc — all four ARE published on crates.io at 0.1.0, so this is install/discoverability, not a publishing gap); (3) 83% of findings were R0042 (named-args), which is unsatisfiable in stock Rust, and the pilot file (store.rs) had ONLY R0042 findings. Realistic use today = out-of-tree advisory linter for the ~22 genuine bug-catching findings (unwrap/as-cast/bare-index/error-context). Reviewer's framing: 'lint rules are genuinely good and caught ~22 real issues; the problem is purely delivery — it's a dialect you compile separately when a cargo project needs a lint layer that rides on top of the normal toolchain.' This epic flips that.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

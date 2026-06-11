@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVSHN0KT8A5A8QSQQJC",
+  "ts": "2026-06-11T03:03:52.441Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJB",
+    "number": 103,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Reconcile README with what ships + add an 'advisory linter' quickstart",
+    "description": "Reviewer: 'the install command and [package.metadata.trust] section describe unshipped tooling; that sent me down the wrong path initially.' Reality check: cargo-trustc, trust-rustc, trust-rustdoc, trust-lang ARE published at 0.1.0 — but the reviewer evidently didn't get the wrapper (old install line listed only trust-lang). Fix: (a) verify `cargo install trust-lang cargo-trustc trust-rustc trust-rustdoc` from crates.io yields a working `cargo trustc build` on a clean machine, and make the install path foolproof; (b) add a top-of-README 'advisory linter, no dialect' quickstart for the exact use the reviewer wanted (run the safety lints out-of-tree); (c) be explicit that #![strict] is NOT valid stock Rust and only works through the wrapper, pointing committed-source users at the metadata activation.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVRBGCG888JK7GDNZM7",
+  "ts": "2026-06-11T03:03:52.440Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVRBGCG888JK7GDNZM6",
+    "number": 100,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Activation that's invisible to stock rustc — #![strict] can't live in committed source",
+    "description": "CONFIRMED: `rustc --edition 2021` on a file with `#![strict]` fails with `error: cannot find attribute 'strict' in this scope`. By design — trust-lower strips it before rustc sees lowered output (crates/trust-lower/src/preprocess.rs strip_strict_attrs). Consequence: a marked file is not valid plain Rust, so it can't be committed to a repo that also builds with stock cargo. The metadata form `[package.metadata.trust] strict = true` (parsed in crates/cargo-trustc/src/main.rs:250-267) IS invisible to stock cargo and is the real answer for whole-project activation — but the README leads with #![strict]. Need: (a) promote the Cargo.toml metadata path as the primary activation; (b) offer a per-file marker that survives stock rustc (comment-form pragma, e.g. `//! trust: strict`, since register_tool is nightly-only and proc-macro inner attrs don't work on stable); (c) document the limitation honestly wherever #![strict] appears. Reviewer: this single change 'flips this from not adoptable to adopt incrementally.'",
+    "status": "backlog",
+    "priority": "urgent",
+    "parentId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

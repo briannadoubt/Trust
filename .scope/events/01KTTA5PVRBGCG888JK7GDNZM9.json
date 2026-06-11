@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVRBGCG888JK7GDNZM9",
+  "ts": "2026-06-11T03:03:52.440Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVRBGCG888JK7GDNZM8",
+    "number": 101,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Decouple the bug-catching lints from the named-arg dialect (run safety lints without R0042)",
+    "description": "R0042 (no-positional-args) was 83% of the reviewer's findings and is unsatisfiable in stock Rust — 'fixing' it needs named-arg syntax rustc rejects. The real value is R0001 (unwrap), R0003 (as-cast), R0014 (bare-index), R0018 (dropped-error-context). Today R0042 is baked into the always-on ALL set (crates/trust-lints/src/rules.rs:221-242); a `lint_with()` subset API exists (crates/trust-lints/src/runner.rs:47-50) but no CLI flag exposes it. Need: a way to run a chosen rule subset (e.g. `trust check --rules safety` or `--allow R0042`) so Trust works as a plain-Rust advisory linter surfacing the ~22 genuine findings with zero dialect. THE change that unblocks the reviewer's realistic use of 0.1.0. Pairs with the config-file ticket.",
+    "status": "backlog",
+    "priority": "urgent",
+    "parentId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

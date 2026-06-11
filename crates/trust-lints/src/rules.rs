@@ -118,6 +118,40 @@ impl Rule {
         true
     }
 
+    /// `true` for rules that catch a genuine runtime-correctness bug — a
+    /// panic, a silent truncation, a dropped error, a deadlock — as opposed to
+    /// a style/design or process rule. `trust check --rules bugs` runs exactly
+    /// this set: the highest-signal advisory backlog for a stock-Rust codebase
+    /// (every entry is satisfiable in plain Rust). This is the bucket the
+    /// reviewer called "the real value" — `.unwrap()`, `as`-casts, bare
+    /// indexing, dropped error context, and their kin.
+    pub fn is_bug(self) -> bool {
+        matches!(
+            self,
+            Rule::NoUnwrap
+                | Rule::EmptyExpect
+                | Rule::NoAsCast
+                | Rule::NoBareIndex
+                | Rule::NoErrorContextDrop
+                | Rule::NoUncheckedLenArith
+                | Rule::NoLockAcrossAwait
+                | Rule::NoCapacityAsLen
+                | Rule::NoTodoMacro
+                | Rule::NoPanic
+        )
+    }
+
+    /// `true` for rules whose only satisfying fix requires Trust's
+    /// named-argument syntax — which stock `rustc` rejects. Today that is
+    /// exactly R0042 (`no-positional-args`): "fixing" a positional call means
+    /// writing `f(name: value)`, which doesn't parse under a plain compiler.
+    /// The advisory lint set ([`crate::advisory_rules`]) excludes these so
+    /// Trust can run as a plain-Rust linter on a stock cargo workspace —
+    /// surfacing the bug-catching rules without forcing the dialect.
+    pub fn is_dialect(self) -> bool {
+        matches!(self, Rule::NoPositionalArgs)
+    }
+
     /// `true` if this rule's visitor walks `#[cfg(test)]` / `#[test]`
     /// scopes and silences itself inside them. The asymmetry across
     /// rules is intentional but historically lived only in visitor

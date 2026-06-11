@@ -16,12 +16,35 @@ mod runner;
 mod strict;
 
 pub use rules::Rule;
-pub use runner::{lint, lint_strict, lint_with, LintReport};
+pub use runner::{lint, lint_advisory, lint_strict, lint_with, LintReport};
 pub use trust_diag::Diagnostic;
 
 /// Returns the full Trust strict-mode lint set.
 pub fn all_rules() -> Vec<Rule> {
     rules::ALL.to_vec()
+}
+
+/// The advisory lint set (RT-101): every rule that applies to **plain Rust**,
+/// with the named-argument dialect rules (R0042) removed. Run these with
+/// [`lint_advisory`] to use Trust as an out-of-tree linter on a stock cargo
+/// workspace — no `#![strict]` marker, no named-arg syntax, no lowering — so
+/// the bug-catching rules (`.unwrap()`, `as`-casts, bare indexing, dropped
+/// error context, …) surface as a plain-Rust cleanup backlog.
+pub fn advisory_rules() -> Vec<Rule> {
+    rules::ALL
+        .iter()
+        .copied()
+        .filter(|r| !r.is_dialect())
+        .collect()
+}
+
+/// The bug-catching subset (RT-101): rules that flag a genuine runtime
+/// correctness bug — panics, silent truncation, dropped errors, deadlocks —
+/// and nothing stylistic. `trust check --rules bugs` runs exactly this set:
+/// the highest-signal advisory backlog for a stock-Rust codebase. A strict
+/// subset of [`advisory_rules`]; none require the dialect.
+pub fn bug_rules() -> Vec<Rule> {
+    rules::ALL.iter().copied().filter(|r| r.is_bug()).collect()
 }
 
 #[cfg(test)]
@@ -42,6 +65,42 @@ mod tests {
 
     fn fires(rule: Rule, src: &str) -> bool {
         diags_for(rule, src).iter().any(|d| d.rule == rule.code())
+    }
+
+    // RT-101: the advisory pass lints PLAIN Rust — no `#![strict]` marker —
+    // so Trust can run as an out-of-tree linter on a stock cargo workspace.
+    #[test]
+    fn advisory_fires_without_strict_marker() {
+        let src = "pub fn f(m: &std::collections::HashMap<u8, u8>) -> u8 { *m.get(&1).unwrap() }";
+        // Normal lint() is gated on the marker and stays silent on plain Rust…
+        assert!(diags(src).is_empty(), "marker-gated lint must stay silent");
+        // …but the advisory pass surfaces the bug.
+        let report = lint_advisory(&parse(src), src, bug_rules());
+        assert!(
+            report.diagnostics.iter().any(|d| d.rule == Rule::NoUnwrap.code()),
+            "advisory pass must flag .unwrap() on unmarked source"
+        );
+    }
+
+    // RT-101: advisory/bug sets exclude the named-arg dialect rule (R0042),
+    // and `bugs` is a strict subset of `safety`. Positional calls in plain
+    // Rust must never trip an advisory run.
+    #[test]
+    fn advisory_sets_exclude_dialect_and_nest() {
+        assert!(Rule::NoPositionalArgs.is_dialect());
+        assert!(!advisory_rules().contains(&Rule::NoPositionalArgs));
+        assert!(!bug_rules().contains(&Rule::NoPositionalArgs));
+        for r in bug_rules() {
+            assert!(!r.is_dialect());
+            assert!(advisory_rules().contains(&r), "bugs ⊆ safety");
+        }
+        // A positional call to a local multi-arg fn — R0042 bait — is clean.
+        let src = "fn area(w: u32, h: u32) -> u32 { w * h }\npub fn g() -> u32 { area(3, 4) }";
+        let report = lint_advisory(&parse(src), src, advisory_rules());
+        assert!(
+            !report.diagnostics.iter().any(|d| d.rule == Rule::NoPositionalArgs.code()),
+            "R0042 must not fire in an advisory run on plain Rust"
+        );
     }
 
     // RT-89/RT-91: `#[allow(trust::Rxxxx, reason = "...")]` is

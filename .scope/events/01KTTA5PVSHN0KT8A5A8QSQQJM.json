@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVSHN0KT8A5A8QSQQJM",
+  "ts": "2026-06-11T03:03:52.441Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJK",
+    "number": 107,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "SARIF output for GitHub code-scanning",
+    "description": "Reviewer: 'you already emit clean JSON — SARIF output so GitHub code-scanning can ingest it.' Add `--format sarif` alongside human/json (crates/trust/src/main.rs + crates/trust-diag/src/lib.rs to_json). Lets a repo wire `trust check --format sarif` into a CI step and get inline annotations / the Security tab without bespoke glue.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

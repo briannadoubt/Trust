@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVSHN0KT8A5A8QSQQJJ",
+  "ts": "2026-06-11T03:03:52.441Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJH",
+    "number": 106,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Broaden `trust fix` — cross-module/workspace resolution + mechanical safety fixes",
+    "description": "`trust fix` cleanly auto-inserts named args for in-crate R0042 calls (crates/trust-lower/src/lib.rs), and cross-crate via explicit TRUST_SIGNATURE_PATH. Extend to: (a) cross-module/workspace callee resolution without manual index setup; (b) mechanical safety fixes — e.g. `.unwrap()` → `?` when the enclosing fn returns Result. We already emit structured fixes with applicability in the JSON output (trust-diag); wire the safe ones into `fix --write`.",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

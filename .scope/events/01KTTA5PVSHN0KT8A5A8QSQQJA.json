@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KTTA5PVSHN0KT8A5A8QSQQJA",
+  "ts": "2026-06-11T03:03:52.441Z",
+  "actor": "claude",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KTTA5PVRBGCG888JK7GDNZMA",
+    "number": 102,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Per-rule config file — trust.toml / [package.metadata.trust] rule selection + project allows",
+    "description": "Reviewer had to (or would have to) sprinkle 162 inline `#[allow(trust::R0042, reason=…)]`. Need per-rule enable/disable/severity in trust.toml or [package.metadata.trust], plus project-level allows, so suppression isn't per-callsite. Today: only `strict = true` (cargo-trustc/src/main.rs:250-267) and inline allow (crates/trust-lints/src/allow.rs). Builds on the decouple ticket — the config is how you select the subset persistently. Honor it in both `trust check` and `cargo trustc`.",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTTA5PVQ81V8ZSQWCX459Y2Z",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}
