@@ -27,11 +27,32 @@ the final Rust. The driver lives in `crates/trust`; the orchestration is
 
 ## Activation
 
-Trust is opt-in. Two activation forms exist (the `trust_attrs::strict!{}`
-marker macro was removed in RT-82): a per-project key in `Cargo.toml`, and a
-per-file inner attribute.
+Trust meets a codebase at one of three levels of commitment, lowest-friction
+first. Pick the one that matches how much of the dialect you want — you can
+start advisory-only and never touch the dialect at all.
 
-### Project mode: `[package.metadata.trust] strict = true` (recommended)
+### Advisory mode: no activation (RT-101)
+
+The bug-catching lints — `.unwrap()`, `as`-casts, bare indexing, dropped error
+context, and their kin — apply to **plain Rust**. They need no marker, no
+metadata, and none of the dialect syntax:
+
+```sh
+trust check --rules bugs src/      # the runtime-bug rules only
+trust check --rules safety src/    # every rule that applies to plain Rust
+```
+
+Nothing is added to your source, so this can never break a normal
+`cargo build` — it is the way to adopt Trust as an out-of-tree advisory linter
+on an existing cargo workspace, and the recommended starting point. `trust
+check` accepts a file, a directory, or a `Cargo.toml` and walks the tree.
+Configure the rule set and project-wide `allow`/`warn` in a `trust.toml` at the
+project root; emit SARIF for GitHub code-scanning with `--format sarif`. The
+named-argument rule **R0042 is not in these sets** — it is the one rule whose
+fix requires the dialect (named-arg syntax stock `rustc` rejects), so it only
+applies under the two modes below.
+
+### Project mode: `[package.metadata.trust] strict = true` (recommended for the full dialect)
 
 Declare strictness once in `Cargo.toml` and build with `cargo trustc`. No
 per-file marker, no extra dependency, no environment setup.
@@ -74,8 +95,15 @@ cargo fixtures. Stock `rustc` rejects `#![strict]` (it is not a registered
 attribute), so a marked file only compiles through the Trust toolchain:
 `trust check`/`trust build` for single files, or the `trust-rustc` wrapper —
 i.e. `cargo trustc` — for cargo crates, which strips the marker during
-lowering before the real rustc ever sees it. Use this form for single files
-and for mixed crates that opt in file-by-file under `cargo trustc`.
+lowering before the real rustc ever sees it.
+
+**`#![strict]` is not valid stock Rust.** A file carrying it fails a plain
+`cargo build`/`cargo check` with `cannot find attribute 'strict'`, so it must
+not be committed to a crate that also builds under stock cargo — use **Project
+mode** for that, since `[package.metadata.trust]` is invisible to stock cargo
+and leaves every source file a valid plain build. Reserve the per-file marker
+for single files run through `trust`, or for mixed crates that opt in
+file-by-file and *always* build via `cargo trustc`.
 
 ### How the wrapper applies activation
 
