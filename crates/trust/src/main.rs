@@ -193,7 +193,11 @@ fn main() -> Result<()> {
 fn build(input: &Path, out: Option<&Path>, edition: &str, no_lint: bool) -> Result<()> {
     let (source, label) = read_source(input)?;
 
-    let pipeline = run_pipeline(&label, &source, no_lint, OutputFormat::Human)?;
+    let pipeline = compute_pipeline(&label, &source, no_lint)?;
+    emit_diagnostics(&pipeline.diagnostics, &label, &source, OutputFormat::Human);
+    if pipeline.diagnostics.iter().any(Diagnostic::is_error) {
+        bail!("aborting due to previous errors");
+    }
 
     let tmp = tempfile::Builder::new()
         .prefix("trust-")
@@ -275,43 +279,181 @@ fn parse_rule_selection(spec: &str) -> Result<RuleSelection> {
 }
 
 fn check(input: &Path, format: OutputFormat, rules: &str) -> Result<()> {
-    match parse_rule_selection(rules)? {
-        RuleSelection::All => {
-            let (source, label) = read_source(input)?;
-            let _ = run_pipeline(&label, &source, false, format)?;
-            // In JSON mode the document on stdout is the whole result; don't add
-            // a human "ok" line that would corrupt it.
-            if format == OutputFormat::Human {
-                eprintln!("ok: {label}");
-            }
-            Ok(())
+    let selection = parse_rule_selection(rules)?;
+
+    // stdin, or a single (non-manifest) file: check exactly that input.
+    if is_stdin(input) || (input.is_file() && !is_manifest(input)) {
+        return check_one(input, format, &selection);
+    }
+
+    // A directory or a Cargo.toml: walk the project tree and check every `.rs`
+    // file under it in one command (RT-105). For a manifest the tree is the
+    // directory that contains it — which, for a workspace root, covers all
+    // member crates, since their sources live beneath it. No more injecting
+    // markers into a temp copy of every file in a shell loop.
+    let root = if is_manifest(input) && input.is_file() {
+        match input.parent() {
+            Some(p) if !p.as_os_str().is_empty() => p.to_path_buf(),
+            _ => PathBuf::from("."),
         }
-        RuleSelection::Advisory(rules) => check_advisory(input, format, rules),
+    } else if input.is_dir() {
+        input.to_path_buf()
+    } else {
+        // Non-existent / unrecognized path: defer to read_source for a precise
+        // "reading <path>" error rather than a vague "no files found".
+        return check_one(input, format, &selection);
+    };
+
+    let files = collect_rs_files(&root);
+    if files.is_empty() {
+        bail!("no .rs files found under {}", root.display());
+    }
+    check_many(&files, format, &selection)
+}
+
+/// `true` if the path names a cargo manifest (`Cargo.toml`).
+fn is_manifest(path: &Path) -> bool {
+    path.file_name().is_some_and(|n| n == "Cargo.toml")
+}
+
+/// Compute diagnostics for one source string under the given rule selection.
+/// `All` runs the full lower+lint pipeline; an advisory selection parses plain
+/// Rust and runs the chosen subset with no marker and no lowering (RT-101).
+fn compute_diagnostics(
+    label: &str,
+    source: &str,
+    selection: &RuleSelection,
+) -> Result<Vec<Diagnostic>> {
+    match selection {
+        RuleSelection::All => Ok(compute_pipeline(label, source, false)?.diagnostics),
+        RuleSelection::Advisory(rules) => {
+            let file: syn::File =
+                syn::parse_str(source).with_context(|| format!("parsing {label} as Rust"))?;
+            Ok(trust_lints::lint_advisory(&file, source, rules.clone()).diagnostics)
+        }
     }
 }
 
-/// Advisory lint pass (RT-101): run a dialect-free rule subset over plain
-/// Rust — no `#![strict]` marker, no lowering. This is Trust as an out-of-tree
-/// linter on a stock cargo workspace. Exits non-zero when findings are present
-/// so CI can gate on it.
-fn check_advisory(input: &Path, format: OutputFormat, rules: Vec<trust_lints::Rule>) -> Result<()> {
+/// Check a single input (a `.rs` file or stdin) and render its diagnostics.
+fn check_one(input: &Path, format: OutputFormat, selection: &RuleSelection) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let file: syn::File =
-        syn::parse_str(&source).with_context(|| format!("parsing {label} as Rust"))?;
-    let report = trust_lints::lint_advisory(&file, &source, rules);
-    emit_diagnostics(&report.diagnostics, &label, &source, format);
-    if format == OutputFormat::Human && report.is_clean() {
+    let diagnostics = compute_diagnostics(&label, &source, selection)?;
+    emit_diagnostics(&diagnostics, &label, &source, format);
+    if format == OutputFormat::Human && diagnostics.is_empty() {
         eprintln!("ok: {label}");
     }
-    if report.diagnostics.iter().any(Diagnostic::is_error) {
+    if diagnostics.iter().any(Diagnostic::is_error) {
         bail!("aborting due to previous errors");
     }
     Ok(())
 }
 
+/// Check every file in a walked tree (RT-105), aggregating results. Resilient
+/// to a single bad file: a read/parse/lower failure is reported and counted but
+/// does not abort the run, so one unparseable file can't mask findings in the
+/// rest (the mirror's "abort at first failing entry" trap, per past sessions).
+/// Exits non-zero if any file has an error-level finding or failed to process.
+fn check_many(files: &[PathBuf], format: OutputFormat, selection: &RuleSelection) -> Result<()> {
+    let mut findings = 0usize;
+    let mut files_with_findings = 0usize;
+    let mut failed = 0usize;
+    // JSON mode accumulates one document per file and emits a single array.
+    let mut json_docs: Vec<String> = Vec::new();
+
+    for path in files {
+        let label = path.display().to_string();
+        let source = match std::fs::read_to_string(path) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!("trust: skipping {label}: {e}");
+                failed += 1;
+                continue;
+            }
+        };
+        match compute_diagnostics(&label, &source, selection) {
+            Ok(diags) => {
+                if !diags.is_empty() {
+                    files_with_findings += 1;
+                    findings += diags.len();
+                }
+                match format {
+                    OutputFormat::Human => {
+                        emit_diagnostics(&diags, &label, &source, OutputFormat::Human)
+                    }
+                    OutputFormat::Json => json_docs.push(trust_diag::to_json(
+                        &diags,
+                        trust_diag::NamedSource {
+                            name: &label,
+                            text: &source,
+                        },
+                    )),
+                }
+            }
+            Err(e) => {
+                eprintln!("trust: skipping {label}: {e:#}");
+                failed += 1;
+            }
+        }
+    }
+
+    if format == OutputFormat::Json {
+        // A JSON array of per-file result objects. Single-file `check` still
+        // emits one bare object, unchanged (RT-70).
+        print!("[{}]", json_docs.join(","));
+    } else {
+        let scanned = files.len();
+        if findings == 0 && failed == 0 {
+            eprintln!("ok: {scanned} files clean");
+        } else {
+            let skipped = if failed > 0 {
+                format!("; {failed} skipped (unreadable/unparseable)")
+            } else {
+                String::new()
+            };
+            eprintln!("{findings} finding(s) in {files_with_findings} of {scanned} file(s){skipped}");
+        }
+    }
+
+    if findings > 0 || failed > 0 {
+        bail!("aborting due to previous errors");
+    }
+    Ok(())
+}
+
+/// Recursively collect `.rs` files under `root`, skipping build output and VCS
+/// metadata (`target/`, any dotfile/dir like `.git`). Returns a sorted list so
+/// output is deterministic across runs and platforms. A subdirectory that
+/// can't be read is skipped rather than aborting the whole walk.
+fn collect_rs_files(root: &Path) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if path.is_dir() {
+                // Skip build output and hidden dirs when descending. The root
+                // itself is always walked even if the user named a dotdir.
+                if name == "target" || name.starts_with('.') {
+                    continue;
+                }
+                stack.push(path);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                out.push(path);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
 fn lower_to_stdout(input: &Path) -> Result<()> {
     let (source, label) = read_source(input)?;
-    let pipeline = run_pipeline(&label, &source, true, OutputFormat::Human)?;
+    let pipeline = compute_pipeline(&label, &source, true)?;
     print!("{}", pipeline.lowered);
     Ok(())
 }
@@ -542,14 +684,15 @@ fn explain_json(rules: &[trust_lints::Rule]) -> String {
 
 struct PipelineOutput {
     lowered: String,
+    diagnostics: Vec<Diagnostic>,
 }
 
-fn run_pipeline(
-    label: &str,
-    source: &str,
-    skip_lints: bool,
-    format: OutputFormat,
-) -> Result<PipelineOutput> {
+/// Lower + lint one source string and return the lowered Rust alongside the
+/// collected diagnostics. Pure computation: it does not render or exit — the
+/// caller decides how to present results and whether errors are fatal, so the
+/// same pipeline drives single-file `check`/`build`, `lower`, and the
+/// multi-file workspace walk (RT-105).
+fn compute_pipeline(label: &str, source: &str, skip_lints: bool) -> Result<PipelineOutput> {
     let mut all_diagnostics: Vec<Diagnostic> = Vec::new();
 
     // Lower: rewrite Trust extensions to plain Rust. RT-66: seed the
@@ -582,16 +725,9 @@ fn run_pipeline(
         all_diagnostics.extend(lint_report.diagnostics);
     }
 
-    let any_errors = all_diagnostics.iter().any(Diagnostic::is_error);
-
-    emit_diagnostics(&all_diagnostics, label, source, format);
-
-    if any_errors {
-        bail!("aborting due to previous errors");
-    }
-
     Ok(PipelineOutput {
         lowered: lower_out.source,
+        diagnostics: all_diagnostics,
     })
 }
 
@@ -646,5 +782,41 @@ mod tests {
             "docs/templates/CLAUDE-md-snippet.md no longer contains the \
              CLAUDE_MD_BLOCK const verbatim — update one to match the other"
         );
+    }
+
+    // RT-105: the workspace walk must ignore build output and VCS metadata so
+    // a single `trust check <dir>` doesn't drown in `target/` artifacts.
+    #[test]
+    fn collect_rs_files_skips_target_and_hidden() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("src")).unwrap();
+        std::fs::create_dir_all(root.join("target/debug")).unwrap();
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        std::fs::write(root.join("src/lib.rs"), "fn a() {}").unwrap();
+        std::fs::write(root.join("build.rs"), "fn main() {}").unwrap();
+        std::fs::write(root.join("target/debug/gen.rs"), "fn g() {}").unwrap();
+        std::fs::write(root.join(".git/hook.rs"), "fn h() {}").unwrap();
+        std::fs::write(root.join("src/notes.txt"), "nope").unwrap();
+
+        let names: Vec<String> = super::collect_rs_files(root)
+            .iter()
+            .map(|p| p.file_name().unwrap().to_string_lossy().into_owned())
+            .collect();
+        assert!(names.contains(&"lib.rs".to_string()));
+        assert!(names.contains(&"build.rs".to_string()));
+        assert!(!names.iter().any(|n| n == "gen.rs"), "target/ must be skipped");
+        assert!(!names.iter().any(|n| n == "hook.rs"), "hidden dirs skipped");
+        assert!(!names.iter().any(|n| n == "notes.txt"), "non-.rs skipped");
+        assert_eq!(names.len(), 2);
+    }
+
+    #[test]
+    fn is_manifest_matches_cargo_toml_exactly() {
+        use std::path::Path;
+        assert!(super::is_manifest(Path::new("Cargo.toml")));
+        assert!(super::is_manifest(Path::new("/a/b/Cargo.toml")));
+        assert!(!super::is_manifest(Path::new("src/lib.rs")));
+        assert!(!super::is_manifest(Path::new("cargo.toml")));
     }
 }
