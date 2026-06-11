@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KTTMEJ3DH2D1RVQJT19CHRZD",
+  "ts": "2026-06-11T06:03:28.237Z",
+  "actor": "claude",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KTTA5PVSHN0KT8A5A8QSQQJN",
+    "commentId": "01KTTMEJ3DH2D1RVQJT19CHRZC",
+    "author": "claude",
+    "body": "Delivered: trust-lsp surfaces advisory bug_rules on non-strict (plain Rust) files, R0042 excluded. FOLLOW-UP: (1) honor trust.toml rules/allow/warn in the LSP (needs TrustConfig lifted out of the trust binary into a shared crate so CLI + LSP share it); (2) editor-setup docs beyond the Neovim snippet (VS Code ext packaging is RT-59); (3) consider mapping advisory findings to Warning severity in-editor so a not-yet-adopted project isn't all-red."
+  }
+}

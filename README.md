@@ -14,19 +14,67 @@ vendors.
 [![crates.io](https://img.shields.io/crates/v/trust-lang.svg)](https://crates.io/crates/trust-lang)
 [![license](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 
+## Two ways to use Trust
+
+You can adopt Trust at the level that fits — and the lowest-friction one needs
+no dialect, no markers, and no toolchain bump:
+
+1. **As an advisory linter** on a normal cargo workspace — the bug-catching
+   rules over plain Rust, no `#![strict]`, nothing added to your source. Just
+   the `trust` CLI.
+2. **As a build gate** with the full dialect (named arguments, the complete
+   rule set) — opted in via `Cargo.toml` and enforced by `cargo trustc`.
+
 ## Install
 
 ```sh
+# Advisory linter — just the `trust` CLI (the crate is `trust-lang`):
+cargo install trust-lang
+
+# Full build gate — also install the cargo subcommand and the two lowering shims
+# (cargo doesn't install a dependency's binaries, so they're listed explicitly):
 cargo install trust-lang cargo-trustc trust-rustc trust-rustdoc
-# trust-lang installs the `trust` CLI; cargo-trustc gives `cargo trustc
-# build/run/test`; the two shims do the lowering (cargo doesn't install a
-# dependency's binaries, so they're listed explicitly).
 ```
 
-(The crate is `trust-lang`; the binary it installs is `trust`. Building from
-source works too — see [From source](#from-source) below.)
+All four crates are published on crates.io. MSRV is **Rust 1.85**.
 
-## Use it in a project — two steps
+> The advisory-linter features (`trust check --rules`, `trust.toml`,
+> `--format sarif`, `trust fix --safety`) land in **0.2.0**. If `cargo install`
+> still pulls an older version, install from `main` until 0.2.0 is published:
+> `cargo install --git https://github.com/briannadoubt/Trust trust-lang`.
+> Building from source also works — see [From source](#from-source) below.
+
+## Use it as an advisory linter — zero ceremony
+
+The bug-catching rules — `.unwrap()`, `as`-casts, bare indexing, dropped error
+context, and their kin — apply to **plain Rust**. No marker, no metadata, no
+dialect:
+
+```sh
+trust check --rules bugs  src/     # the runtime-bug rules — the high-signal backlog
+trust check --rules safety src/    # every rule that applies to plain Rust
+```
+
+`trust check` takes a file, a directory, or a `Cargo.toml` and walks the tree —
+one command, CI-ready (non-zero exit on findings). Nothing is added to your
+source, so it can never break a normal `cargo build`. Tune it without editing
+call sites:
+
+```toml
+# trust.toml — at the project root
+rules = "bugs"          # default selection (--rules overrides)
+allow = ["R0012"]       # dropped project-wide
+warn  = ["R0017"]       # kept, but a non-failing warning
+```
+
+Pipe findings into CI with `--format json` (agent-native) or `--format sarif`
+(GitHub code-scanning → inline annotations + the Security tab). `trust fix
+<file> --safety` mechanically rewrites `.unwrap()`/`.expect(…)` to `?` inside
+`Result`-returning functions. The one rule **not** in these sets is R0042
+(named arguments) — it needs the dialect below, because its fix is syntax stock
+`rustc` rejects.
+
+## Use it as a build gate — two steps
 
 ```toml
 # Cargo.toml
@@ -44,7 +92,9 @@ dependencies — and enforces the full rule set at build time: the syntax
 extensions lower, and every strict lint (`.unwrap()`, `as`-casts, positional
 args, …) is a build error with a fix in the message. Dependencies are never
 touched. `[workspace.metadata.trust] strict = true` opts in a whole
-workspace at once.
+workspace at once. Because the opt-in lives in `Cargo.toml` metadata (which
+stock cargo ignores), **every source file stays a valid plain `cargo build`** —
+nothing in your `.rs` files changes.
 
 ## What it looks like
 
@@ -62,6 +112,14 @@ let area = make_rect(height, width);
 // Trust — rejected at `trust check` with R0042; names make the order explicit.
 let area = make_rect(width: 1920, height: 1080);   // order is now free and checked
 ```
+
+> **On the `#![strict]` marker:** it is understood only by the Trust toolchain
+> and is **not valid stock Rust** — a file carrying it fails a plain `cargo
+> build` with `cannot find attribute 'strict'`. Build marked files with `cargo
+> trustc` (or check single files with `trust`). For committed code that must
+> also build under stock cargo, prefer the `[package.metadata.trust]` opt-in
+> above — it's invisible to stock cargo and leaves every file a valid plain
+> build. See [docs/SPEC.md § Activation](docs/SPEC.md#activation).
 
 Trust is a thin layer over **stable Rust**. The named-argument and pipe (`|>`)
 syntax lower to plain positional Rust before `rustc` ever sees the file; the
@@ -104,15 +162,20 @@ playbook.
 ## Status
 
 **0.1 — agent-authored, evaluation-backed prototype.** 18 rules across
-`trust-lints` (strict mode) and `trust-lower` (named args, pipe); a working CLI,
-`RUSTC_WRAPPER`/`RUSTDOC` shims for cargo, and an LSP server (diagnostics,
-hover, go-to-def). Cross-crate named-argument enforcement works against a
-signature index extracted from any crate with `trust index`
+`trust-lints` (strict mode) and `trust-lower` (named args, pipe). Two ways in:
+an **advisory linter** over plain Rust (`trust check --rules bugs|safety`,
+directory/workspace walk, `trust.toml` rule selection + `allow`/`warn`, JSON
+and SARIF output, `trust fix --safety` for `.unwrap()`→`?`), and a **build
+gate** via `cargo trustc` (`RUSTC_WRAPPER`/`RUSTDOC` shims, `[package.metadata.
+trust]` activation). An LSP server gives in-editor diagnostics (advisory on
+plain Rust, full set on strict files), hover, and go-to-def. Cross-crate
+named-argument enforcement works against a signature index from `trust index`
 ([`examples/cross-crate-index`](examples/cross-crate-index/)); zero-config
-discovery of those indices from cargo's dependency graph, and editor packaging,
-are the active gaps. Validated by 6 eval runs and 4 case-study conversions of
-real crates. MIT OR Apache-2.0 — see the [case studies](#case-studies) and
-`eval/` for exactly what is and isn't proven.
+discovery of those indices from cargo's dependency graph, honoring `trust.toml`
+in the build gate, and editor packaging are the active gaps. MSRV is Rust 1.85.
+Validated by 6 eval runs and 4 case-study conversions of real crates. MIT OR
+Apache-2.0 — see the [case studies](#case-studies) and `eval/` for exactly what
+is and isn't proven.
 
 ---
 

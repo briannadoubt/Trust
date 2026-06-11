@@ -110,7 +110,7 @@ checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
 name = "cargo-trustc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "toml",
@@ -1031,14 +1031,14 @@ dependencies = [
 
 [[package]]
 name = "trust-diag"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ariadne",
 ]
 
 [[package]]
 name = "trust-lang"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1054,7 +1054,7 @@ dependencies = [
 
 [[package]]
 name = "trust-lints"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "insta",
  "proc-macro2",
@@ -1065,7 +1065,7 @@ dependencies = [
 
 [[package]]
 name = "trust-lower"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "insta",
  "prettyplease",
@@ -1078,7 +1078,7 @@ dependencies = [
 
 [[package]]
 name = "trust-lsp"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "proc-macro2",
@@ -1093,7 +1093,7 @@ dependencies = [
 
 [[package]]
 name = "trust-rustc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "proc-macro2",
@@ -1106,7 +1106,7 @@ dependencies = [
 
 [[package]]
 name = "trust-rustdoc"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "trust-lower",
@@ -1115,11 +1115,11 @@ dependencies = [
 
 [[package]]
 name = "trust-std"
-version = "0.1.0"
+version = "0.2.0"
 
 [[package]]
 name = "trust-syntax"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "prettyplease",
  "proc-macro2",
@@ -1349,7 +1349,7 @@ checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "syn",
