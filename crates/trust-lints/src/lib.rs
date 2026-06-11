@@ -11,10 +11,12 @@
 //! for RT-31. `runner.rs` / `rules.rs` are strict-marked.
 
 mod allow;
+pub mod config;
 mod rules;
 mod runner;
 mod strict;
 
+pub use config::TrustConfig;
 pub use rules::Rule;
 pub use runner::{lint, lint_advisory, lint_strict, lint_with, LintReport};
 pub use trust_diag::Diagnostic;

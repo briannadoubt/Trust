@@ -64,6 +64,30 @@ pub fn source_cache_key(source: &str) -> u64 {
     hash
 }
 
+/// FNV-1a hash of the nearest `trust.toml` content at or above `input_path`,
+/// mixed into the cache key (RT-113) so a config change re-triggers linting
+/// even when the source is unchanged. Returns 0 when there is no config — the
+/// common case, leaving the key unchanged. Walks the same way
+/// [`trust_lints::TrustConfig::discover`] does, so the salt and the applied
+/// config always agree on which file is in effect.
+fn config_cache_salt(input_path: &Path) -> u64 {
+    const FNV_OFFSET: u64 = 0xcbf29ce484222325;
+    const FNV_PRIME: u64 = 0x100000001b3;
+    let mut dir = input_path.parent();
+    while let Some(d) = dir {
+        if let Ok(text) = fs::read_to_string(d.join("trust.toml")) {
+            let mut hash = FNV_OFFSET;
+            for byte in text.bytes() {
+                hash ^= byte as u64;
+                hash = hash.wrapping_mul(FNV_PRIME);
+            }
+            return hash;
+        }
+        dir = d.parent();
+    }
+    0
+}
+
 /// Result of preparing a strict-source invocation: the path to the lowered
 /// crate-root file, and a `--remap-path-prefix=<cache>=<orig>` flag the
 /// caller should append to the tool args so diagnostics still point at the
@@ -270,7 +294,11 @@ pub fn prepare_strict_input(input_path: &Path) -> Result<Option<Prepared>> {
         .file_name()
         .context("input path has no file name")?;
 
-    let cache_key = source_cache_key(&source);
+    // RT-113: fold the nearest trust.toml into the cache key so editing the
+    // config (e.g. adding `warn = [...]`) re-triggers the gate even when the
+    // source is unchanged — otherwise a cache hit would skip re-linting and the
+    // new config would silently not apply.
+    let cache_key = source_cache_key(&source) ^ config_cache_salt(input_path);
     let cache_root = env::temp_dir().join("trust-cache");
     let cache_dir = cache_root.join(format!("{cache_key:016x}"));
     let cached_file = cache_dir.join(file_name);
@@ -405,6 +433,13 @@ fn emit_diagnostics_to(
             .with_context(|| format!("re-parsing lowered source from {}", path.display()))?;
         diagnostics.extend(trust_lints::lint_strict(&file, original_source, true).diagnostics);
     }
+
+    // RT-113: honor a project `trust.toml` in the build gate, same as
+    // `trust check` — drop `allow`-listed codes and downgrade `warn`-listed
+    // ones to non-failing warnings. A malformed config fails the build loudly.
+    let config = trust_lints::TrustConfig::discover(path)
+        .with_context(|| format!("loading trust.toml for {}", path.display()))?;
+    config.apply(&mut diagnostics);
 
     if message_format_is_json() {
         // RT-96: one JSON document per file, same shape as

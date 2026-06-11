@@ -1046,7 +1046,6 @@ dependencies = [
  "proc-macro2",
  "syn",
  "tempfile",
- "toml",
  "trust-diag",
  "trust-lints",
  "trust-lower",
@@ -1057,9 +1056,12 @@ dependencies = [
 name = "trust-lints"
 version = "0.2.0"
 dependencies = [
+ "anyhow",
  "insta",
  "proc-macro2",
  "syn",
+ "tempfile",
+ "toml",
  "trust-diag",
  "trust-lower",
 ]

@@ -10,9 +10,7 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use trust_diag::Diagnostic;
-
-mod config;
-use config::TrustConfig;
+use trust_lints::TrustConfig;
 
 /// Sentinel value (`-`) used in CLI input positions to mean "read from stdin",
 /// matching the convention used by `rustc`, `cat`, etc.

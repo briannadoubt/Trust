@@ -1,8 +1,8 @@
-//! Project configuration for `trust check` (RT-102): a `trust.toml` that
-//! selects the rule set and lists project-wide suppressions/relaxations, so
-//! adopters don't sprinkle inline `#[allow(trust::Rxxxx)]` across every call
-//! site. The first external adopter would have needed 162 inline allows for one
-//! rule alone; this is the coarse, one-place sibling of that.
+//! Project configuration (RT-102/RT-113): a `trust.toml` that selects the rule
+//! set and lists project-wide suppressions/relaxations, so adopters don't
+//! sprinkle inline `#[allow(trust::Rxxxx)]` across every call site. The first
+//! external adopter would have needed 162 inline allows for one rule alone;
+//! this is the coarse, one-place sibling of that.
 //!
 //! ```toml
 //! # trust.toml — at the project root
@@ -11,8 +11,11 @@
 //! warn  = ["R0017"]       # kept, but downgraded to a non-failing warning
 //! ```
 //!
-//! The CLI `--rules` flag overrides `rules`. Severity downgrades let a project
-//! adopt a rule as advisory-only without it failing CI.
+//! Lives in `trust-lints` (not the CLI) so every consumer shares one
+//! implementation: `trust check` reads it (the CLI `--rules` flag overrides
+//! `rules`), and the `trust-rustc` build-gate wrapper applies the same
+//! `allow`/`warn` to its diagnostics. Severity downgrades let a project adopt a
+//! rule as advisory-only without it failing the build.
 
 use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
@@ -27,7 +30,7 @@ pub struct TrustConfig {
     /// codes is dropped everywhere.
     pub allow: Vec<String>,
     /// Rule codes downgraded to warnings project-wide — still reported, but
-    /// they don't make `check` exit non-zero.
+    /// they don't make `check` (or the build gate) fail.
     pub warn: Vec<String>,
 }
 
@@ -97,7 +100,10 @@ fn code_list(value: &toml::Value, key: &str, path: &Path) -> Result<Vec<String>>
     let items = match value.get(key) {
         None => return Ok(Vec::new()),
         Some(toml::Value::Array(items)) => items,
-        Some(_) => bail!("`{key}` in {} must be an array of rule codes", path.display()),
+        Some(_) => bail!(
+            "`{key}` in {} must be an array of rule codes",
+            path.display()
+        ),
     };
     let mut out = Vec::with_capacity(items.len());
     for it in items {
@@ -105,7 +111,7 @@ fn code_list(value: &toml::Value, key: &str, path: &Path) -> Result<Vec<String>>
             .as_str()
             .with_context(|| format!("`{key}` in {} must be a list of strings", path.display()))?
             .to_uppercase();
-        if trust_lints::Rule::from_code(&code).is_none() {
+        if crate::Rule::from_code(&code).is_none() {
             bail!(
                 "unknown rule code `{code}` in {} (`{key}`) — run `trust explain` for the catalogue",
                 path.display()
