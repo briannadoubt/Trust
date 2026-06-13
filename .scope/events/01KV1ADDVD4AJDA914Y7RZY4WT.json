@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KV1ADDVD4AJDA914Y7RZY4WT",
+  "ts": "2026-06-13T20:22:46.381Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KV1ADDVCF3AW9ENJ6DNVR1ZW",
+    "number": 124,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Document shipped adopt/doctor/whole-tree-fix in README + SPEC (now live in 0.2.1)",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}
