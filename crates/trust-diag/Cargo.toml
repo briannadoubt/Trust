@@ -1,6 +1,7 @@
 [package]
 name = "trust-diag"
 description = "Teaching diagnostics for the Trust dialect"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

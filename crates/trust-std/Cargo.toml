@@ -1,6 +1,7 @@
 [package]
 name = "trust-std"
 description = "Standard library shims with named-arg signatures for Trust"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -175,7 +175,7 @@ fn ensure_strict_metadata(manifest: &Path) -> Result<MetadataOutcome> {
     let text = std::fs::read_to_string(manifest)
         .with_context(|| format!("reading {}", manifest.display()))?;
 
-    let parsed = text.parse::<toml::Value>().ok();
+    let parsed = toml::from_str::<toml::Value>(&text).ok();
     // A workspace root opts in all members; otherwise it's a package.
     let table = if parsed
         .as_ref()
@@ -513,10 +513,8 @@ fn find_workspace_root(member_manifest: &Path) -> Option<(PathBuf, toml::Value)>
 }
 
 fn read_manifest(path: &Path) -> Option<toml::Value> {
-    std::fs::read_to_string(path)
-        .ok()?
-        .parse::<toml::Value>()
-        .ok()
+    let text = std::fs::read_to_string(path).ok()?;
+    toml::from_str::<toml::Value>(&text).ok()
 }
 
 /// Extract the package name from a parsed manifest iff it declares
@@ -885,7 +883,7 @@ mod tests {
         assert!(after.contains("[package.metadata.trust]"));
         assert!(after.contains("strict = true"));
         // Parses, and a second run is a no-op (AlreadyStrict).
-        assert!(after.parse::<toml::Value>().is_ok());
+        assert!(toml::from_str::<toml::Value>(&after).is_ok());
         assert!(matches!(
             super::ensure_strict_metadata(&manifest).unwrap(),
             super::MetadataOutcome::AlreadyStrict
@@ -904,7 +902,7 @@ mod tests {
         ));
         let after = std::fs::read_to_string(&manifest).unwrap();
         assert!(after.contains("[workspace.metadata.trust]"));
-        assert!(after.parse::<toml::Value>().is_ok());
+        assert!(toml::from_str::<toml::Value>(&after).is_ok());
     }
 
     // RT-121: the cache fingerprint changes when the src set changes, so a new
@@ -984,7 +982,7 @@ mod tests {
     }
 
     fn parse(s: &str) -> Option<String> {
-        parse_strict_package(&s.parse::<toml::Value>().unwrap())
+        parse_strict_package(&toml::from_str::<toml::Value>(s).unwrap())
     }
 
     #[test]

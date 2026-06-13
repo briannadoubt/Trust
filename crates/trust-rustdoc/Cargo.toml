@@ -1,6 +1,7 @@
 [package]
 name = "trust-rustdoc"
 description = "RUSTDOC shim: lowers Trust source before invoking rustdoc (doc-tests etc.)"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
