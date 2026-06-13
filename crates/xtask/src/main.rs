@@ -371,7 +371,7 @@ fn replace_section(input: &str, begin: &str, end: &str, content: &str) -> Result
     if end_idx < begin_idx {
         bail!("end marker `{end}` appears before begin marker `{begin}`");
     }
-    let before = &input[..begin_idx + begin.len()];
+    let before = &input[..begin_idx.saturating_add(begin.len())];
     let after = &input[end_idx..];
     Ok(format!("{before}\n\n{content}\n{after}"))
 }

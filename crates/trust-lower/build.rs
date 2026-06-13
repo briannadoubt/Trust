@@ -17,16 +17,17 @@
 //!   source dialect, and freshness is enforced by
 //!   `cargo xtask gen-std-signatures --check` in CI.
 //!
-//! Any parse error here is now a HARD FAILURE (panic) — empty
-//! `STD_SIGNATURES` was the single nastiest silent footgun in the previous
-//! design and we refuse to reintroduce it.
+//! Any parse error here is now a HARD FAILURE — `main` returns `Err`, which
+//! cargo surfaces and fails the build on. Empty `STD_SIGNATURES` was the
+//! single nastiest silent footgun in the previous design and we refuse to
+//! reintroduce it.
 
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 
-fn main() {
+fn main() -> Result<(), String> {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
     // Lives INSIDE this crate so the published tarball is self-contained
     // (a ../trust-std path can't exist inside a package — RT-58).
@@ -38,31 +39,31 @@ fn main() {
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR");
     let out_path = PathBuf::from(&out_dir).join("std_signatures.rs");
 
-    let source = fs::read_to_string(&sig_file).unwrap_or_else(|e| {
-        panic!(
+    let source = fs::read_to_string(&sig_file).map_err(|e| {
+        format!(
             "trust-lower build.rs: could not read {} ({e}). \
              This file is the checked-in source of truth for STD_SIGNATURES. \
              Run `cargo xtask gen-std-signatures` to regenerate it from \
              trust-std/src/lib.rs.",
             sig_file.display()
         )
-    });
+    })?;
 
-    let sigs = parse_manifest(&source).unwrap_or_else(|e| {
-        panic!(
+    let sigs = parse_manifest(&source).map_err(|e| {
+        format!(
             "trust-lower build.rs: malformed manifest at {} ({e}). \
              Run `cargo xtask gen-std-signatures` to regenerate it.",
             sig_file.display()
         )
-    });
+    })?;
 
     if sigs.is_empty() {
-        panic!(
+        return Err(format!(
             "trust-lower build.rs: manifest at {} parsed to zero entries. \
              That would silently break cross-crate named-arg lowering. \
              Run `cargo xtask gen-std-signatures` to regenerate it.",
             sig_file.display()
-        );
+        ));
     }
 
     let mut out = String::new();
@@ -89,6 +90,7 @@ fn main() {
     out.push_str("];\n");
 
     fs::write(&out_path, out).expect("write std_signatures.rs");
+    Ok(())
 }
 
 /// Parse the `std-signatures.txt` manifest into a `name -> [params]` map.

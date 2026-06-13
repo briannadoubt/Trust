@@ -94,8 +94,8 @@ fn walk_for_fns(
     ambiguous: &mut HashSet<String>,
 ) {
     let trees: Vec<TokenTree> = tokens.into_iter().collect();
-    for i in 0..trees.len() {
-        if let TokenTree::Ident(id) = &trees[i] {
+    for (i, tree) in trees.iter().enumerate() {
+        if let TokenTree::Ident(id) = tree {
             if *id == "fn" {
                 if let (Some(TokenTree::Ident(name)), Some(rest)) =
                     (trees.get(i + 1), trees.get(i + 2))
@@ -180,8 +180,8 @@ fn extract_param_name(segment: TokenStream) -> Option<String> {
     let mut i = 0;
 
     // Skip leading attributes like `#[foo]`.
-    while i < trees.len() {
-        if let TokenTree::Punct(p) = &trees[i] {
+    while let Some(tree) = trees.get(i) {
+        if let TokenTree::Punct(p) = tree {
             if p.as_char() == '#' {
                 let mut j = i + 1;
                 if matches!(trees.get(j), Some(TokenTree::Punct(p2)) if p2.as_char() == '!') {
@@ -308,8 +308,8 @@ fn rewrite_stream(
 /// `#[command(subcommand)]`) but they are macro input, not expressions.
 fn find_attribute_bracket_indices(trees: &[TokenTree]) -> HashSet<usize> {
     let mut attrs = HashSet::new();
-    for i in 0..trees.len() {
-        let TokenTree::Punct(p) = &trees[i] else {
+    for (i, tree) in trees.iter().enumerate() {
+        let TokenTree::Punct(p) = tree else {
             continue;
         };
         if p.as_char() != '#' {
@@ -337,8 +337,8 @@ fn find_attribute_bracket_indices(trees: &[TokenTree]) -> HashSet<usize> {
 /// the function signature.
 fn find_param_group_indices(trees: &[TokenTree]) -> HashSet<usize> {
     let mut params = HashSet::new();
-    for i in 0..trees.len() {
-        let TokenTree::Ident(id) = &trees[i] else {
+    for (i, tree) in trees.iter().enumerate() {
+        let TokenTree::Ident(id) = tree else {
             continue;
         };
         if *id != "fn" {
@@ -354,8 +354,9 @@ fn find_param_group_indices(trees: &[TokenTree]) -> HashSet<usize> {
         if matches!(trees.get(j), Some(TokenTree::Punct(p)) if p.as_char() == '<') {
             let mut depth = 1;
             j += 1;
-            while j < trees.len() && depth > 0 {
-                if let TokenTree::Punct(p) = &trees[j] {
+            while depth > 0 {
+                let Some(tree) = trees.get(j) else { break };
+                if let TokenTree::Punct(p) = tree {
                     match p.as_char() {
                         '<' => depth += 1,
                         '>' => depth -= 1,
@@ -366,8 +367,8 @@ fn find_param_group_indices(trees: &[TokenTree]) -> HashSet<usize> {
             }
         }
         // First paren group after the (possibly-generic) name is the params.
-        while j < trees.len() {
-            if let TokenTree::Group(g) = &trees[j] {
+        while let Some(tree) = trees.get(j) {
+            if let TokenTree::Group(g) = tree {
                 if g.delimiter() == Delimiter::Parenthesis {
                     params.insert(j);
                     break;
@@ -402,7 +403,7 @@ fn preceding_ident(out: &[TokenTree]) -> Option<String> {
             // Method-call detection: an ident immediately preceded by a
             // `.` punct is a method name, not a free-fn callee.
             if out.len() >= 2 {
-                if let Some(TokenTree::Punct(p)) = out.get(out.len() - 2) {
+                if let Some(TokenTree::Punct(p)) = out.get(out.len().saturating_sub(2)) {
                     if p.as_char() == '.' {
                         return None;
                     }
@@ -440,8 +441,9 @@ fn path_root_segment(out: &[TokenTree]) -> Option<String> {
         if i < 2 {
             break;
         }
-        let c1 = &out[i - 1];
-        let c2 = &out[i - 2];
+        let (Some(c1), Some(c2)) = (out.get(i - 1), out.get(i - 2)) else {
+            break;
+        };
         let (TokenTree::Punct(p1), TokenTree::Punct(p2)) = (c1, c2) else {
             break;
         };
@@ -451,7 +453,7 @@ fn path_root_segment(out: &[TokenTree]) -> Option<String> {
         if i < 3 {
             break;
         }
-        let TokenTree::Ident(seg) = &out[i - 3] else {
+        let Some(TokenTree::Ident(seg)) = out.get(i - 3) else {
             break;
         };
         root = Some(seg.to_string());
@@ -733,8 +735,8 @@ fn split_by_top_comma(tokens: TokenStream) -> Vec<TokenStream> {
     // spaced Alone or chained directly into another `<` (`Foo<<T as X>::Y>`).
     let mut angle_depth: i32 = 0;
     let mut prev_arrow_head = false; // previous token was Joint '-' or '='
-    for i in 0..trees.len() {
-        let tree = trees[i].clone();
+    for (i, tree_ref) in trees.iter().enumerate() {
+        let tree = tree_ref.clone();
         let arrow_head_now = matches!(
             &tree,
             TokenTree::Punct(p)

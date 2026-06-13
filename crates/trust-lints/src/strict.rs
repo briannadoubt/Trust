@@ -771,20 +771,20 @@ mod window_sites {
 
     fn walk(tokens: &TokenStream, unsafes: &mut Vec<UnsafeSite>, allows: &mut Vec<AllowSite>) {
         let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
-        for i in 0..trees.len() {
-            match &trees[i] {
+        for (i, tree) in trees.iter().enumerate() {
+            match tree {
                 TokenTree::Ident(id) if *id == "unsafe" => {
                     match trees.get(i + 1) {
                         Some(TokenTree::Ident(next)) if *next == "fn" => {
                             unsafes.push(UnsafeSite {
-                                range: byte_range(&trees[i]),
+                                range: byte_range(tree),
                                 is_fn: true,
                                 doc_text: preceding_doc_text(&trees, i),
                             });
                         }
                         Some(TokenTree::Group(g)) if g.delimiter() == Delimiter::Brace => {
                             unsafes.push(UnsafeSite {
-                                range: byte_range(&trees[i]),
+                                range: byte_range(tree),
                                 is_fn: false,
                                 doc_text: String::new(),
                             });
@@ -837,7 +837,8 @@ mod window_sites {
         let mut j = i;
         while j > 0 {
             j -= 1;
-            match &trees[j] {
+            let Some(tree) = trees.get(j) else { break };
+            match tree {
                 TokenTree::Ident(id)
                     if *id == "pub" || *id == "const" || *id == "async" || *id == "extern" => {}
                 TokenTree::Literal(_) => {} // the "C" in extern "C"
@@ -896,7 +897,7 @@ mod window_sites {
             )
         });
         Some(AllowSite {
-            range: trees[i].span().byte_range(),
+            range: trees.get(i)?.span().byte_range(),
             has_inline_reason,
         })
     }

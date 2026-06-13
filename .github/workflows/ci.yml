@@ -118,7 +118,7 @@ jobs:
           export PATH="$(realpath target/debug):$PATH"
           (cd examples/cargo-strict-fixture && cargo clean >/dev/null)
           # No RUSTC_WRAPPER/RUSTDOC in the env here — cargo-trustc sets them.
-          out=$(cd examples/cargo-strict-fixture && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trust run 2>/dev/null | tail -1)
+          out=$(cd examples/cargo-strict-fixture && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trustc run 2>/dev/null | tail -1)
           test "$out" = "(1, 2, 3)"
 
       - name: cargo trustc — project-level strict, no per-file marker (RT-81)
@@ -138,13 +138,13 @@ jobs:
           # Positive: cargo trustc run lowers the whole crate from the manifest
           # opt-in alone — zero env vars, zero markers.
           (cd "$FIX" && cargo clean >/dev/null)
-          out=$(cd "$FIX" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trust run 2>/dev/null | tail -1)
+          out=$(cd "$FIX" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trustc run 2>/dev/null | tail -1)
           test "$out" = "(4, 5, 6)"
           # Enforcement: a positional same-typed call must trip R0042 crate-wide,
           # proving the opt-in turns on the lints, not just syntax lowering.
           tmp=$(mktemp -d); mkdir -p "$tmp/src"; cp "$FIX/Cargo.toml" "$tmp/"
           printf 'fn make_point(x: i32, y: i32, z: i32) -> (i32, i32, i32) { (x, y, z) }\nfn main() { let p = make_point(4, 5, 6); println!("{p:?}"); }\n' > "$tmp/src/main.rs"
-          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trust build 2>/dev/null); then
+          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trustc build 2>/dev/null); then
             echo "FAIL: expected R0042 to reject positional same-typed call under project strict"
             exit 1
           fi
@@ -159,7 +159,7 @@ jobs:
           tmp=$(mktemp -d); mkdir -p "$tmp/src"
           cp examples/cargo-strict-config/Cargo.toml "$tmp/"
           printf 'fn main() { let v: Option<i32> = Some(1); let _ = v.unwrap(); }\n' > "$tmp/src/main.rs"
-          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trust build 2>/tmp/rt89.log); then
+          if (cd "$tmp" && env -u RUSTC_WRAPPER -u RUSTDOC cargo-trustc trustc build 2>/tmp/rt89.log); then
             echo "FAIL: expected R0001 to reject .unwrap() under cargo trustc build"
             exit 1
           fi
@@ -314,7 +314,7 @@ jobs:
           # string*, which the wrapper passes through unchanged — a cached
           # crate would otherwise skip the wrapper and make this step hollow.
           cargo clean -p trust-syntax -p trust-diag
-          cargo-trustc trust build -p trust-syntax -p trust-diag
+          cargo-trustc trustc build -p trust-syntax -p trust-diag
 
       - name: std-signatures manifest up-to-date (RT-44)
         run: |

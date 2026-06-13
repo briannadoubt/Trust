@@ -347,7 +347,7 @@ fn src_fingerprint(src_dirs: &[PathBuf]) -> u64 {
     let mut hash = FNV_OFFSET;
     let mut mix = |bytes: &[u8]| {
         for b in bytes {
-            hash ^= *b as u64;
+            hash ^= u64::from(*b);
             hash = hash.wrapping_mul(FNV_PRIME);
         }
     };
@@ -376,7 +376,7 @@ fn collect_rs_meta(dir: &Path, out: &mut Vec<(PathBuf, u64, u64)>) {
                     .modified()
                     .ok()
                     .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                    .map(|d| d.as_nanos() as u64)
+                    .and_then(|d| u64::try_from(d.as_nanos()).ok())
                     .unwrap_or(0);
                 out.push((path, mtime, meta.len()));
             }

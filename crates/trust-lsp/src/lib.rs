@@ -157,7 +157,7 @@ pub fn offset_to_position(source: &str, offset: usize) -> Position {
         }
     }
     let line_text = &source[line_start..offset];
-    let character = line_text.encode_utf16().count() as u32;
+    let character = u32::try_from(line_text.encode_utf16().count()).unwrap_or(u32::MAX);
     Position { line, character }
 }
 
@@ -184,7 +184,7 @@ pub fn position_to_offset(source: &str, pos: Position) -> usize {
         if utf16_count >= pos.character {
             return line_start + i;
         }
-        utf16_count += ch.len_utf16() as u32;
+        utf16_count += u32::try_from(ch.len_utf16()).unwrap_or(0);
         if ch == '\n' {
             return line_start + i;
         }
@@ -383,29 +383,34 @@ pub fn compute_hover(source: &str, pos: Position) -> Option<Hover> {
 /// open paren and then take the identifier immediately preceding it.
 fn find_enclosing_call(source: &str, cursor: usize) -> Option<String> {
     // Operate at byte level. Skip strings/chars/line+block comments.
+    // Reads go through `bytes.get(..)` so the strict no-bare-index rule
+    // (R0014) is satisfied; the `< bytes.len()` bounds on incrementing loops
+    // stay to guarantee termination.
     let bytes = source.as_bytes();
     let mut i = 0usize;
     // Stack of (open_paren_offset, callee_name_opt) for parens currently open.
     let mut stack: Vec<Option<String>> = Vec::new();
-    while i < bytes.len() && i < cursor {
-        let b = bytes[i];
+    while i < cursor {
+        let Some(&b) = bytes.get(i) else { break };
         match b {
-            b'/' if i + 1 < bytes.len() && bytes[i + 1] == b'/' => {
-                while i < bytes.len() && bytes[i] != b'\n' {
+            b'/' if bytes.get(i + 1) == Some(&b'/') => {
+                while bytes.get(i).is_some_and(|&c| c != b'\n') {
                     i += 1;
                 }
             }
-            b'/' if i + 1 < bytes.len() && bytes[i + 1] == b'*' => {
+            b'/' if bytes.get(i + 1) == Some(&b'*') => {
                 i += 2;
-                while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
+                while i + 1 < bytes.len()
+                    && !(bytes.get(i) == Some(&b'*') && bytes.get(i + 1) == Some(&b'/'))
+                {
                     i += 1;
                 }
                 i = (i + 2).min(bytes.len());
             }
             b'"' => {
                 i += 1;
-                while i < bytes.len() && bytes[i] != b'"' {
-                    if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                while bytes.get(i).is_some_and(|&c| c != b'"') {
+                    if bytes.get(i) == Some(&b'\\') && i + 1 < bytes.len() {
                         i += 2;
                     } else {
                         i += 1;
@@ -417,8 +422,8 @@ fn find_enclosing_call(source: &str, cursor: usize) -> Option<String> {
                 // crude char literal skip; lifetimes start with ' too but rarely
                 // contain ')' so this is fine.
                 i += 1;
-                while i < bytes.len() && bytes[i] != b'\'' {
-                    if bytes[i] == b'\\' && i + 1 < bytes.len() {
+                while bytes.get(i).is_some_and(|&c| c != b'\'') {
+                    if bytes.get(i) == Some(&b'\\') && i + 1 < bytes.len() {
                         i += 2;
                     } else {
                         i += 1;
@@ -428,14 +433,14 @@ fn find_enclosing_call(source: &str, cursor: usize) -> Option<String> {
                         break;
                     }
                 }
-                if i < bytes.len() && bytes[i] == b'\'' {
+                if bytes.get(i) == Some(&b'\'') {
                     i += 1;
                 }
             }
             b'(' => {
                 // Identify the identifier ending just before `i`.
                 let mut j = i;
-                while j > 0 && bytes[j - 1] == b' ' {
+                while j > 0 && bytes.get(j - 1) == Some(&b' ') {
                     j -= 1;
                 }
                 let end = j;
