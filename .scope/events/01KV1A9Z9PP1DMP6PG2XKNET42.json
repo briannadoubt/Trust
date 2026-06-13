@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KV1A9Z9PP1DMP6PG2XKNET42",
+  "ts": "2026-06-13T20:20:53.174Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KV0WNMFH6C2PSEX0VZCK5DXT",
+    "commentId": "01KV1A9Z9PP1DMP6PG2XKNET41",
+    "author": "agent",
+    "body": "Merged to main (squash e892d31) via PR #2; shipped in v0.2.1 — all 10 crates published to crates.io, GitHub release https://github.com/briannadoubt/Trust/releases/tag/v0.2.1"
+  }
+}

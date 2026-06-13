@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KV1A9ZE2C02ZA9NN3BXWZKDM",
+  "ts": "2026-06-13T20:20:53.314Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KV16NX4NT0WHZ8W5PQZ262XB",
+    "commentId": "01KV1A9ZE2C02ZA9NN3BXWZKDK",
+    "author": "agent",
+    "body": "Merged in PR #2; tagged v0.2.1. CI test+msrv green on the merge."
+  }
+}

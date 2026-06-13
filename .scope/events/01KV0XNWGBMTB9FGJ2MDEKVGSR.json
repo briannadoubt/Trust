@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KV0XNWGBMTB9FGJ2MDEKVGSR",
+  "ts": "2026-06-13T16:40:12.043Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KV0WNMFH6C2PSEX0VZCK5DXT",
+    "commentId": "01KV0XNWGBMTB9FGJ2MDEKVGSQ",
+    "author": "agent",
+    "body": "Fixed all 64 self-scan alerts: R0003×7 (as→from/try_from), R0019×6 (len arith→saturating_*), R0011×3 (build.rs panic→Result), R0014×48 (bare index→get/enumerate/windows; .get_mut in wrappers; .get in LSP byte lexer). Wrappers+trust-lsp compile with stock rustc so #[allow(trust::)] isn't viable — all real rewrites. Self-scan now 0 (bugs + full ruleset); test suite green. Commit 4e17497."
+  }
+}

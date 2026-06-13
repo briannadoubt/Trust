@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KV16PMSGXKT3DP7A8J5202PT",
+  "ts": "2026-06-13T19:17:54.096Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KV16NX4NT0WHZ8W5PQZ262XB",
+    "commentId": "01KV16PMSGXKT3DP7A8J5202PS",
+    "author": "agent",
+    "body": "CI test job red since 66d0deb (RT-58). cargo-trustc steps invoked 'cargo-trustc trust <cmd>' but strip_trust_prefix strips 'trustc' → dispatch forwarded 'trust' to the trust CLI → 'unrecognized subcommand'. Fixed 5 invocations in ci.yml to 'cargo-trustc trustc'. Verified locally: RT-80 (1,2,3), RT-81 (4,5,6)+R0042 reject, RT-89 R0001 reject, RT-82 builds. Commit ea700e7, on PR #2."
+  }
+}

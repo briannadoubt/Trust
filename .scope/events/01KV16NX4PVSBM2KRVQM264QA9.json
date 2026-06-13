@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KV16NX4PVSBM2KRVQM264QA9",
+  "ts": "2026-06-13T19:17:29.878Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KV16NX4NT0WHZ8W5PQZ262XB",
+    "number": 123,
+    "keyPrefix": "RT",
+    "ticketType": "bug",
+    "title": "CI test job: cargo-trustc invoked as 'trust' not 'trustc' (red since RT-58)",
+    "description": "",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}
