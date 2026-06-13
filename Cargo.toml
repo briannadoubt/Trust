@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 # MSRV (RT-104). The previous 1.95 was aspirational and blocked `cargo install
 # trust-lang` on common toolchains — adopting a linter shouldn't drag the whole
@@ -34,11 +34,11 @@ toml = "0.8"
 
 # Internal crates — version + path so cargo publish accepts them while
 # local dev still uses the path. crates.io ignores `path` for resolution.
-trust-diag = { version = "0.2.0", path = "crates/trust-diag" }
-trust-lints = { version = "0.2.0", path = "crates/trust-lints" }
-trust-lower = { version = "0.2.0", path = "crates/trust-lower" }
-trust-rustc = { version = "0.2.0", path = "crates/trust-rustc" }
-trust-syntax = { version = "0.2.0", path = "crates/trust-syntax" }
+trust-diag = { version = "0.2.1", path = "crates/trust-diag" }
+trust-lints = { version = "0.2.1", path = "crates/trust-lints" }
+trust-lower = { version = "0.2.1", path = "crates/trust-lower" }
+trust-rustc = { version = "0.2.1", path = "crates/trust-rustc" }
+trust-syntax = { version = "0.2.1", path = "crates/trust-syntax" }
 
 [profile.release]
 lto = "thin"
