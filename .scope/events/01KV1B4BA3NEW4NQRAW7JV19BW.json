@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KV1B4BA3NEW4NQRAW7JV19BW",
+  "ts": "2026-06-13T20:35:17.443Z",
+  "actor": "agent",
+  "kind": "ticket.set_field",
+  "payload": {
+    "ticketId": "01KV1B3Q80T881VV7MHNQB7EMQ",
+    "field": "branch",
+    "value": "fix/rt-125-dashboard-issues"
+  }
+}

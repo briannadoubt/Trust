@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "id": "01KV1BCMDGTK1CQXVWZN600CM6",
+  "ts": "2026-06-13T20:39:48.912Z",
+  "actor": "agent",
+  "kind": "comment.add",
+  "payload": {
+    "ticketId": "01KV1B3Q80T881VV7MHNQB7EMQ",
+    "commentId": "01KV1BCMDGTK1CQXVWZN600CM5",
+    "author": "agent",
+    "body": "Merged PR #3; released v0.2.2 — all 10 crates at 0.2.2 on crates.io, GitHub release created. Dashboard issues (imprecise anyhow/syn, outdated toml/thiserror/ariadne, missing READMEs) all addressed. The 3 'internal error' entries were transient lib.rs-side and should resolve on its next check."
+  }
+}

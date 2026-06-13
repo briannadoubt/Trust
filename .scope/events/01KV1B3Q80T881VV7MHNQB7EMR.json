@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KV1B3Q80T881VV7MHNQB7EMR",
+  "ts": "2026-06-13T20:34:56.896Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KV1B3Q80T881VV7MHNQB7EMQ",
+    "number": 125,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Clear lib.rs/crates.io dashboard issues — pin deps, upgrade outdated, add per-crate READMEs",
+    "description": "",
+    "status": "backlog",
+    "priority": "medium",
+    "parentId": null,
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

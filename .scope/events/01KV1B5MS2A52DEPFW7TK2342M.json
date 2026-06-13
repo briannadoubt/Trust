@@ -1,0 +1,12 @@
+{
+  "v": 1,
+  "id": "01KV1B5MS2A52DEPFW7TK2342M",
+  "ts": "2026-06-13T20:35:59.906Z",
+  "actor": "agent",
+  "kind": "ticket.set_field",
+  "payload": {
+    "ticketId": "01KV1B3Q80T881VV7MHNQB7EMQ",
+    "field": "prUrl",
+    "value": "https://github.com/briannadoubt/Trust/pull/3"
+  }
+}
