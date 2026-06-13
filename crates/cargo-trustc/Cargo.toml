@@ -1,6 +1,7 @@
 [package]
 name = "cargo-trustc"
 description = "Cargo subcommand for the Trust toolchain — `cargo trustc build/run/test` with the lowering shims wired in"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

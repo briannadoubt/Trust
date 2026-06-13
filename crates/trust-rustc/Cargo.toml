@@ -1,6 +1,7 @@
 [package]
 name = "trust-rustc"
 description = "RUSTC_WRAPPER shim: lowers Trust source before invoking rustc"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

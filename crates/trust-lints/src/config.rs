@@ -63,9 +63,8 @@ impl TrustConfig {
     fn load(path: &Path) -> Result<TrustConfig> {
         let text =
             std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-        let value: toml::Value = text
-            .parse()
-            .with_context(|| format!("parsing {}", path.display()))?;
+        let value: toml::Value =
+            toml::from_str(&text).with_context(|| format!("parsing {}", path.display()))?;
 
         let rules = value
             .get("rules")

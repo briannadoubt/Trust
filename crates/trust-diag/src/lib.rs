@@ -175,7 +175,7 @@ pub fn render<W: std::io::Write>(
             Severity::Warning => ReportKind::Warning,
         };
 
-        let mut report = Report::build(kind, filename, diag.span.start)
+        let mut report = Report::build(kind, (filename, diag.span.clone()))
             .with_code(diag.rule)
             .with_message(&diag.message);
 

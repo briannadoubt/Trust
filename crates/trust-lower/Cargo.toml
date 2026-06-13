@@ -1,6 +1,7 @@
 [package]
 name = "trust-lower"
 description = "Token-level lowering passes from Trust to plain Rust"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
