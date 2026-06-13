@@ -178,8 +178,8 @@ pub fn is_strict_source(source: &str) -> bool {
 
 fn detect_strict_inner_attr(trees: &[proc_macro2::TokenTree]) -> bool {
     let mut i = 0;
-    while i < trees.len() {
-        let proc_macro2::TokenTree::Punct(hash) = &trees[i] else {
+    while let Some(tree) = trees.get(i) {
+        let proc_macro2::TokenTree::Punct(hash) = tree else {
             i += 1;
             continue;
         };

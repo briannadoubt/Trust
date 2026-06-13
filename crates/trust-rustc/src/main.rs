@@ -50,8 +50,13 @@ fn run() -> Result<i32> {
     let Some(idx) = find_input_rs(&rustc_args) else {
         return run_rustc(rustc, &rustc_args);
     };
+    // `idx` is a valid index by construction, but go through `get`/`get_mut`
+    // so the strict no-bare-index rule (R0014) is satisfied without an allow.
+    let Some(input_arg) = rustc_args.get(idx) else {
+        return run_rustc(rustc, &rustc_args);
+    };
 
-    let input_path = PathBuf::from(&rustc_args[idx]);
+    let input_path = PathBuf::from(input_arg);
     let Some(prepared) = prepare_strict_input(&input_path)
         .with_context(|| format!("preparing {}", input_path.display()))?
     else {
@@ -59,7 +64,9 @@ fn run() -> Result<i32> {
     };
 
     let mut new_args = rustc_args.clone();
-    new_args[idx] = prepared.lowered_root.to_string_lossy().into_owned();
+    if let Some(slot) = new_args.get_mut(idx) {
+        *slot = prepared.lowered_root.to_string_lossy().into_owned();
+    }
     new_args.push(prepared.remap_flag);
     run_rustc(rustc, &new_args)
 }

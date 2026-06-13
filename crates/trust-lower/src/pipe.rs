@@ -40,8 +40,8 @@ fn rewrite_stream(tokens: TokenStream, diagnostics: &mut Vec<Diagnostic>) -> Tok
 /// because a closure header like `|x| x + 1` is also two `|` puncts but
 /// each one is `Spacing::Alone`.
 fn find_pipe(trees: &[TokenTree]) -> Option<usize> {
-    for i in 0..trees.len().saturating_sub(1) {
-        if let (TokenTree::Punct(p1), TokenTree::Punct(p2)) = (&trees[i], &trees[i + 1]) {
+    for (i, w) in trees.windows(2).enumerate() {
+        if let (TokenTree::Punct(p1), TokenTree::Punct(p2)) = (&w[0], &w[1]) {
             if p1.as_char() == '|' && p1.spacing() == Spacing::Joint && p2.as_char() == '>' {
                 return Some(i);
             }
@@ -63,7 +63,9 @@ fn try_rewrite_at(
     // RHS: optional `Ident (:: Ident)*` followed by a parenthesised Group.
     let rhs_start = pipe_idx + 2;
     let Some((path_end, args_group)) = parse_rhs(trees, rhs_start) else {
-        let span = trees[pipe_idx].span();
+        let span = trees
+            .get(pipe_idx)
+            .map_or_else(Span::call_site, TokenTree::span);
         diagnostics.push(
             Diagnostic::error(
                 crate::Rule::PipeRhsNotPathCall.code(),
@@ -105,7 +107,7 @@ fn try_rewrite_at(
     new_group.set_span(args_group_owned.span());
 
     // Splice `path(new_args)` back in at `pipe_now`.
-    let mut replacement: Vec<TokenTree> = Vec::with_capacity(path.len() + 1);
+    let mut replacement: Vec<TokenTree> = Vec::with_capacity(path.len().saturating_add(1));
     replacement.extend(path);
     replacement.push(TokenTree::Group(new_group));
 
@@ -124,22 +126,20 @@ fn try_rewrite_at(
 fn lhs_start(trees: &[TokenTree], pipe_idx: usize) -> usize {
     let mut i = pipe_idx;
     while i > 0 {
-        let prev = &trees[i - 1];
         if is_boundary(trees, i - 1) {
             break;
         }
         // `=>` is two puncts: `=` (Joint) then `>` (Alone). We've already
         // treated the trailing `>` as a boundary via `is_boundary`, so the
         // `=` would also trip the `=` arm. That's fine — both anchor here.
-        let _ = prev;
         i -= 1;
     }
     i
 }
 
 fn is_boundary(trees: &[TokenTree], idx: usize) -> bool {
-    match &trees[idx] {
-        TokenTree::Punct(p) => {
+    match trees.get(idx) {
+        Some(TokenTree::Punct(p)) => {
             let c = p.as_char();
             if c == ';' || c == ',' {
                 return true;
@@ -150,7 +150,7 @@ fn is_boundary(trees: &[TokenTree], idx: usize) -> bool {
             }
             if c == '>' && idx > 0 {
                 // `=>` arrow: previous token was `=` joint.
-                if let TokenTree::Punct(prev) = &trees[idx - 1] {
+                if let Some(TokenTree::Punct(prev)) = trees.get(idx - 1) {
                     if prev.as_char() == '=' && prev.spacing() == Spacing::Joint {
                         return true;
                     }
@@ -158,7 +158,7 @@ fn is_boundary(trees: &[TokenTree], idx: usize) -> bool {
             }
             false
         }
-        TokenTree::Group(g) => matches!(g.delimiter(), Delimiter::Brace),
+        Some(TokenTree::Group(g)) => matches!(g.delimiter(), Delimiter::Brace),
         _ => false,
     }
 }

@@ -51,12 +51,12 @@ pub fn strip_strict_attrs(tokens: TokenStream) -> TokenStream {
     let trees: Vec<TokenTree> = tokens.into_iter().collect();
     let mut out: Vec<TokenTree> = Vec::with_capacity(trees.len());
     let mut i = 0;
-    while i < trees.len() {
+    while let Some(tree) = trees.get(i) {
         if let Some(consumed) = try_strip_at(&trees, i) {
             i += consumed;
             continue;
         }
-        match &trees[i] {
+        match tree {
             TokenTree::Group(g) => {
                 let mut new = Group::new(g.delimiter(), strip_strict_attrs(g.stream()));
                 new.set_span(g.span());
@@ -80,13 +80,13 @@ pub fn strip_trust_allow_items(tokens: TokenStream) -> TokenStream {
     let trees: Vec<TokenTree> = tokens.into_iter().collect();
     let mut out: Vec<TokenTree> = Vec::with_capacity(trees.len());
     let mut i = 0;
-    while i < trees.len() {
+    while let Some(tree) = trees.get(i) {
         if let Some((replacement, consumed)) = try_rewrite_allow_at(&trees, i) {
             out.extend(replacement);
             i += consumed;
             continue;
         }
-        match &trees[i] {
+        match tree {
             TokenTree::Group(g) => {
                 let mut new = Group::new(g.delimiter(), strip_trust_allow_items(g.stream()));
                 new.set_span(g.span());

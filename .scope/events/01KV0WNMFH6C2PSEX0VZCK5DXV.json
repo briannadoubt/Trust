@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "id": "01KV0WNMFH6C2PSEX0VZCK5DXV",
+  "ts": "2026-06-13T16:22:35.249Z",
+  "actor": "unknown",
+  "kind": "ticket.create",
+  "payload": {
+    "ticketId": "01KV0WNMFH6C2PSEX0VZCK5DXT",
+    "number": 122,
+    "keyPrefix": "RT",
+    "ticketType": "story",
+    "title": "Clear the 64 self-scan code-scanning alerts (dogfood the dialect)",
+    "description": "",
+    "status": "backlog",
+    "priority": "high",
+    "parentId": "01KTW0GKQ9WZVSM3Y6DC5BHCAA",
+    "branch": null,
+    "prUrl": null,
+    "assignee": null,
+    "labels": []
+  }
+}

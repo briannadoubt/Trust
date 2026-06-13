@@ -46,10 +46,10 @@ fn rewrite_inner(tokens: TokenStream) -> TokenStream {
     let trees: Vec<TokenTree> = tokens.into_iter().collect();
     let mut out: Vec<TokenTree> = Vec::with_capacity(trees.len());
     let mut i = 0;
-    while i < trees.len() {
+    while let Some(tree) = trees.get(i) {
         // Bare `requires ! ( ... )` — the preceding token must not be `:`
         // (which would make it path-qualified) or `.` (a method position).
-        if let TokenTree::Ident(id) = &trees[i] {
+        if let TokenTree::Ident(id) = tree {
             if *id == "requires" && !preceded_by_path_or_dot(&out) {
                 if let (Some(TokenTree::Punct(bang)), Some(TokenTree::Group(args))) =
                     (trees.get(i + 1), trees.get(i + 2))
@@ -62,7 +62,7 @@ fn rewrite_inner(tokens: TokenStream) -> TokenStream {
                 }
             }
         }
-        match &trees[i] {
+        match tree {
             TokenTree::Group(g) => {
                 let mut new = Group::new(g.delimiter(), rewrite_inner(g.stream()));
                 new.set_span(g.span());
@@ -121,7 +121,10 @@ mod tests {
     #[test]
     fn requires_untouched_outside_strict() {
         let out = lower("fn f(x: u32) { requires!(x > 0); }", false);
-        assert!(out.contains("requires !"), "non-strict must pass through: {out}");
+        assert!(
+            out.contains("requires !"),
+            "non-strict must pass through: {out}"
+        );
         assert!(!out.contains("debug_assert"), "{out}");
     }
 
@@ -130,6 +133,9 @@ mod tests {
         let q = lower("fn f() { contracts::requires!(true); }", true);
         assert!(q.contains("requires !"), "path-qualified is not ours: {q}");
         let m = lower("fn f(c: C) { c.requires!(true); }", true);
-        assert!(m.contains("requires !"), "method-ish position is not ours: {m}");
+        assert!(
+            m.contains("requires !"),
+            "method-ish position is not ours: {m}"
+        );
     }
 }

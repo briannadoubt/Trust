@@ -40,7 +40,7 @@ fn wrapper_fingerprint() -> u64 {
             .modified()
             .ok()
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| d.as_nanos() as u64)
+            .and_then(|d| u64::try_from(d.as_nanos()).ok())
             .unwrap_or(0);
         meta.len() ^ mtime
     })
@@ -58,7 +58,7 @@ pub fn source_cache_key(source: &str) -> u64 {
         .chain(wrapper_fingerprint().to_le_bytes())
         .chain(source.bytes())
     {
-        hash ^= byte as u64;
+        hash ^= u64::from(byte);
         hash = hash.wrapping_mul(FNV_PRIME);
     }
     hash
@@ -78,7 +78,7 @@ fn config_cache_salt(input_path: &Path) -> u64 {
         if let Ok(text) = fs::read_to_string(d.join("trust.toml")) {
             let mut hash = FNV_OFFSET;
             for byte in text.bytes() {
-                hash ^= byte as u64;
+                hash ^= u64::from(byte);
                 hash = hash.wrapping_mul(FNV_PRIME);
             }
             return hash;
@@ -567,8 +567,8 @@ fn cfg_args_positively_test(tokens: &proc_macro2::TokenStream) -> bool {
     use proc_macro2::{Delimiter, TokenTree};
     let trees: Vec<TokenTree> = tokens.clone().into_iter().collect();
     let mut i = 0;
-    while i < trees.len() {
-        match &trees[i] {
+    while let Some(tree) = trees.get(i) {
+        match tree {
             TokenTree::Ident(id) if *id == "not" => {
                 // Skip the negated group entirely.
                 if matches!(trees.get(i + 1), Some(TokenTree::Group(g)) if g.delimiter() == Delimiter::Parenthesis)
@@ -617,8 +617,8 @@ fn file_mod_declarations(tokens: &proc_macro2::TokenStream) -> Vec<(String, bool
     let mut out = Vec::new();
     let mut i = 0;
     let mut pending_cfg_test = false;
-    while i < trees.len() {
-        match &trees[i] {
+    while let Some(tree) = trees.get(i) {
+        match tree {
             // Attribute: `#` `[ ... ]` — note whether it's cfg(test).
             TokenTree::Punct(p) if p.as_char() == '#' => {
                 if let Some(TokenTree::Group(g)) = trees.get(i + 1) {
@@ -792,16 +792,16 @@ pub fn lower_doctests_in_source(source: &str) -> String {
     let mut out = String::with_capacity(source.len());
     let lines: Vec<&str> = source.lines().collect();
     let mut i = 0;
-    while i < lines.len() {
-        let (Some(prefix), Some(_)) = (doc_prefix(lines[i]), doc_body(lines[i])) else {
-            out.push_str(lines[i]);
+    while let Some(line) = lines.get(i) {
+        let (Some(prefix), Some(_)) = (doc_prefix(line), doc_body(line)) else {
+            out.push_str(line);
             out.push('\n');
             i += 1;
             continue;
         };
         // Collect this doc-comment block (consecutive lines with the same prefix).
         let block_start = i;
-        while i < lines.len() && doc_prefix(lines[i]) == Some(prefix) {
+        while lines.get(i).is_some_and(|l| doc_prefix(l) == Some(prefix)) {
             i += 1;
         }
         let block_end = i;
@@ -836,7 +836,7 @@ fn doc_body(line: &str) -> Option<&str> {
 fn rewrite_doc_block(lines: &[&str], prefix: &str) -> String {
     // Extract the indent of the first line so we can reproduce it.
     let first = lines[0];
-    let indent_len = first.len() - first.trim_start().len();
+    let indent_len = first.len().saturating_sub(first.trim_start().len());
     let indent = &first[..indent_len];
 
     // Walk lines; when we hit a fence inside a doc-test block, buffer
@@ -867,7 +867,7 @@ fn rewrite_doc_block(lines: &[&str], prefix: &str) -> String {
                 // the visible body, so we can reproduce it on output.
                 if let Some(stripped) = line.trim_start().strip_prefix(prefix) {
                     let after = stripped;
-                    let extra_indent_len = after.len() - after.trim_start().len();
+                    let extra_indent_len = after.len().saturating_sub(after.trim_start().len());
                     block_indent_after_prefix = after[..extra_indent_len].to_string();
                 }
                 out.push_str(line);
@@ -981,7 +981,7 @@ fn unwrap_doctest_fn(source: &str) -> Option<String> {
     let dedent = lines
         .iter()
         .filter(|l| !l.trim().is_empty())
-        .map(|l| l.len() - l.trim_start().len())
+        .map(|l| l.len().saturating_sub(l.trim_start().len()))
         .min()
         .unwrap_or(0);
     let out: String = lines

@@ -53,8 +53,13 @@ fn run() -> Result<i32> {
     let Some(idx) = find_input_rs(&doc_args) else {
         return run_rustdoc(&rustdoc, &doc_args);
     };
+    // `idx` is a valid index by construction, but go through `get`/`get_mut`
+    // so the strict no-bare-index rule (R0014) is satisfied without an allow.
+    let Some(input_arg) = doc_args.get(idx) else {
+        return run_rustdoc(&rustdoc, &doc_args);
+    };
 
-    let input_path = PathBuf::from(&doc_args[idx]);
+    let input_path = PathBuf::from(input_arg);
     let Some(prepared) = prepare_strict_input(&input_path)
         .with_context(|| format!("preparing {}", input_path.display()))?
     else {
@@ -62,7 +67,9 @@ fn run() -> Result<i32> {
     };
 
     let mut new_args = doc_args.clone();
-    new_args[idx] = prepared.lowered_root.to_string_lossy().into_owned();
+    if let Some(slot) = new_args.get_mut(idx) {
+        *slot = prepared.lowered_root.to_string_lossy().into_owned();
+    }
     // NOTE: rustdoc on stable rejects `--remap-path-prefix` (it's gated
     // behind `-Z unstable-options`). Doc-test failures will therefore
     // point at the lowered cache path rather than the user's source —
